@@ -1,0 +1,130 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import { useTranslations } from "../../i18n";
+
+const lang = "en" as const;
+const t = useTranslations(lang);
+const icons = [
+  "M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5",
+  "M12 2a4 4 0 100 8 4 4 0 000-8zM6 22v-3a6 6 0 0112 0v3",
+  "M4 12h16M12 4v16M7 7l10 10M17 7L7 17",
+];
+---
+
+<Layout lang={lang} fullBleed title={undefined} description={t.seo.homeDesc}>
+  {/* ── HERO ── */}
+  <section class="relative flex min-h-[100svh] items-center justify-center overflow-hidden">
+    <video class="absolute inset-0 h-full w-full object-cover" autoplay muted loop playsinline preload="auto" poster="/images/hero-poster.jpg" aria-hidden="true">
+      <source src="/videos/hero.webm" type="video/webm" />
+      <source src="/videos/hero.mp4" type="video/mp4" />
+    </video>
+    <div class="hero-overlay absolute inset-0"></div>
+
+    <div class="relative z-10 mx-auto max-w-4xl px-4 pt-24 text-center sm:px-6">
+      <p class="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white ring-1 ring-white/20 backdrop-blur">
+        {t.hero.eyebrow}
+      </p>
+      <h1 class="font-display text-4xl font-bold leading-tight text-white drop-shadow-sm sm:text-5xl lg:text-6xl">
+        {t.hero.title}<br class="hidden sm:block" />
+        <span class="text-spine-200">{t.hero.titleAccent}</span>
+      </h1>
+      <p class="mx-auto mt-6 max-w-2xl text-base text-slate-100/90 sm:text-lg">{t.hero.subtitle}</p>
+
+      <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
+        <button type="button" data-book-trigger
+          class="group inline-flex items-center justify-center gap-2 rounded-full bg-spine px-8 py-4 text-base font-semibold text-white shadow-xl shadow-spine-900/30 transition hover:bg-spine-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-spine-900">
+          {t.hero.ctaPrimary}
+          <svg class="h-5 w-5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        </button>
+        <a href="/en/services/"
+          class="inline-flex items-center justify-center rounded-full border border-white/40 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur transition hover:bg-white/15">
+          {t.hero.ctaSecondary}
+        </a>
+      </div>
+    </div>
+
+    <div class="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 animate-bounce text-white/70">
+      <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
+    </div>
+  </section>
+
+  {/* ── INTRO ── */}
+  <section class="bg-white py-20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="grid items-center gap-12 lg:grid-cols-2">
+        <div>
+          <span class="text-sm font-semibold uppercase tracking-[0.18em] text-spine">{t.intro.eyebrow}</span>
+          <h2 class="mt-3 font-display text-3xl font-bold text-charcoal sm:text-4xl">{t.intro.title}</h2>
+          <p class="mt-5 text-charcoal-muted">{t.intro.body}</p>
+          <ul class="mt-6 space-y-3">
+            {t.intro.checks.map((item) => (
+              <li class="flex items-start gap-3 text-charcoal">
+                <svg class="mt-0.5 h-5 w-5 flex-none text-spine" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                <span>{item}</span>
+              </li>
+            ))}
+          </ul>
+          <a href="/en/bio/" class="mt-8 inline-flex items-center gap-2 font-semibold text-spine transition hover:gap-3">
+            {t.intro.bioLink}
+            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+          </a>
+        </div>
+        <div class="grid grid-cols-3 gap-4 rounded-2xl bg-sand p-8">
+          {t.stats.map((s) => (
+            <div class="text-center">
+              <div class="font-display text-3xl font-bold text-spine sm:text-4xl">{s.value}</div>
+              <div class="mt-2 text-xs text-charcoal-muted sm:text-sm">{s.label}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ── SERVICES PREVIEW ── */}
+  <section class="bg-sand py-20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="mx-auto max-w-2xl text-center">
+        <h2 class="font-display text-3xl font-bold text-charcoal sm:text-4xl">{t.servicesPreview.title}</h2>
+        <p class="mt-4 text-charcoal-muted">{t.servicesPreview.subtitle}</p>
+      </div>
+      <div class="mt-12 grid gap-6 md:grid-cols-3">
+        {t.servicesPreview.items.map((s, i) => (
+          <div class="group rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-1 hover:shadow-lg">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-spine-50 text-spine">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d={icons[i]}/></svg>
+            </div>
+            <h3 class="mt-5 font-display text-xl font-semibold text-charcoal">{s.title}</h3>
+            <p class="mt-2 text-sm text-charcoal-muted">{s.desc}</p>
+          </div>
+        ))}
+      </div>
+      <div class="mt-10 text-center">
+        <a href="/en/services/" class="inline-flex items-center gap-2 rounded-full border border-spine px-6 py-3 font-semibold text-spine transition hover:bg-spine hover:text-white">
+          {t.servicesPreview.viewAll}
+        </a>
+      </div>
+    </div>
+  </section>
+
+  {/* ── CTA BAND ── */}
+  <section class="bg-spine-900 py-20">
+    <div class="mx-auto max-w-4xl px-4 text-center sm:px-6">
+      <h2 class="font-display text-3xl font-bold text-white sm:text-4xl">{t.ctaBand.title}</h2>
+      <p class="mx-auto mt-4 max-w-xl text-slate-300">{t.ctaBand.subtitle}</p>
+      <button type="button" data-book-trigger
+        class="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-base font-semibold text-spine-900 shadow-xl transition hover:bg-spine-50">
+        {t.ctaBand.cta}
+      </button>
+    </div>
+  </section>
+</Layout>
+
+<script>
+  const v = document.querySelector<HTMLVideoElement>("section video");
+  if (v) {
+    const tryPlay = () => v.play().catch(() => {});
+    if (v.readyState >= 2) tryPlay();
+    v.addEventListener("canplay", tryPlay, { once: true });
+  }
+</script>

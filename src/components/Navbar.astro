@@ -1,0 +1,273 @@
+---
+import { SITE } from "../config/site";
+import { useTranslations, getAlternatePath, type Lang } from "../i18n";
+
+interface Props {
+  lang?: Lang;
+  /** When true the header starts transparent over the hero and becomes
+   *  solid white as the user scrolls down. */
+  transparent?: boolean;
+}
+const { lang = "el", transparent = false } = Astro.props;
+const t = useTranslations(lang);
+
+const { pathname } = Astro.url;
+const isActive = (href: string) =>
+  href === (lang === "el" ? "/" : "/en/")
+    ? pathname === href
+    : pathname.startsWith(href);
+
+const base = lang === "el" ? "" : "/en";
+const navLinks = [
+  { label: t.nav.home,     href: `${base}/` },
+  { label: t.nav.bio,      href: `${base}/bio/` },
+  { label: t.nav.services, href: `${base}/services/` },
+  { label: t.nav.gallery,  href: `${base}/gallery/` },
+  { label: t.nav.contact,  href: `${base}/contact/` },
+];
+
+const alternatePath = getAlternatePath(pathname, lang);
+---
+
+<header
+  id="site-header"
+  data-transparent={transparent ? "true" : "false"}
+  class:list={[
+    "sticky top-0 z-50 w-full transition-all duration-300",
+    transparent
+      ? "border-b border-transparent bg-transparent"
+      : "border-b border-transparent bg-white/90 backdrop-blur",
+  ]}
+>
+  <nav class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
+
+    {/* Logo — inverted to white when navbar is transparent over dark hero */}
+    <a
+      href={lang === "el" ? "/" : "/en/"}
+      class="flex items-center"
+      aria-label={`${SITE.name} — ${lang === "el" ? "αρχική" : "home"}`}
+    >
+      <img
+        id="nav-logo"
+        src={SITE.logo}
+        alt={SITE.name}
+        width="220"
+        height="70"
+        class:list={[
+          "h-12 w-auto object-contain transition-[filter] duration-300 sm:h-14",
+          transparent ? "brightness-0 invert" : "",
+        ]}
+        loading="eager"
+      />
+    </a>
+
+    {/* Desktop links */}
+    <ul class="hidden items-center gap-1 md:flex">
+      {navLinks.map((link) => (
+        <li>
+          <a
+            href={link.href}
+            data-nav-link
+            class:list={[
+              "rounded-full px-4 py-2 text-sm font-medium transition-colors duration-300",
+              isActive(link.href)
+                ? transparent ? "text-white/90 font-semibold" : "text-spine"
+                : transparent ? "text-white/80 hover:text-white" : "text-charcoal hover:text-spine",
+            ]}
+            aria-current={isActive(link.href) ? "page" : undefined}
+          >
+            {link.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+
+    {/* Desktop: lang switcher + CTA */}
+    <div class="hidden items-center gap-2 md:flex">
+      <a
+        href={alternatePath}
+        data-lang-switcher
+        class:list={[
+          "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors duration-300",
+          transparent
+            ? "border-white/40 text-white/80 hover:border-white hover:text-white"
+            : "border-slate-200 text-charcoal-muted hover:border-spine hover:text-spine",
+        ]}
+        aria-label={t.nav.switchLangLabel}
+        hreflang={lang === "el" ? "en" : "el"}
+      >
+        {t.nav.switchLang}
+      </a>
+
+      <button
+        type="button"
+        data-book-trigger
+        data-book-btn
+        class:list={[
+          "rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
+          transparent
+            ? "border border-white/70 bg-white/10 text-white backdrop-blur hover:bg-white/20 focus-visible:ring-white"
+            : "bg-spine text-white shadow-md shadow-spine/20 hover:bg-spine-600 focus-visible:ring-spine",
+        ]}
+      >
+        {t.nav.book}
+      </button>
+    </div>
+
+    {/* Mobile toggle */}
+    <button
+      id="mobile-menu-btn"
+      type="button"
+      class:list={[
+        "inline-flex items-center justify-center rounded-md p-2 transition-colors md:hidden",
+        transparent ? "text-white" : "text-charcoal",
+      ]}
+      data-mobile-btn
+      aria-controls="mobile-menu"
+      aria-expanded="false"
+      aria-label={lang === "el" ? "Εναλλαγή μενού πλοήγησης" : "Toggle navigation menu"}
+    >
+      <svg id="icon-open" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M4 6h16M4 12h16M4 18h16"></path>
+      </svg>
+      <svg id="icon-close" class="hidden h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M6 6l12 12M18 6L6 18"></path>
+      </svg>
+    </button>
+  </nav>
+
+  {/* Mobile menu — always solid white */}
+  <div id="mobile-menu" class="hidden border-t border-slate-100 bg-white md:hidden">
+    <ul class="space-y-1 px-4 py-4">
+      {navLinks.map((link) => (
+        <li>
+          <a
+            href={link.href}
+            class:list={[
+              "block rounded-lg px-3 py-2.5 text-base font-medium transition",
+              isActive(link.href) ? "bg-spine-50 text-spine" : "text-charcoal hover:bg-slate-50",
+            ]}
+            aria-current={isActive(link.href) ? "page" : undefined}
+          >
+            {link.label}
+          </a>
+        </li>
+      ))}
+      <li class="flex items-center gap-2 pt-2">
+        <button
+          type="button"
+          data-book-trigger
+          class="flex-1 rounded-full bg-spine px-5 py-3 text-base font-semibold text-white shadow-md transition hover:bg-spine-600"
+        >
+          {t.nav.book}
+        </button>
+        <a
+          href={alternatePath}
+          class="rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-charcoal-muted transition hover:border-spine hover:text-spine"
+          hreflang={lang === "el" ? "en" : "el"}
+        >
+          {t.nav.switchLang}
+        </a>
+      </li>
+    </ul>
+  </div>
+</header>
+
+<script>
+  const header      = document.getElementById("site-header")!;
+  const logo        = document.getElementById("nav-logo") as HTMLImageElement | null;
+  const links       = header.querySelectorAll<HTMLElement>("[data-nav-link]");
+  const langBtn     = header.querySelector<HTMLElement>("[data-lang-switcher]");
+  const bookBtn     = header.querySelector<HTMLElement>("[data-book-btn]");
+  const mobileBtn   = header.querySelector<HTMLElement>("[data-mobile-btn]");
+  const mobileMenu  = document.getElementById("mobile-menu");
+  const iconOpen    = document.getElementById("icon-open");
+  const iconClose   = document.getElementById("icon-close");
+
+  const isTransparent = header.dataset.transparent === "true";
+
+  // ── Scroll-aware solid/transparent toggle ───────────────────────────
+  if (isTransparent) {
+    const THRESHOLD = 60; // px before switching to solid
+
+    const setSolid = (solid: boolean) => {
+      // Header background
+      header.classList.toggle("bg-transparent",        !solid);
+      header.classList.toggle("border-transparent",    !solid);
+      header.classList.toggle("bg-white/90",            solid);
+      header.classList.toggle("backdrop-blur",          solid);
+      header.classList.toggle("shadow-sm",              solid);
+      header.classList.toggle("border-slate-100",       solid);
+
+      // Logo filter (invert = white on dark hero)
+      logo?.classList.toggle("brightness-0", !solid);
+      logo?.classList.toggle("invert",        !solid);
+
+      // Nav links
+      links.forEach((el) => {
+        const active = el.getAttribute("aria-current") === "page";
+        el.classList.toggle("text-white/90",     !solid && active);
+        el.classList.toggle("font-semibold",     !solid && active);
+        el.classList.toggle("text-spine",         solid && active);
+        el.classList.toggle("text-white/80",     !solid && !active);
+        el.classList.toggle("hover:text-white",  !solid && !active);
+        el.classList.toggle("text-charcoal",      solid && !active);
+        el.classList.toggle("hover:text-spine",   solid && !active);
+      });
+
+      // Language switcher
+      if (langBtn) {
+        langBtn.classList.toggle("border-white/40",       !solid);
+        langBtn.classList.toggle("text-white/80",         !solid);
+        langBtn.classList.toggle("hover:border-white",    !solid);
+        langBtn.classList.toggle("hover:text-white",      !solid);
+        langBtn.classList.toggle("border-slate-200",       solid);
+        langBtn.classList.toggle("text-charcoal-muted",   solid);
+        langBtn.classList.toggle("hover:border-spine",    solid);
+        langBtn.classList.toggle("hover:text-spine",      solid);
+      }
+
+      // Book button
+      if (bookBtn) {
+        bookBtn.classList.toggle("border",                !solid);
+        bookBtn.classList.toggle("border-white/70",       !solid);
+        bookBtn.classList.toggle("bg-white/10",           !solid);
+        bookBtn.classList.toggle("text-white",            !solid);
+        bookBtn.classList.toggle("backdrop-blur",         !solid);
+        bookBtn.classList.toggle("hover:bg-white/20",     !solid);
+        bookBtn.classList.toggle("bg-spine",               solid);
+        bookBtn.classList.toggle("text-white",             solid); // keep white in both
+        bookBtn.classList.toggle("shadow-md",              solid);
+        bookBtn.classList.toggle("shadow-spine/20",        solid);
+        bookBtn.classList.toggle("hover:bg-spine-600",     solid);
+      }
+
+      // Mobile hamburger icon colour
+      if (mobileBtn) {
+        mobileBtn.classList.toggle("text-white",   !solid);
+        mobileBtn.classList.toggle("text-charcoal", solid);
+      }
+    };
+
+    const onScroll = () => setSolid(window.scrollY > THRESHOLD);
+    onScroll(); // run once on mount
+    window.addEventListener("scroll", onScroll, { passive: true });
+  } else {
+    // Non-transparent pages: just add shadow on scroll
+    const onScroll = () => {
+      header.classList.toggle("shadow-sm",       window.scrollY > 8);
+      header.classList.toggle("border-slate-100", window.scrollY > 8);
+    };
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+  }
+
+  // ── Mobile menu toggle ───────────────────────────────────────────────
+  header.querySelector<HTMLElement>("#mobile-menu-btn")
+    ?.addEventListener("click", () => {
+      const isHidden = mobileMenu?.classList.toggle("hidden");
+      header.querySelector("#mobile-menu-btn")?.setAttribute("aria-expanded", String(!isHidden));
+      iconOpen?.classList.toggle("hidden", !isHidden);
+      iconClose?.classList.toggle("hidden", isHidden);
+    });
+</script>

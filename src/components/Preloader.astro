@@ -1,0 +1,119 @@
+---
+import { SITE } from "../config/site";
+import { useTranslations, type Lang } from "../i18n";
+
+interface Props { lang?: Lang; }
+const { lang = "el" } = Astro.props;
+const t = useTranslations(lang);
+---
+
+<div
+  id="preloader"
+  class="fixed inset-0 z-[500] flex flex-col items-center justify-center bg-white"
+  aria-hidden="true"
+>
+  <div id="pl-logo" class="relative flex flex-col items-center opacity-0">
+    <img
+      src={SITE.logo}
+      alt={SITE.name}
+      width="320"
+      height="100"
+      class="w-64 sm:w-80"
+      draggable="false"
+    />
+
+    <svg
+      id="pl-spine-line"
+      viewBox="0 0 200 4"
+      class="mt-4 w-40 overflow-visible sm:w-52"
+      aria-hidden="true"
+    >
+      <line x1="0" y1="2" x2="200" y2="2" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round" />
+      <line
+        id="pl-spine-draw"
+        x1="0" y1="2" x2="200" y2="2"
+        stroke="#1d3e62"
+        stroke-width="2"
+        stroke-linecap="round"
+        stroke-dasharray="200"
+        stroke-dashoffset="200"
+      />
+    </svg>
+
+    <p
+      id="pl-tagline"
+      class="mt-4 text-[11px] font-medium uppercase tracking-[0.28em] text-slate-400 opacity-0"
+    >
+      {t.preloader.tagline}
+    </p>
+  </div>
+
+  <div class="absolute bottom-0 left-0 h-[3px] w-full bg-slate-100">
+    <div id="pl-bar" class="h-full bg-spine transition-none" style="width: 0%"></div>
+  </div>
+</div>
+
+<style>
+  html:not(.preloader-done) body { overflow: hidden; }
+</style>
+
+<script>
+  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const overlay   = document.getElementById("preloader")!;
+  const logo      = document.getElementById("pl-logo")!;
+  const tagline   = document.getElementById("pl-tagline")!;
+  const spineDraw = document.getElementById("pl-spine-draw") as SVGLineElement | null;
+  const bar       = document.getElementById("pl-bar") as HTMLElement;
+
+  const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+  const set = (el: HTMLElement | SVGLineElement | null, props: Record<string, string>) => {
+    if (!el) return;
+    Object.entries(props).forEach(([k, v]) => ((el as HTMLElement).style as any)[k] = v);
+  };
+
+  if (REDUCED) {
+    document.addEventListener("DOMContentLoaded", () => {
+      set(overlay, { transition: "opacity 0.3s ease", opacity: "0" });
+      setTimeout(() => { overlay.remove(); document.documentElement.classList.add("preloader-done"); }, 350);
+    });
+  } else {
+    const run = async () => {
+      await delay(60);
+      set(logo, { transform: "translateY(8px) scale(0.97)", opacity: "0" });
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        set(logo, {
+          transition: "opacity 0.55s cubic-bezier(0.4,0,0.2,1), transform 0.55s cubic-bezier(0.4,0,0.2,1)",
+          opacity: "1",
+          transform: "translateY(0) scale(1)",
+        });
+      }));
+
+      await delay(250);
+      if (spineDraw) set(spineDraw, { transition: "stroke-dashoffset 0.7s cubic-bezier(0.4,0,0.2,1)", strokeDashoffset: "0" });
+
+      await delay(550);
+      set(tagline, { transition: "opacity 0.5s ease", opacity: "1" });
+
+      set(bar, { transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)", width: "55%" });
+
+      await new Promise<void>((resolve) => {
+        if (document.readyState === "loading") {
+          document.addEventListener("DOMContentLoaded", () => resolve(), { once: true });
+        } else resolve();
+      });
+
+      set(bar, { transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)", width: "100%" });
+      await delay(380);
+
+      set(overlay, {
+        transition: "opacity 0.55s cubic-bezier(0.4,0,0.2,1), transform 0.55s cubic-bezier(0.4,0,0.2,1)",
+        opacity: "0",
+        transform: "translateY(-18px)",
+      });
+      await delay(580);
+      overlay.remove();
+      document.documentElement.classList.add("preloader-done");
+    };
+    run();
+  }
+</script>

@@ -1,0 +1,55 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import { useTranslations } from "../../i18n";
+
+const lang = "en" as const;
+const t = useTranslations(lang);
+const b = t.bioPage;
+---
+
+<Layout lang={lang} title={t.seo.bioTitle} description={t.seo.bioDesc}>
+  <PageHeader eyebrow={b.eyebrow} title={b.title} subtitle={b.subtitle} />
+
+  <section class="bg-white py-20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="grid items-start gap-12 lg:grid-cols-5">
+        <div class="lg:col-span-2">
+          <div class="overflow-hidden rounded-2xl bg-sand">
+            <img src="/images/practitioner.jpg" alt={b.imgAlt} width="640" height="800"
+              class="h-full w-full object-cover" loading="lazy"
+              onerror={`this.style.display='none'; this.parentElement.classList.add('aspect-[4/5]','flex','items-center','justify-center'); this.parentElement.innerHTML='<span class="text-charcoal-muted text-sm">${b.imgPlaceholder}</span>';`} />
+          </div>
+          <div class="mt-6 rounded-2xl bg-sand p-6">
+            <h3 class="font-display text-lg font-semibold text-charcoal">{b.credTitle}</h3>
+            <ul class="mt-4 space-y-2">
+              {b.credentials.map((c) => (
+                <li class="flex items-start gap-3 text-sm text-charcoal">
+                  <svg class="mt-0.5 h-5 w-5 flex-none text-spine" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
+                  <span>{c}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        </div>
+
+        <div class="lg:col-span-3">
+          <h2 class="font-display text-3xl font-bold text-charcoal">{b.h2}</h2>
+          <div class="mt-5 space-y-4 text-charcoal-muted">
+            <p>{b.p1}</p>
+            <p>{b.p2}</p>
+            <p>{b.p3}</p>
+          </div>
+          <div class="mt-8 rounded-2xl border border-spine-100 bg-spine-50 p-6">
+            <p class="font-display text-lg font-semibold text-charcoal">{b.promiseTitle}</p>
+            <p class="mt-2 text-charcoal-muted">{b.promiseBody}</p>
+            <button type="button" data-book-trigger
+              class="mt-5 inline-flex items-center justify-center rounded-full bg-spine px-6 py-3 font-semibold text-white transition hover:bg-spine-600">
+              {b.promiseCta}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+</Layout>

@@ -1,0 +1,52 @@
+---
+import Layout from "../../layouts/Layout.astro";
+import PageHeader from "../../components/PageHeader.astro";
+import { useTranslations } from "../../i18n";
+
+const lang = "en" as const;
+const t = useTranslations(lang);
+const s = t.servicesPage;
+---
+
+<Layout lang={lang} title={t.seo.servicesTitle} description={t.seo.servicesDesc}>
+  <PageHeader eyebrow={s.eyebrow} title={s.title} subtitle={s.subtitle} />
+
+  <section class="bg-sand py-20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {s.list.map((svc, i) => (
+          <div class="flex flex-col rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-1 hover:shadow-lg">
+            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-spine-50 text-spine">
+              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d={s.icons[i]}/></svg>
+            </div>
+            <h3 class="mt-5 font-display text-xl font-semibold text-charcoal">{svc.title}</h3>
+            <p class="mt-2 text-sm text-charcoal-muted">{svc.desc}</p>
+            <ul class="mt-4 space-y-2">
+              {svc.points.map((p) => (
+                <li class="flex items-center gap-2 text-sm text-charcoal">
+                  <span class="h-1.5 w-1.5 flex-none rounded-full bg-spine"/>
+                  {p}
+                </li>
+              ))}
+            </ul>
+            <button type="button" data-book-trigger
+              class="mt-6 inline-flex w-full items-center justify-center rounded-full border border-spine px-5 py-2.5 text-sm font-semibold text-spine transition hover:bg-spine hover:text-white">
+              {s.bookBtn}
+            </button>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="bg-spine-900 py-16">
+    <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
+      <h2 class="font-display text-2xl font-bold text-white sm:text-3xl">{s.unsureTitle}</h2>
+      <p class="mt-3 text-slate-300">{s.unsureSubtitle}</p>
+      <button type="button" data-book-trigger
+        class="mt-7 inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 font-semibold text-spine-900 transition hover:bg-spine-50">
+        {s.cta}
+      </button>
+    </div>
+  </section>
+</Layout>
