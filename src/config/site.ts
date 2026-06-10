@@ -20,15 +20,11 @@ export const SITE = {
   /** Path is relative to /public. Transparent PNG lockup (wordmark + spine). */
   logo: "/orc-logo.png",
   url: "https://orc-center.example.com",
-  email: "hello@orc-center.com",
-  phone: "+357 00 000 000",
-  phoneHref: "tel:+35700000000",
-  address: "123 Wellness Avenue, Nicosia, Cyprus",
-  hours: [
-    { day: "Mon – Fri", time: "08:00 – 20:00" },
-    { day: "Saturday", time: "09:00 – 14:00" },
-    { day: "Sunday", time: "Closed" },
-  ],
+  email: "orcosteopathy@hotmail.com",
+  phone: "+357 96 322622",
+  phoneHref: "tel:+35796322622",
+  /** Used for the Google Maps embed/query; display strings live in i18n. */
+  address: "Aitolon, Strovolos, Nicosia, Cyprus",
   social: {
     instagram: "https://instagram.com/",
     facebook: "https://facebook.com/",
@@ -50,7 +46,7 @@ export const NAV_LINKS: NavLink[] = [
  */
 export const FRESHA_BOOKING_URL: string =
   import.meta.env.PUBLIC_FRESHA_BOOKING_URL ||
-  "https://www.fresha.com/a/your-orc-handle";
+  "https://www.fresha.com/a/orc-til-96322622-osteopathitikos-haralampos-neokleoys-strovolos-aitolon-aitolon-bnk279fh";
 
 /** Optional endpoint to capture pre-booking leads before redirecting. */
 export const LEAD_ENDPOINT: string = import.meta.env.PUBLIC_LEAD_ENDPOINT || "";

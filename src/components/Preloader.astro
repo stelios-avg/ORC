@@ -7,6 +7,24 @@ const { lang = "el" } = Astro.props;
 const t = useTranslations(lang);
 ---
 
+{/* Plays on a fresh open or refresh of the site, but NOT when navigating
+    between internal pages. Inline so the check happens before first paint. */}
+<script is:inline>
+  (() => {
+    var nav = performance.getEntriesByType
+      ? performance.getEntriesByType("navigation")[0]
+      : null;
+    var type = nav ? nav.type : "navigate";
+    var internal = false;
+    try {
+      internal = !!document.referrer && new URL(document.referrer).origin === location.origin;
+    } catch (e) {}
+    // Show on reload or on arrival from outside; skip for internal navigation.
+    var show = type === "reload" || !internal;
+    if (!show) document.documentElement.classList.add("skip-preloader");
+  })();
+</script>
+
 <div
   id="preloader"
   class="fixed inset-0 z-[500] flex flex-col items-center justify-center bg-white"
@@ -14,6 +32,7 @@ const t = useTranslations(lang);
 >
   <div id="pl-logo" class="relative flex flex-col items-center opacity-0">
     <img
+      id="pl-logo-img"
       src={SITE.logo}
       alt={SITE.name}
       width="320"
@@ -25,7 +44,7 @@ const t = useTranslations(lang);
     <svg
       id="pl-spine-line"
       viewBox="0 0 200 4"
-      class="mt-4 w-40 overflow-visible sm:w-52"
+      class="pl-extra mt-4 w-40 overflow-visible sm:w-52"
       aria-hidden="true"
     >
       <line x1="0" y1="2" x2="200" y2="2" stroke="#e2e8f0" stroke-width="2" stroke-linecap="round" />
@@ -42,78 +61,131 @@ const t = useTranslations(lang);
 
     <p
       id="pl-tagline"
-      class="mt-4 text-[11px] font-medium uppercase tracking-[0.28em] text-slate-400 opacity-0"
+      class="pl-extra mt-4 text-[11px] font-medium uppercase tracking-[0.28em] text-slate-400 opacity-0"
     >
       {t.preloader.tagline}
     </p>
   </div>
 
-  <div class="absolute bottom-0 left-0 h-[3px] w-full bg-slate-100">
+  <div class="pl-extra absolute bottom-0 left-0 h-[3px] w-full bg-slate-100">
     <div id="pl-bar" class="h-full bg-spine transition-none" style="width: 0%"></div>
   </div>
 </div>
 
 <style>
-  html:not(.preloader-done) body { overflow: hidden; }
+  html:not(.preloader-done):not(.skip-preloader) body { overflow: hidden; }
+  html.skip-preloader #preloader { display: none; }
+
+  #pl-logo-img {
+    transform-origin: top left;
+    will-change: transform;
+  }
 </style>
 
 <script>
-  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const overlay   = document.getElementById("preloader")!;
   const logo      = document.getElementById("pl-logo")!;
+  const logoImg   = document.getElementById("pl-logo-img") as HTMLImageElement;
   const tagline   = document.getElementById("pl-tagline")!;
   const spineDraw = document.getElementById("pl-spine-draw") as SVGLineElement | null;
   const bar       = document.getElementById("pl-bar") as HTMLElement;
 
-  const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
-  const set = (el: HTMLElement | SVGLineElement | null, props: Record<string, string>) => {
-    if (!el) return;
-    Object.entries(props).forEach(([k, v]) => ((el as HTMLElement).style as any)[k] = v);
+  const finish = () => {
+    overlay.remove();
+    document.documentElement.classList.add("preloader-done");
   };
 
-  if (REDUCED) {
-    document.addEventListener("DOMContentLoaded", () => {
-      set(overlay, { transition: "opacity 0.3s ease", opacity: "0" });
-      setTimeout(() => { overlay.remove(); document.documentElement.classList.add("preloader-done"); }, 350);
-    });
+  if (document.documentElement.classList.contains("skip-preloader")) {
+    // Internal navigation — skip entirely.
+    finish();
   } else {
-    const run = async () => {
-      await delay(60);
-      set(logo, { transform: "translateY(8px) scale(0.97)", opacity: "0" });
-      requestAnimationFrame(() => requestAnimationFrame(() => {
-        set(logo, {
-          transition: "opacity 0.55s cubic-bezier(0.4,0,0.2,1), transform 0.55s cubic-bezier(0.4,0,0.2,1)",
-          opacity: "1",
-          transform: "translateY(0) scale(1)",
-        });
-      }));
-
-      await delay(250);
-      if (spineDraw) set(spineDraw, { transition: "stroke-dashoffset 0.7s cubic-bezier(0.4,0,0.2,1)", strokeDashoffset: "0" });
-
-      await delay(550);
-      set(tagline, { transition: "opacity 0.5s ease", opacity: "1" });
-
-      set(bar, { transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)", width: "55%" });
-
-      await new Promise<void>((resolve) => {
+    const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const delay = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
+    const set = (el: HTMLElement | SVGLineElement | null, props: Record<string, string>) => {
+      if (!el) return;
+      Object.entries(props).forEach(([k, v]) => ((el as HTMLElement).style as any)[k] = v);
+    };
+    const domReady = () =>
+      new Promise<void>((resolve) => {
         if (document.readyState === "loading") {
           document.addEventListener("DOMContentLoaded", () => resolve(), { once: true });
         } else resolve();
       });
 
-      set(bar, { transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)", width: "100%" });
-      await delay(380);
-
-      set(overlay, {
-        transition: "opacity 0.55s cubic-bezier(0.4,0,0.2,1), transform 0.55s cubic-bezier(0.4,0,0.2,1)",
-        opacity: "0",
-        transform: "translateY(-18px)",
+    if (REDUCED) {
+      domReady().then(async () => {
+        set(overlay, { transition: "opacity 0.3s ease", opacity: "0" });
+        await delay(350);
+        finish();
       });
-      await delay(580);
-      overlay.remove();
-      document.documentElement.classList.add("preloader-done");
-    };
-    run();
+    } else {
+      const run = async () => {
+        /* 1. Logo fades + scales in */
+        await delay(60);
+        set(logo, { transform: "translateY(8px) scale(0.97)", opacity: "0" });
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          set(logo, {
+            transition: "opacity 0.55s cubic-bezier(0.4,0,0.2,1), transform 0.55s cubic-bezier(0.4,0,0.2,1)",
+            opacity: "1",
+            transform: "translateY(0) scale(1)",
+          });
+        }));
+
+        /* 2. Spine line draws */
+        await delay(250);
+        if (spineDraw) set(spineDraw, { transition: "stroke-dashoffset 0.7s cubic-bezier(0.4,0,0.2,1)", strokeDashoffset: "0" });
+
+        /* 3. Tagline */
+        await delay(550);
+        set(tagline, { transition: "opacity 0.5s ease", opacity: "1" });
+
+        /* 4. Progress bar */
+        set(bar, { transition: "width 0.6s cubic-bezier(0.4,0,0.2,1)", width: "55%" });
+        await domReady();
+        set(bar, { transition: "width 0.35s cubic-bezier(0.4,0,0.2,1)", width: "100%" });
+        await delay(420);
+
+        /* 5. Fade out everything except the logo image */
+        overlay.querySelectorAll<HTMLElement>(".pl-extra").forEach((el) => {
+          set(el, { transition: "opacity 0.25s ease", opacity: "0" });
+        });
+        await delay(260);
+
+        /* 6. FLIP: fly the logo to its navbar position (top-left) */
+        const navLogo = document.getElementById("nav-logo") as HTMLImageElement | null;
+        const header  = document.getElementById("site-header");
+
+        if (navLogo) {
+          const from = logoImg.getBoundingClientRect();
+          const to   = navLogo.getBoundingClientRect();
+          const s    = to.height / from.height;
+          const dx   = to.left - from.left;
+          const dy   = to.top - from.top;
+
+          // Hide the real navbar logo while ours flies in, reveal page behind.
+          navLogo.style.visibility = "hidden";
+          overlay.style.pointerEvents = "none";
+          set(overlay, { transition: "background-color 0.6s ease 0.15s", backgroundColor: "transparent" });
+
+          // If the navbar sits over a dark hero, the logo lands white-inverted.
+          const landsOnDark = header?.dataset.state === "dark";
+
+          set(logoImg, {
+            transition: "transform 0.85s cubic-bezier(0.76,0,0.24,1), filter 0.85s ease",
+            transform: `translate(${dx}px, ${dy}px) scale(${s})`,
+            ...(landsOnDark ? { filter: "brightness(0) invert(1)" } : {}),
+          });
+
+          await delay(900);
+          navLogo.style.visibility = "";
+        } else {
+          set(overlay, { transition: "opacity 0.5s ease", opacity: "0" });
+          await delay(520);
+        }
+
+        finish();
+      };
+      run();
+    }
   }
 </script>

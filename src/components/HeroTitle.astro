@@ -1,0 +1,120 @@
+---
+import { useTranslations, type Lang } from "../i18n";
+
+interface Props { lang?: Lang; }
+const { lang = "el" } = Astro.props;
+const t = useTranslations(lang);
+
+const line1 = t.hero.title.split(/\s+/).filter(Boolean);
+const line2 = t.hero.titleAccent.split(/\s+/).filter(Boolean);
+---
+
+{/* Cinematic hero title: word-by-word masked rise (after the preloader)
+    + 3D depth tilt that follows the cursor. The accent line floats in
+    front of the first line (translateZ) for real perceived depth. */}
+<div class="hero-tilt-wrap mx-auto mt-5">
+  <h1 id="hero-title" class="hero-tilt font-display font-bold text-white headline-hero">
+    <span class="hero-line block">
+      {line1.map((w, i) => (
+        <span class="hero-word-mask"><span class="hero-word" style={`--wi: ${i}`}>{w}</span></span>
+      ))}
+    </span>
+    <span class="hero-line hero-line-accent block text-spine-200">
+      {line2.map((w, i) => (
+        <span class="hero-word-mask"><span class="hero-word" style={`--wi: ${i + line1.length}`}>{w}</span></span>
+      ))}
+    </span>
+  </h1>
+</div>
+
+<style>
+  .hero-tilt-wrap {
+    perspective: 900px;
+  }
+  .hero-tilt {
+    transform-style: preserve-3d;
+    will-change: transform;
+  }
+  /* Accent line floats in front — visible parallax when the title tilts. */
+  .hero-line-accent {
+    transform: translateZ(55px);
+    text-shadow: 0 12px 35px rgb(8 24 38 / 0.35);
+  }
+
+  /* Word mask: clips the word while it rises into place. Generous padding so
+     descenders (γ, ρ, y, p) aren't cut, pulled back with negative margin. */
+  .hero-word-mask {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: top;
+    padding: 0.08em 0.14em 0.18em;
+    margin: -0.08em -0.14em -0.18em;
+  }
+  .hero-word-mask:not(:last-child) {
+    margin-right: 0.12em;
+  }
+  .hero-word {
+    display: inline-block;
+    opacity: 0;
+    transform: translateY(115%) rotate(4deg);
+    transform-origin: left bottom;
+  }
+  :global(html.preloader-done) .hero-word {
+    animation: hero-word-in 0.95s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: calc(120ms + var(--wi) * 95ms);
+  }
+  @keyframes hero-word-in {
+    to {
+      opacity: 1;
+      transform: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hero-word,
+    :global(html.preloader-done) .hero-word {
+      opacity: 1;
+      transform: none;
+      animation: none;
+    }
+    .hero-tilt {
+      transform: none !important;
+    }
+  }
+</style>
+
+<script>
+  const title = document.getElementById("hero-title");
+  const fine = window.matchMedia("(pointer: fine)").matches;
+  const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+  if (title && fine && !reduced) {
+    const area = title.closest("section") ?? title;
+    let targetX = 0, targetY = 0, curX = 0, curY = 0, rafId = 0;
+
+    const loop = () => {
+      curX += (targetX - curX) * 0.07;
+      curY += (targetY - curY) * 0.07;
+      title.style.transform =
+        `rotateX(${(-curY * 7).toFixed(2)}deg) rotateY(${(curX * 9).toFixed(2)}deg)`;
+      if (Math.abs(targetX - curX) > 0.001 || Math.abs(targetY - curY) > 0.001) {
+        rafId = requestAnimationFrame(loop);
+      } else {
+        rafId = 0;
+      }
+    };
+    const kick = () => { if (!rafId) rafId = requestAnimationFrame(loop); };
+
+    area.addEventListener("pointermove", (e) => {
+      const r = area.getBoundingClientRect();
+      targetX = ((e.clientX - r.left) / r.width - 0.5) * 2;
+      targetY = ((e.clientY - r.top) / r.height - 0.5) * 2;
+      kick();
+    });
+    area.addEventListener("pointerleave", () => {
+      targetX = 0;
+      targetY = 0;
+      kick();
+    });
+  }
+</script>

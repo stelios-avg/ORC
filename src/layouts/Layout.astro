@@ -49,7 +49,7 @@ const canonical = new URL(Astro.url.pathname, SITE.url).toString();
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
-      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Poppins:wght@500;600;700&display=swap"
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Commissioner:wght@500;600;700;800&display=swap"
       rel="stylesheet"
     />
   </head>
@@ -62,13 +62,34 @@ const canonical = new URL(Astro.url.pathname, SITE.url).toString();
     </a>
 
     <Preloader lang={lang} />
-    <Navbar lang={lang} transparent={fullBleed} />
+    <Navbar lang={lang} />
 
-    <main id="main" class:list={[fullBleed ? "-mt-[var(--nav-h,72px)]" : "min-h-[60vh]"]}>
+    <main id="main" class:list={[fullBleed ? "" : "min-h-[60vh]"]}>
       <slot />
     </main>
 
     <Footer lang={lang} />
     <BookingModal lang={lang} />
+
+    <script>
+      // Scroll-reveal: animate .reveal elements as they enter the viewport.
+      const els = document.querySelectorAll(".reveal");
+      if ("IntersectionObserver" in window && els.length) {
+        const io = new IntersectionObserver(
+          (entries) => {
+            for (const e of entries) {
+              if (e.isIntersecting) {
+                e.target.classList.add("revealed");
+                io.unobserve(e.target);
+              }
+            }
+          },
+          { threshold: 0.12, rootMargin: "0px 0px -40px 0px" },
+        );
+        els.forEach((el) => io.observe(el));
+      } else {
+        els.forEach((el) => el.classList.add("revealed"));
+      }
+    </script>
   </body>
 </html>

@@ -1,123 +1,180 @@
 ---
 import Layout from "../layouts/Layout.astro";
+import HeroInfoDot from "../components/HeroInfoDot.astro";
+import HeroTitle from "../components/HeroTitle.astro";
 import { SITE } from "../config/site";
 import { useTranslations } from "../i18n";
 
 const lang = "el" as const;
 const t = useTranslations(lang);
-const icons = [
-  "M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5",
-  "M12 2a4 4 0 100 8 4 4 0 000-8zM6 22v-3a6 6 0 0112 0v3",
-  "M4 12h16M12 4v16M7 7l10 10M17 7L7 17",
-];
+const base = "";
 ---
 
-<Layout lang={lang} fullBleed title={undefined} description={t.seo.homeDesc}>
-  {/* ── HERO ── */}
+<Layout lang={lang} fullBleed description={t.seo.homeDesc}>
+  {/* ── HERO — centered, dot-link CTAs ──────────────────────────────── */}
   <section class="relative flex min-h-[100svh] items-center justify-center overflow-hidden">
-    <video class="absolute inset-0 h-full w-full object-cover" autoplay muted loop playsinline preload="auto" poster="/images/hero-poster.jpg" aria-hidden="true">
+    {/* Mobile/tablet: vertical clip */}
+    <video
+      class="absolute inset-0 h-full w-full object-cover lg:hidden"
+      data-hero-mobile
+      autoplay muted loop playsinline preload="auto"
+      poster="/images/hero-poster-mobile.jpg"
+      aria-hidden="true"
+    >
+      <source src="/videos/hero-mobile.mp4" type="video/mp4" />
+    </video>
+    {/* Desktop */}
+    <video
+      class="absolute inset-0 hidden h-full w-full object-cover lg:block"
+      data-hero-desktop
+      autoplay muted loop playsinline preload="auto"
+      poster="/images/hero-poster.jpg"
+      aria-hidden="true"
+    >
       <source src="/videos/hero.webm" type="video/webm" />
       <source src="/videos/hero.mp4" type="video/mp4" />
     </video>
+    {/* Drop the off-breakpoint video before it starts downloading. */}
+    <script is:inline>
+      (() => {
+        var desktop = window.matchMedia("(min-width: 1024px)").matches;
+        var v = document.querySelector(desktop ? "[data-hero-mobile]" : "[data-hero-desktop]");
+        if (v) v.remove();
+      })();
+    </script>
     <div class="hero-overlay absolute inset-0"></div>
 
-    <div class="relative z-10 mx-auto max-w-4xl px-4 pt-24 text-center sm:px-6">
-      <p class="mb-4 inline-flex items-center gap-2 rounded-full bg-white/10 px-4 py-1.5 text-xs font-medium uppercase tracking-[0.2em] text-white ring-1 ring-white/20 backdrop-blur">
+    <div class="relative z-10 mx-auto w-full max-w-5xl px-5 pt-20 text-center sm:px-6">
+      <p class="reveal revealed text-xs font-medium uppercase tracking-[0.24em] text-white/80 sm:text-sm">
         {t.hero.eyebrow}
       </p>
-      <h1 class="font-display text-4xl font-bold leading-tight text-white drop-shadow-sm sm:text-5xl lg:text-6xl">
-        {t.hero.title}<br class="hidden sm:block" />
-        <span class="text-spine-200">{t.hero.titleAccent}</span>
-      </h1>
-      <p class="mx-auto mt-6 max-w-2xl text-base text-slate-100/90 sm:text-lg">{t.hero.subtitle}</p>
+      <HeroTitle lang={lang} />
 
-      <div class="mt-9 flex flex-col items-center justify-center gap-3 sm:flex-row">
-        <button type="button" data-book-trigger
-          class="group inline-flex items-center justify-center gap-2 rounded-full bg-spine px-8 py-4 text-base font-semibold text-white shadow-xl shadow-spine-900/30 transition hover:bg-spine-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-spine-900">
-          {t.hero.ctaPrimary}
-          <svg class="h-5 w-5 transition-transform group-hover:translate-x-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+      {/* CTAs as centered dot-links */}
+      <div class="reveal revealed mt-12 flex flex-col items-center justify-center gap-6 sm:flex-row sm:gap-14" style="--reveal-delay: 240ms">
+        <button type="button" data-book-trigger class="group flex min-h-12 items-center gap-4 sm:gap-5">
+          <span class="h-9 w-9 flex-none rounded-full bg-spine-200 transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-11 sm:w-11 sm:group-hover:scale-[1.9]"></span>
+          <span class="font-display text-base font-semibold uppercase tracking-[0.08em] text-white transition-colors duration-300 group-hover:text-spine-200 sm:text-lg">
+            {t.hero.ctaPrimary}
+          </span>
         </button>
-        <a href="/services/"
-          class="inline-flex items-center justify-center rounded-full border border-white/40 bg-white/5 px-8 py-4 text-base font-semibold text-white backdrop-blur transition hover:bg-white/15">
-          {t.hero.ctaSecondary}
+        <a href={`${base}/services/`} class="group flex min-h-12 items-center gap-4 sm:gap-5">
+          <span class="h-9 w-9 flex-none rounded-full bg-white/80 transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-11 sm:w-11 sm:group-hover:scale-[1.9]"></span>
+          <span class="font-display text-base font-semibold uppercase tracking-[0.08em] text-white/85 transition-colors duration-300 group-hover:text-white sm:text-lg">
+            {t.hero.ctaSecondary}
+          </span>
         </a>
       </div>
     </div>
 
-    <div class="absolute bottom-6 left-1/2 z-10 -translate-x-1/2 animate-bounce text-white/70">
+    {/* Info dot — bottom-left corner, opens the slide-in panel */}
+    <div class="absolute bottom-8 left-5 z-10 sm:left-10">
+      <HeroInfoDot lang={lang} />
+    </div>
+
+    <div class="absolute bottom-8 right-6 z-10 hidden animate-bounce text-white/70 sm:block">
       <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M6 13l6 6 6-6"/></svg>
     </div>
   </section>
 
-  {/* ── INTRO ── */}
-  <section class="bg-white py-20">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="grid items-center gap-12 lg:grid-cols-2">
-        <div>
-          <span class="text-sm font-semibold uppercase tracking-[0.18em] text-spine">{t.intro.eyebrow}</span>
-          <h2 class="mt-3 font-display text-3xl font-bold text-charcoal sm:text-4xl">{t.intro.title}</h2>
-          <p class="mt-5 text-charcoal-muted">{t.intro.body}</p>
-          <ul class="mt-6 space-y-3">
-            {t.intro.checks.map((item) => (
-              <li class="flex items-start gap-3 text-charcoal">
-                <svg class="mt-0.5 h-5 w-5 flex-none text-spine" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6L9 17l-5-5"/></svg>
-                <span>{item}</span>
-              </li>
-            ))}
-          </ul>
-          <a href="/bio/" class="mt-8 inline-flex items-center gap-2 font-semibold text-spine transition hover:gap-3">
-            {t.intro.bioLink}
-            <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
-          </a>
-        </div>
-        <div class="grid grid-cols-3 gap-4 rounded-2xl bg-sand p-8">
-          {t.stats.map((s) => (
-            <div class="text-center">
-              <div class="font-display text-3xl font-bold text-spine sm:text-4xl">{s.value}</div>
-              <div class="mt-2 text-xs text-charcoal-muted sm:text-sm">{s.label}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
-  </section>
-
-  {/* ── SERVICES PREVIEW ── */}
-  <section class="bg-sand py-20">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="mx-auto max-w-2xl text-center">
-        <h2 class="font-display text-3xl font-bold text-charcoal sm:text-4xl">{t.servicesPreview.title}</h2>
-        <p class="mt-4 text-charcoal-muted">{t.servicesPreview.subtitle}</p>
-      </div>
-      <div class="mt-12 grid gap-6 md:grid-cols-3">
-        {t.servicesPreview.items.map((s, i) => (
-          <div class="group rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-1 hover:shadow-lg">
-            <div class="flex h-12 w-12 items-center justify-center rounded-xl bg-spine-50 text-spine">
-              <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d={icons[i]}/>
-              </svg>
-            </div>
-            <h3 class="mt-5 font-display text-xl font-semibold text-charcoal">{s.title}</h3>
-            <p class="mt-2 text-sm text-charcoal-muted">{s.desc}</p>
+  {/* ── INTRO — centered statement ──────────────────────────────────── */}
+  <section id="intro" class="bg-white py-20 text-center sm:py-28">
+    <div class="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+      <p class="reveal text-xs font-semibold uppercase tracking-[0.22em] text-spine sm:text-sm">
+        {t.intro.eyebrow}
+      </p>
+      <h2 class="reveal mx-auto mt-4 max-w-4xl font-display font-bold text-charcoal headline-statement" style="--reveal-delay: 100ms">
+        {t.intro.title}
+      </h2>
+      <p class="reveal mx-auto mt-7 max-w-2xl text-base leading-relaxed text-charcoal-muted sm:text-lg" style="--reveal-delay: 180ms">
+        {t.intro.body}
+      </p>
+      <div class="reveal mx-auto mt-10 grid max-w-2xl grid-cols-3 gap-4 rounded-2xl bg-sand p-6 sm:p-8" style="--reveal-delay: 260ms">
+        {t.stats.map((s) => (
+          <div class="text-center">
+            <div class="font-display text-2xl font-bold text-spine sm:text-4xl">{s.value}</div>
+            <div class="mt-2 text-[11px] text-charcoal-muted sm:text-sm">{s.label}</div>
           </div>
         ))}
       </div>
-      <div class="mt-10 text-center">
-        <a href="/services/" class="inline-flex items-center gap-2 rounded-full border border-spine px-6 py-3 font-semibold text-spine transition hover:bg-spine hover:text-white">
-          {t.servicesPreview.viewAll}
-        </a>
-      </div>
     </div>
   </section>
 
-  {/* ── CTA BAND ── */}
-  <section class="bg-spine-900 py-20">
-    <div class="mx-auto max-w-4xl px-4 text-center sm:px-6">
-      <h2 class="font-display text-3xl font-bold text-white sm:text-4xl">{t.ctaBand.title}</h2>
-      <p class="mx-auto mt-4 max-w-xl text-slate-300">{t.ctaBand.subtitle}</p>
-      <button type="button" data-book-trigger
-        class="mt-8 inline-flex items-center justify-center gap-2 rounded-full bg-white px-8 py-4 text-base font-semibold text-spine-900 shadow-xl transition hover:bg-spine-50">
-        {t.ctaBand.cta}
+  {/* ── STATEMENT SECTIONS — photo + centered text, alternating sides ── */}
+  {t.statements.map((s, i) => (
+    <section class="bg-white py-14 sm:py-24">
+      <div class="mx-auto grid max-w-7xl items-center gap-10 px-5 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
+        <div class:list={["relative", i % 2 === 1 ? "lg:order-2" : ""]}>
+          {/* Mobile: circle-button overlapping the photo's top-left (medwest) */}
+          <a
+            href={`${base}${s.href}`}
+            class="group absolute -left-7 -top-8 z-10 flex h-28 w-28 items-center lg:hidden"
+          >
+            <span class="absolute inset-0 rounded-full bg-spine shadow-lg shadow-spine/25 transition-transform duration-500 ease-out group-hover:scale-110 group-active:scale-110"></span>
+            <span class="relative pl-8 pr-2 text-left font-display text-[11px] font-semibold uppercase leading-snug tracking-[0.08em] text-white">
+              {s.link}
+            </span>
+          </a>
+
+          <figure class="reveal img-reveal relative aspect-[4/3] w-full bg-sand">
+            <img
+              src={SITE.logo}
+              alt=""
+              aria-hidden="true"
+              class="pointer-events-none absolute left-1/2 top-1/2 w-1/2 -translate-x-1/2 -translate-y-1/2 select-none opacity-[0.06]"
+            />
+            <img
+              src={`/images/home/${i + 1}.jpg`}
+              alt={s.eyebrow}
+              class="relative h-full w-full object-cover"
+              loading="lazy"
+              onerror="this.remove();"
+            />
+          </figure>
+        </div>
+
+        <div class="text-center">
+          <p class="reveal text-xs font-semibold uppercase tracking-[0.22em] text-spine sm:text-sm">
+            {s.eyebrow}
+          </p>
+          <h2 class="reveal mx-auto mt-4 max-w-xl font-display font-bold text-charcoal headline-statement" style="--reveal-delay: 100ms">
+            {s.title}
+          </h2>
+          {/* Desktop: centered dot-link under the title */}
+          <a
+            href={`${base}${s.href}`}
+            class="reveal group mt-9 hidden min-h-12 items-center gap-4 sm:gap-5 lg:inline-flex"
+            style="--reveal-delay: 200ms"
+          >
+            <span class="h-9 w-9 flex-none rounded-full bg-spine transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-11 sm:w-11 sm:group-hover:scale-[1.9]"></span>
+            <span class="font-display text-base font-semibold uppercase tracking-[0.08em] text-charcoal transition-colors duration-300 group-hover:text-spine sm:text-lg">
+              {s.link}
+            </span>
+          </a>
+        </div>
+      </div>
+    </section>
+  ))}
+
+  {/* ── CTA BAND — centered, dot-link ───────────────────────────────── */}
+  <section class="bg-sand py-20 text-center sm:py-28">
+    <div class="mx-auto max-w-7xl px-5 sm:px-6 lg:px-8">
+      <h2 class="reveal mx-auto max-w-3xl font-display font-bold text-charcoal headline-statement">
+        {t.ctaBand.title}
+      </h2>
+      <p class="reveal mx-auto mt-5 max-w-xl text-base text-charcoal-muted sm:text-lg" style="--reveal-delay: 100ms">
+        {t.ctaBand.subtitle}
+      </p>
+      <button
+        type="button"
+        data-book-trigger
+        class="reveal group mt-10 inline-flex min-h-12 items-center gap-4 sm:gap-5"
+        style="--reveal-delay: 200ms"
+      >
+        <span class="h-10 w-10 flex-none rounded-full bg-spine transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-12 sm:w-12 sm:group-hover:scale-[1.9]"></span>
+        <span class="font-display text-lg font-semibold uppercase tracking-[0.08em] text-charcoal transition-colors duration-300 group-hover:text-spine sm:text-xl">
+          {t.ctaBand.cta}
+        </span>
       </button>
     </div>
   </section>

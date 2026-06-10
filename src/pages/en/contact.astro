@@ -22,7 +22,7 @@ const mapsQuery = encodeURIComponent(SITE.address);
 
           <dl class="mt-8 space-y-6">
             {[
-              { label: c.addressLabel, icon: "M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z M12 10m-3 0a3 3 0 106 0 3 3 0 00-6 0", value: SITE.address, href: undefined },
+              { label: c.addressLabel, icon: "M21 10c0 7-9 12-9 12s-9-5-9-12a9 9 0 0118 0z M12 10m-3 0a3 3 0 106 0 3 3 0 00-6 0", value: t.address, href: undefined },
               { label: c.phoneLabel,   icon: "M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07A19.5 19.5 0 015.19 12.91a19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.13.96.36 1.9.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.9.34 1.85.57 2.81.7A2 2 0 0122 16.92z", value: SITE.phone, href: SITE.phoneHref },
               { label: c.emailLabel,   icon: "M4 4h16v16H4z M22 6l-10 7L2 6", value: SITE.email, href: `mailto:${SITE.email}` },
             ].map(({ label, icon, value, href }) => (
@@ -49,7 +49,7 @@ const mapsQuery = encodeURIComponent(SITE.address);
                 <dt class="text-sm font-semibold text-charcoal">{c.hoursLabel}</dt>
                 <dd class="text-charcoal-muted">
                   <ul class="space-y-1">
-                    {SITE.hours.map((h) => (
+                    {t.hours.map((h) => (
                       <li class="flex gap-3"><span class="w-24">{h.day}</span><span>{h.time}</span></li>
                     ))}
                   </ul>

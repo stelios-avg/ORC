@@ -22,6 +22,14 @@ const el = {
   htmlLang: "el",
   dir: "ltr" as const,
 
+  /* Real contact details (matching the Fresha listing). */
+  address: "Αιτωλών, Στρόβολος, Λευκωσία, Κύπρος",
+  hours: [
+    { day: "Δευ – Παρ", time: "09:00 – 13:30" },
+    { day: "", time: "15:00 – 19:30" },
+    { day: "Σαβ – Κυρ", time: "Κλειστά" },
+  ],
+
   nav: {
     home: "Αρχική",
     bio: "Βιογραφικό",
@@ -29,6 +37,9 @@ const el = {
     gallery: "Γκαλερί",
     contact: "Επικοινωνία",
     book: "Κλείστε Ραντεβού",
+    bookShort: "Ραντεβού",
+    menu: "Μενού",
+    close: "Κλείσιμο",
     switchLang: "EN",
     switchLangLabel: "Switch to English",
   },
@@ -43,6 +54,7 @@ const el = {
     titleAccent: "Ανακτήστε τη ζωή σας.",
     subtitle:
       "Στο ORC Osteopathy & Rehabilitation Center, συνδυάζουμε εξειδικευμένη οστεοπαθητική και αποδεδειγμένη φυσιοθεραπεία για να ανακουφίσουμε τον πόνο, να επιταχύνουμε την αποκατάσταση και να σας κρατήσουμε στο καλύτερό σας — σε κάθε στάδιο της ζωής.",
+    infoLabel: "Γενικές πληροφορίες",
     ctaPrimary: "Κλείστε Ραντεβού",
     ctaSecondary: "Εξερευνήστε τις υπηρεσίες",
   },
@@ -92,6 +104,34 @@ const el = {
       "Κλείστε το ραντεβού σας σήμερα. Χρειάζεται μόνο ένα λεπτό — και η αποκατάστασή σας ξεκινά τη στιγμή που το κάνετε.",
     cta: "Κλείστε Ραντεβού",
   },
+
+  /* Editorial teaser sections on the home page (medwest-style structure). */
+  statements: [
+    {
+      eyebrow: "Φυσιοθεραπεία",
+      title: "Υγεία με πρόγραμμα, εξατομικευμένη για εσάς.",
+      link: "Οι υπηρεσίες μας",
+      href: "/services/",
+    },
+    {
+      eyebrow: "Κίνηση & Απόδοση",
+      title: "Μείνετε σε κίνηση.",
+      link: "Αθλητική αποκατάσταση",
+      href: "/services/",
+    },
+    {
+      eyebrow: "Ο χώρος μας",
+      title: "Η ολιστική θεραπεία ξεκινά εδώ.",
+      link: "Δείτε τον χώρο",
+      href: "/gallery/",
+    },
+    {
+      eyebrow: "Ο θεραπευτής",
+      title: "Πίσω από κάθε θεραπεία, ένας άνθρωπος.",
+      link: "Γνωρίστε μας",
+      href: "/bio/",
+    },
+  ],
 
   booking: {
     title: "Κλείστε το ραντεβού σας",
@@ -231,6 +271,9 @@ const el = {
     exploreTitle: "Εξερεύνηση",
     contactTitle: "Επικοινωνία",
     hoursTitle: "Ωράριο λειτουργίας",
+    findUs: "Εδώ θα μας βρείτε",
+    sayHello: "Πείτε μας γεια",
+    followUs: "Ακολουθήστε μας",
     cta: "Κλείστε Ραντεβού",
     rights: "Όλα τα δικαιώματα διατηρούνται.",
   },
@@ -255,6 +298,14 @@ const en = {
   htmlLang: "en",
   dir: "ltr" as const,
 
+  /* Real contact details (matching the Fresha listing). */
+  address: "Aitolon Street, Strovolos, Nicosia, Cyprus",
+  hours: [
+    { day: "Mon – Fri", time: "09:00 – 13:30" },
+    { day: "", time: "15:00 – 19:30" },
+    { day: "Sat – Sun", time: "Closed" },
+  ],
+
   nav: {
     home: "Home",
     bio: "Bio",
@@ -262,6 +313,9 @@ const en = {
     gallery: "Gallery",
     contact: "Contact",
     book: "Book Appointment",
+    bookShort: "Book",
+    menu: "Menu",
+    close: "Close",
     switchLang: "ΕΛ",
     switchLangLabel: "Αλλαγή σε Ελληνικά",
   },
@@ -276,6 +330,7 @@ const en = {
     titleAccent: "Reclaim your life.",
     subtitle:
       "At ORC Osteopathy & Rehabilitation Center, we combine expert osteopathy and evidence-based physiotherapy to relieve pain, accelerate recovery and keep you moving your best — at every stage of life.",
+    infoLabel: "General information",
     ctaPrimary: "Book Appointment",
     ctaSecondary: "Explore services",
   },
@@ -325,6 +380,33 @@ const en = {
       "Book your appointment today. It only takes a minute — and your recovery starts the moment you do.",
     cta: "Book Appointment",
   },
+
+  statements: [
+    {
+      eyebrow: "Physiotherapy",
+      title: "Health by design, tailored to you.",
+      link: "Our services",
+      href: "/services/",
+    },
+    {
+      eyebrow: "Movement & Performance",
+      title: "Stay in motion.",
+      link: "Sports rehabilitation",
+      href: "/services/",
+    },
+    {
+      eyebrow: "Our space",
+      title: "Holistic healing starts here.",
+      link: "See the clinic",
+      href: "/gallery/",
+    },
+    {
+      eyebrow: "The practitioner",
+      title: "Behind every treatment, a person.",
+      link: "Meet us",
+      href: "/bio/",
+    },
+  ],
 
   booking: {
     title: "Book your appointment",
@@ -463,6 +545,9 @@ const en = {
     exploreTitle: "Explore",
     contactTitle: "Contact",
     hoursTitle: "Opening hours",
+    findUs: "Find us here",
+    sayHello: "Say hello",
+    followUs: "Follow us",
     cta: "Book Appointment",
     rights: "All rights reserved.",
   },

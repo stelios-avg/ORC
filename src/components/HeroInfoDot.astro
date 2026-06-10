@@ -1,0 +1,136 @@
+---
+import { useTranslations, type Lang } from "../i18n";
+
+interface Props { lang?: Lang; }
+const { lang = "el" } = Astro.props;
+const t = useTranslations(lang);
+---
+
+{/* Dot trigger — bottom-left of the hero, menu-dot concept */}
+<button
+  id="info-dot-btn"
+  type="button"
+  class="group flex min-h-12 items-center gap-4 sm:gap-6"
+  aria-controls="info-panel"
+  aria-expanded="false"
+>
+  <span class="h-9 w-9 flex-none rounded-full bg-spine-200 transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-12 sm:w-12 sm:group-hover:scale-[1.9]"></span>
+  <span class="font-display text-base font-semibold uppercase tracking-[0.08em] text-white/90 transition-colors duration-300 group-hover:text-white sm:text-lg">
+    {t.hero.infoLabel}
+  </span>
+</button>
+
+{/* Fullscreen solid-blue panel, slides in from the left.
+    Moved to <body> by the script below so no ancestor can clip it. */}
+<aside
+  id="info-panel"
+  class="fixed inset-0 z-[110] flex flex-col bg-spine text-white"
+  role="dialog"
+  aria-modal="true"
+  aria-labelledby="info-panel-title"
+  aria-hidden="true"
+>
+  <div class="flex h-full flex-col px-6 pb-8 pt-20 sm:px-12 sm:pt-28 lg:px-20">
+    <button
+      id="info-close-btn"
+      type="button"
+      class="absolute right-4 top-4 flex h-11 w-11 items-center justify-center rounded-full border border-white/40 text-white transition hover:border-white hover:bg-white/10 sm:right-8 sm:top-8"
+      aria-label={t.nav.close}
+    >
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+        <path d="M6 6l12 12M18 6L6 18"></path>
+      </svg>
+    </button>
+
+    <p id="info-panel-title" class="info-item text-xs font-semibold uppercase tracking-[0.22em] text-spine-200" style="--i: 0">
+      {t.hero.infoLabel}
+    </p>
+
+    <div class="my-auto max-w-3xl space-y-5 py-8 sm:space-y-7">
+      <p class="info-item font-display text-lg font-semibold leading-snug text-white sm:text-2xl lg:text-3xl" style="--i: 1">
+        {t.hero.subtitle}
+      </p>
+      <p class="info-item max-w-2xl text-sm leading-relaxed text-spine-100 sm:text-lg" style="--i: 2">
+        {t.intro.body}
+      </p>
+    </div>
+
+    <div class="info-item border-t border-white/15 pt-5 sm:pt-6" style="--i: 3">
+      <button
+        type="button"
+        data-book-trigger
+        class="w-full rounded-full bg-white px-7 py-4 text-base font-semibold text-spine-900 transition hover:bg-spine-50 sm:w-auto"
+      >
+        {t.nav.book}
+      </button>
+    </div>
+  </div>
+</aside>
+
+<style>
+  /* Panel slides in from the left, fully opaque */
+  #info-panel {
+    visibility: hidden;
+    transform: translateX(-100%);
+    transition:
+      transform 0.65s cubic-bezier(0.76, 0, 0.24, 1),
+      visibility 0s linear 0.65s;
+  }
+  #info-panel.open {
+    visibility: visible;
+    transform: translateX(0);
+    transition:
+      transform 0.65s cubic-bezier(0.76, 0, 0.24, 1),
+      visibility 0s;
+  }
+
+  /* Content staggers in after the panel */
+  .info-item {
+    opacity: 0;
+    transform: translateY(22px);
+    transition: opacity 0.45s ease, transform 0.45s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #info-panel.open .info-item {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(250ms + var(--i) * 80ms);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #info-panel, #info-panel.open { transition: visibility 0s; transform: none; }
+    #info-panel { display: none; }
+    #info-panel.open { display: flex; }
+    .info-item, #info-panel.open .info-item { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+
+<script>
+  const panel    = document.getElementById("info-panel")!;
+  const openBtn  = document.getElementById("info-dot-btn")!;
+  const closeBtn = document.getElementById("info-close-btn")!;
+
+  // Re-parent to <body>: ancestors with transform/will-change (e.g. .reveal)
+  // would otherwise become the containing block and clip the fixed panel.
+  document.body.appendChild(panel);
+
+  let open = false;
+
+  const setOpen = (v: boolean) => {
+    open = v;
+    panel.classList.toggle("open", v);
+    panel.setAttribute("aria-hidden", String(!v));
+    openBtn.setAttribute("aria-expanded", String(v));
+    document.body.classList.toggle("no-scroll", v);
+  };
+
+  openBtn.addEventListener("click", () => setOpen(true));
+  closeBtn.addEventListener("click", () => setOpen(false));
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && open) setOpen(false);
+  });
+
+  // Booking from inside the panel: close it first so the modal is unobstructed.
+  panel.querySelectorAll<HTMLElement>("[data-book-trigger]").forEach((el) => {
+    el.addEventListener("click", () => setOpen(false));
+  });
+</script>

@@ -4,19 +4,11 @@ import { useTranslations, getAlternatePath, type Lang } from "../i18n";
 
 interface Props {
   lang?: Lang;
-  /** When true the header starts transparent over the hero and becomes
-   *  solid white as the user scrolls down. */
-  transparent?: boolean;
 }
-const { lang = "el", transparent = false } = Astro.props;
+const { lang = "el" } = Astro.props;
 const t = useTranslations(lang);
 
 const { pathname } = Astro.url;
-const isActive = (href: string) =>
-  href === (lang === "el" ? "/" : "/en/")
-    ? pathname === href
-    : pathname.startsWith(href);
-
 const base = lang === "el" ? "" : "/en";
 const navLinks = [
   { label: t.nav.home,     href: `${base}/` },
@@ -25,25 +17,17 @@ const navLinks = [
   { label: t.nav.gallery,  href: `${base}/gallery/` },
   { label: t.nav.contact,  href: `${base}/contact/` },
 ];
+const isActive = (href: string) =>
+  href === `${base}/` ? pathname === href : pathname.startsWith(href);
 
 const alternatePath = getAlternatePath(pathname, lang);
 ---
 
-<header
-  id="site-header"
-  data-transparent={transparent ? "true" : "false"}
-  class:list={[
-    "sticky top-0 z-50 w-full transition-all duration-300",
-    transparent
-      ? "border-b border-transparent bg-transparent"
-      : "border-b border-transparent bg-white/90 backdrop-blur",
-  ]}
->
-  <nav class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6 lg:px-8">
-
-    {/* Logo — inverted to white when navbar is transparent over dark hero */}
+{/* ── Minimal fixed top bar ─────────────────────────────────────────── */}
+<header id="site-header" data-state="dark" class="fixed inset-x-0 top-0 z-[95]">
+  <nav class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6 sm:py-4 lg:px-8">
     <a
-      href={lang === "el" ? "/" : "/en/"}
+      href={`${base}/`}
       class="flex items-center"
       aria-label={`${SITE.name} — ${lang === "el" ? "αρχική" : "home"}`}
     >
@@ -53,221 +37,236 @@ const alternatePath = getAlternatePath(pathname, lang);
         alt={SITE.name}
         width="220"
         height="70"
-        class:list={[
-          "h-12 w-auto object-contain transition-[filter] duration-300 sm:h-14",
-          transparent ? "brightness-0 invert" : "",
-        ]}
+        class="nav-logo h-11 w-auto object-contain sm:h-14"
         loading="eager"
       />
     </a>
 
-    {/* Desktop links */}
-    <ul class="hidden items-center gap-1 md:flex">
-      {navLinks.map((link) => (
-        <li>
-          <a
-            href={link.href}
-            data-nav-link
-            class:list={[
-              "rounded-full px-4 py-2 text-sm font-medium transition-colors duration-300",
-              isActive(link.href)
-                ? transparent ? "text-white/90 font-semibold" : "text-spine"
-                : transparent ? "text-white/80 hover:text-white" : "text-charcoal hover:text-spine",
-            ]}
-            aria-current={isActive(link.href) ? "page" : undefined}
-          >
-            {link.label}
-          </a>
-        </li>
-      ))}
-    </ul>
-
-    {/* Desktop: lang switcher + CTA */}
-    <div class="hidden items-center gap-2 md:flex">
+    <div class="flex items-center gap-2 sm:gap-3">
+      {/* Language switcher */}
       <a
         href={alternatePath}
-        data-lang-switcher
-        class:list={[
-          "rounded-full border px-3 py-1.5 text-xs font-semibold transition-colors duration-300",
-          transparent
-            ? "border-white/40 text-white/80 hover:border-white hover:text-white"
-            : "border-slate-200 text-charcoal-muted hover:border-spine hover:text-spine",
-        ]}
+        class="nav-pill rounded-full border px-3 py-2 text-xs font-semibold transition-colors duration-300"
         aria-label={t.nav.switchLangLabel}
         hreflang={lang === "el" ? "en" : "el"}
       >
         {t.nav.switchLang}
       </a>
 
+      {/* Book CTA — short label on mobile, full on sm+ */}
       <button
         type="button"
         data-book-trigger
-        data-book-btn
-        class:list={[
-          "rounded-full px-5 py-2.5 text-sm font-semibold transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2",
-          transparent
-            ? "border border-white/70 bg-white/10 text-white backdrop-blur hover:bg-white/20 focus-visible:ring-white"
-            : "bg-spine text-white shadow-md shadow-spine/20 hover:bg-spine-600 focus-visible:ring-spine",
-        ]}
+        class="nav-cta rounded-full px-4 py-2 text-xs font-semibold transition-colors duration-300 sm:px-5 sm:py-2.5 sm:text-sm"
+      >
+        <span class="sm:hidden">{t.nav.bookShort}</span>
+        <span class="hidden sm:inline">{t.nav.book}</span>
+      </button>
+
+      {/* Menu toggle — medwest-style outlined box with label */}
+      <button
+        id="menu-btn"
+        type="button"
+        class="nav-burger flex h-11 items-center gap-2.5 rounded-md border px-3 transition-colors duration-300 sm:px-4"
+        aria-controls="nav-overlay"
+        aria-expanded="false"
+        aria-label={t.nav.menu}
+      >
+        <span class="menu-label hidden text-xs font-bold uppercase tracking-[0.18em] sm:inline">
+          {t.nav.menu}
+        </span>
+        <span class="relative flex h-4 w-5 items-center justify-center">
+          <span class="burger-line absolute h-[2px] w-5 -translate-y-[4px] rounded-full transition-all duration-300"></span>
+          <span class="burger-line absolute h-[2px] w-5 translate-y-[4px] rounded-full transition-all duration-300"></span>
+        </span>
+      </button>
+    </div>
+  </nav>
+</header>
+
+{/* ── Fullscreen overlay menu (light, dot-grid — medwest style) ─────── */}
+<div
+  id="nav-overlay"
+  class="fixed inset-0 z-[90] flex flex-col bg-sand"
+  aria-hidden="true"
+>
+  {/* Faded watermark, like medwest's faded photo backdrop */}
+  <img
+    src={SITE.logo}
+    alt=""
+    aria-hidden="true"
+    class="pointer-events-none absolute bottom-[-4%] right-[-6%] w-[70%] max-w-3xl select-none opacity-[0.05]"
+  />
+
+  <div class="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-8 pt-28 sm:px-10 lg:px-16">
+    {/* Dot-grid nav links */}
+    <nav class="my-auto">
+      <ul class="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-2 sm:gap-y-12 lg:grid-cols-3">
+        {navLinks.map((link, i) => (
+          <li class="menu-item" style={`--i: ${i}`}>
+            <a
+              href={link.href}
+              class="group flex min-h-12 items-center gap-5 sm:gap-6"
+              aria-current={isActive(link.href) ? "page" : undefined}
+            >
+              <span
+                class:list={[
+                  "h-9 w-9 flex-none rounded-full bg-spine transition-transform duration-500 ease-out sm:h-12 sm:w-12",
+                  isActive(link.href)
+                    ? "scale-[1.5] sm:scale-[1.6]"
+                    : "group-hover:scale-[1.7] sm:group-hover:scale-[1.9]",
+                ]}
+              ></span>
+              <span
+                class:list={[
+                  "font-display text-lg font-semibold uppercase tracking-[0.08em] transition-colors duration-300 sm:text-xl",
+                  isActive(link.href) ? "text-spine" : "text-charcoal group-hover:text-spine",
+                ]}
+              >
+                {link.label}
+              </span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </nav>
+
+    {/* Bottom: contact + book */}
+    <div class="menu-item mt-10 grid gap-6 border-t border-charcoal/10 pt-6 sm:grid-cols-3 sm:items-end" style="--i: 5">
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-spine">{t.footer.findUs}</p>
+        <p class="mt-2 text-sm leading-relaxed text-charcoal-muted">{t.address}</p>
+      </div>
+      <div>
+        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-spine">{t.footer.sayHello}</p>
+        <p class="mt-2 text-sm text-charcoal-muted">
+          <a href={SITE.phoneHref} class="block py-0.5 transition hover:text-spine">{SITE.phone}</a>
+          <a href={`mailto:${SITE.email}`} class="block py-0.5 transition hover:text-spine">{SITE.email}</a>
+        </p>
+      </div>
+      <button
+        type="button"
+        data-book-trigger
+        class="w-full rounded-full bg-spine px-6 py-4 text-base font-semibold text-white transition hover:bg-spine-600 sm:w-auto"
       >
         {t.nav.book}
       </button>
     </div>
-
-    {/* Mobile toggle */}
-    <button
-      id="mobile-menu-btn"
-      type="button"
-      class:list={[
-        "inline-flex items-center justify-center rounded-md p-2 transition-colors md:hidden",
-        transparent ? "text-white" : "text-charcoal",
-      ]}
-      data-mobile-btn
-      aria-controls="mobile-menu"
-      aria-expanded="false"
-      aria-label={lang === "el" ? "Εναλλαγή μενού πλοήγησης" : "Toggle navigation menu"}
-    >
-      <svg id="icon-open" class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <path d="M4 6h16M4 12h16M4 18h16"></path>
-      </svg>
-      <svg id="icon-close" class="hidden h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
-        <path d="M6 6l12 12M18 6L6 18"></path>
-      </svg>
-    </button>
-  </nav>
-
-  {/* Mobile menu — always solid white */}
-  <div id="mobile-menu" class="hidden border-t border-slate-100 bg-white md:hidden">
-    <ul class="space-y-1 px-4 py-4">
-      {navLinks.map((link) => (
-        <li>
-          <a
-            href={link.href}
-            class:list={[
-              "block rounded-lg px-3 py-2.5 text-base font-medium transition",
-              isActive(link.href) ? "bg-spine-50 text-spine" : "text-charcoal hover:bg-slate-50",
-            ]}
-            aria-current={isActive(link.href) ? "page" : undefined}
-          >
-            {link.label}
-          </a>
-        </li>
-      ))}
-      <li class="flex items-center gap-2 pt-2">
-        <button
-          type="button"
-          data-book-trigger
-          class="flex-1 rounded-full bg-spine px-5 py-3 text-base font-semibold text-white shadow-md transition hover:bg-spine-600"
-        >
-          {t.nav.book}
-        </button>
-        <a
-          href={alternatePath}
-          class="rounded-full border border-slate-200 px-4 py-3 text-sm font-semibold text-charcoal-muted transition hover:border-spine hover:text-spine"
-          hreflang={lang === "el" ? "en" : "el"}
-        >
-          {t.nav.switchLang}
-        </a>
-      </li>
-    </ul>
   </div>
-</header>
+</div>
 
-<script>
-  const header      = document.getElementById("site-header")!;
-  const logo        = document.getElementById("nav-logo") as HTMLImageElement | null;
-  const links       = header.querySelectorAll<HTMLElement>("[data-nav-link]");
-  const langBtn     = header.querySelector<HTMLElement>("[data-lang-switcher]");
-  const bookBtn     = header.querySelector<HTMLElement>("[data-book-btn]");
-  const mobileBtn   = header.querySelector<HTMLElement>("[data-mobile-btn]");
-  const mobileMenu  = document.getElementById("mobile-menu");
-  const iconOpen    = document.getElementById("icon-open");
-  const iconClose   = document.getElementById("icon-close");
-
-  const isTransparent = header.dataset.transparent === "true";
-
-  // ── Scroll-aware solid/transparent toggle ───────────────────────────
-  if (isTransparent) {
-    const THRESHOLD = 60; // px before switching to solid
-
-    const setSolid = (solid: boolean) => {
-      // Header background
-      header.classList.toggle("bg-transparent",        !solid);
-      header.classList.toggle("border-transparent",    !solid);
-      header.classList.toggle("bg-white/90",            solid);
-      header.classList.toggle("backdrop-blur",          solid);
-      header.classList.toggle("shadow-sm",              solid);
-      header.classList.toggle("border-slate-100",       solid);
-
-      // Logo filter (invert = white on dark hero)
-      logo?.classList.toggle("brightness-0", !solid);
-      logo?.classList.toggle("invert",        !solid);
-
-      // Nav links
-      links.forEach((el) => {
-        const active = el.getAttribute("aria-current") === "page";
-        el.classList.toggle("text-white/90",     !solid && active);
-        el.classList.toggle("font-semibold",     !solid && active);
-        el.classList.toggle("text-spine",         solid && active);
-        el.classList.toggle("text-white/80",     !solid && !active);
-        el.classList.toggle("hover:text-white",  !solid && !active);
-        el.classList.toggle("text-charcoal",      solid && !active);
-        el.classList.toggle("hover:text-spine",   solid && !active);
-      });
-
-      // Language switcher
-      if (langBtn) {
-        langBtn.classList.toggle("border-white/40",       !solid);
-        langBtn.classList.toggle("text-white/80",         !solid);
-        langBtn.classList.toggle("hover:border-white",    !solid);
-        langBtn.classList.toggle("hover:text-white",      !solid);
-        langBtn.classList.toggle("border-slate-200",       solid);
-        langBtn.classList.toggle("text-charcoal-muted",   solid);
-        langBtn.classList.toggle("hover:border-spine",    solid);
-        langBtn.classList.toggle("hover:text-spine",      solid);
-      }
-
-      // Book button
-      if (bookBtn) {
-        bookBtn.classList.toggle("border",                !solid);
-        bookBtn.classList.toggle("border-white/70",       !solid);
-        bookBtn.classList.toggle("bg-white/10",           !solid);
-        bookBtn.classList.toggle("text-white",            !solid);
-        bookBtn.classList.toggle("backdrop-blur",         !solid);
-        bookBtn.classList.toggle("hover:bg-white/20",     !solid);
-        bookBtn.classList.toggle("bg-spine",               solid);
-        bookBtn.classList.toggle("text-white",             solid); // keep white in both
-        bookBtn.classList.toggle("shadow-md",              solid);
-        bookBtn.classList.toggle("shadow-spine/20",        solid);
-        bookBtn.classList.toggle("hover:bg-spine-600",     solid);
-      }
-
-      // Mobile hamburger icon colour
-      if (mobileBtn) {
-        mobileBtn.classList.toggle("text-white",   !solid);
-        mobileBtn.classList.toggle("text-charcoal", solid);
-      }
-    };
-
-    const onScroll = () => setSolid(window.scrollY > THRESHOLD);
-    onScroll(); // run once on mount
-    window.addEventListener("scroll", onScroll, { passive: true });
-  } else {
-    // Non-transparent pages: just add shadow on scroll
-    const onScroll = () => {
-      header.classList.toggle("shadow-sm",       window.scrollY > 8);
-      header.classList.toggle("border-slate-100", window.scrollY > 8);
-    };
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
+<style>
+  /* ── Header colour states ── */
+  #site-header {
+    transition: background-color 0.35s ease, box-shadow 0.35s ease;
   }
 
-  // ── Mobile menu toggle ───────────────────────────────────────────────
-  header.querySelector<HTMLElement>("#mobile-menu-btn")
-    ?.addEventListener("click", () => {
-      const isHidden = mobileMenu?.classList.toggle("hidden");
-      header.querySelector("#mobile-menu-btn")?.setAttribute("aria-expanded", String(!isHidden));
-      iconOpen?.classList.toggle("hidden", !isHidden);
-      iconClose?.classList.toggle("hidden", isHidden);
-    });
+  /* dark = over hero/page-header (transparent, white items) */
+  #site-header[data-state="dark"] .nav-logo { filter: brightness(0) invert(1); }
+  #site-header[data-state="dark"] .nav-pill { border-color: rgb(255 255 255 / 0.4); color: rgb(255 255 255 / 0.85); }
+  #site-header[data-state="dark"] .nav-pill:hover { border-color: #fff; color: #fff; }
+  #site-header[data-state="dark"] .nav-cta { border: 1px solid rgb(255 255 255 / 0.7); background: rgb(255 255 255 / 0.1); color: #fff; backdrop-filter: blur(8px); }
+  #site-header[data-state="dark"] .nav-cta:hover { background: rgb(255 255 255 / 0.22); }
+  #site-header[data-state="dark"] .nav-burger { border-color: rgb(255 255 255 / 0.55); color: #fff; }
+  #site-header[data-state="dark"] .nav-burger:hover { background: rgb(255 255 255 / 0.12); border-color: #fff; }
+  #site-header[data-state="dark"] .burger-line { background: #fff; }
+
+  /* solid = scrolled (white bar, brand items) */
+  #site-header[data-state="solid"] { background: rgb(255 255 255 / 0.92); backdrop-filter: blur(10px); box-shadow: 0 1px 2px rgb(10 22 34 / 0.06); }
+  #site-header[data-state="solid"] .nav-pill { border-color: var(--color-spine-100); color: var(--color-charcoal-muted); }
+  #site-header[data-state="solid"] .nav-pill:hover { border-color: var(--color-spine); color: var(--color-spine); }
+  #site-header[data-state="solid"] .nav-cta { background: var(--color-spine); color: #fff; }
+  #site-header[data-state="solid"] .nav-cta:hover { background: var(--color-spine-600); }
+  #site-header[data-state="solid"] .nav-burger { border-color: var(--color-spine); color: var(--color-spine); }
+  #site-header[data-state="solid"] .nav-burger:hover { background: var(--color-spine-50); }
+  #site-header[data-state="solid"] .burger-line { background: var(--color-spine); }
+
+  /* menu open: overlay is LIGHT, so header items go brand/charcoal */
+  #site-header[data-menu="open"] { background: transparent; box-shadow: none; }
+  #site-header[data-menu="open"] .nav-logo { filter: none; }
+  #site-header[data-menu="open"] .nav-pill { border-color: var(--color-spine-100); color: var(--color-charcoal-muted); }
+  #site-header[data-menu="open"] .nav-pill:hover { border-color: var(--color-spine); color: var(--color-spine); }
+  #site-header[data-menu="open"] .nav-cta { border: none; background: var(--color-spine); color: #fff; backdrop-filter: none; }
+  #site-header[data-menu="open"] .nav-cta:hover { background: var(--color-spine-600); }
+  #site-header[data-menu="open"] .nav-burger { border-color: var(--color-spine); color: var(--color-spine); }
+  #site-header[data-menu="open"] .burger-line { background: var(--color-spine); }
+  #site-header[data-menu="open"] .burger-line:first-child { transform: translateY(0) rotate(45deg); }
+  #site-header[data-menu="open"] .burger-line:last-child { transform: translateY(0) rotate(-45deg); }
+
+  /* ── Overlay open/close + staggered items ── */
+  #nav-overlay {
+    visibility: hidden;
+    opacity: 0;
+    clip-path: inset(0 0 100% 0);
+    transition:
+      clip-path 0.6s cubic-bezier(0.76, 0, 0.24, 1),
+      opacity 0.4s ease,
+      visibility 0s linear 0.6s;
+  }
+  #nav-overlay.open {
+    visibility: visible;
+    opacity: 1;
+    clip-path: inset(0 0 0% 0);
+    transition:
+      clip-path 0.6s cubic-bezier(0.76, 0, 0.24, 1),
+      opacity 0.3s ease,
+      visibility 0s;
+  }
+  .menu-item {
+    opacity: 0;
+    transform: translateY(26px);
+    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #nav-overlay.open .menu-item {
+    opacity: 1;
+    transform: none;
+    transition-delay: calc(150ms + var(--i) * 60ms);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    #nav-overlay, #nav-overlay.open { transition: opacity 0.2s ease, visibility 0s; clip-path: none; }
+    .menu-item, #nav-overlay.open .menu-item { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+
+<script>
+  const header  = document.getElementById("site-header")!;
+  const overlay = document.getElementById("nav-overlay")!;
+  const menuBtn = document.getElementById("menu-btn")!;
+
+  let menuOpen = false;
+
+  // ── Scroll: dark (transparent) at top → solid after threshold ──
+  const onScroll = () => {
+    if (menuOpen) return;
+    header.dataset.state = window.scrollY > 60 ? "solid" : "dark";
+  };
+  onScroll();
+  window.addEventListener("scroll", onScroll, { passive: true });
+
+  // ── Fullscreen menu toggle ──
+  const setMenu = (open: boolean) => {
+    menuOpen = open;
+    overlay.classList.toggle("open", open);
+    overlay.setAttribute("aria-hidden", String(!open));
+    menuBtn.setAttribute("aria-expanded", String(open));
+    document.body.classList.toggle("no-scroll", open);
+    if (open) {
+      header.dataset.menu = "open";
+    } else {
+      delete header.dataset.menu;
+      onScroll();
+    }
+  };
+
+  menuBtn.addEventListener("click", () => setMenu(!menuOpen));
+
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape" && menuOpen) setMenu(false);
+  });
+
+  // Close the menu when a nav link or the book button inside it is used.
+  overlay.querySelectorAll<HTMLElement>("a, [data-book-trigger]").forEach((el) => {
+    el.addEventListener("click", () => setMenu(false));
+  });
 </script>
