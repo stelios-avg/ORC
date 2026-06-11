@@ -54,13 +54,13 @@ const base = "";
       <div class="reveal revealed mt-12 flex flex-col items-center justify-center gap-6 sm:flex-row sm:gap-14" style="--reveal-delay: 240ms">
         <button type="button" data-book-trigger class="group flex min-h-12 items-center gap-4 sm:gap-5">
           <span class="h-9 w-9 flex-none rounded-full bg-spine-200 transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-11 sm:w-11 sm:group-hover:scale-[1.9]"></span>
-          <span class="font-display text-base font-semibold uppercase tracking-[0.08em] text-white transition-colors duration-300 group-hover:text-spine-200 sm:text-lg">
+          <span class="font-display text-base font-semibold text-white transition-colors duration-300 group-hover:text-spine-200 sm:text-lg">
             {t.hero.ctaPrimary}
           </span>
         </button>
         <a href={`${base}/services/`} class="group flex min-h-12 items-center gap-4 sm:gap-5">
           <span class="h-9 w-9 flex-none rounded-full bg-white/80 transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-11 sm:w-11 sm:group-hover:scale-[1.9]"></span>
-          <span class="font-display text-base font-semibold uppercase tracking-[0.08em] text-white/85 transition-colors duration-300 group-hover:text-white sm:text-lg">
+          <span class="font-display text-base font-semibold text-white/85 transition-colors duration-300 group-hover:text-white sm:text-lg">
             {t.hero.ctaSecondary}
           </span>
         </a>
@@ -104,19 +104,31 @@ const base = "";
   {t.statements.map((s, i) => (
     <section class="bg-white py-14 sm:py-24">
       <div class="mx-auto grid max-w-7xl items-center gap-10 px-5 sm:px-6 lg:grid-cols-2 lg:gap-16 lg:px-8">
-        <div class:list={["relative", i % 2 === 1 ? "lg:order-2" : ""]}>
-          {/* Mobile: circle-button overlapping the photo's top-left (medwest) */}
+        <div
+          class:list={[
+            "relative w-[92%] lg:w-auto",
+            i % 2 === 1 ? "-mr-5 ml-auto sm:-mr-6 lg:mr-0" : "-ml-5 sm:-ml-6 lg:ml-0",
+            i % 2 === 1 ? "lg:order-2" : "",
+          ]}
+        >
+          {/* Mobile: photo flush to the screen edge, plain circle overlapping the outer corner (medwest) */}
           <a
             href={`${base}${s.href}`}
-            class="group absolute -left-7 -top-8 z-10 flex h-28 w-28 items-center lg:hidden"
+            aria-label={s.link}
+            class:list={[
+              "group absolute -top-8 z-10 block lg:hidden",
+              i % 2 === 1 ? "-left-7" : "-right-7",
+            ]}
           >
-            <span class="absolute inset-0 rounded-full bg-spine shadow-lg shadow-spine/25 transition-transform duration-500 ease-out group-hover:scale-110 group-active:scale-110"></span>
-            <span class="relative pl-8 pr-2 text-left font-display text-[11px] font-semibold uppercase leading-snug tracking-[0.08em] text-white">
-              {s.link}
-            </span>
+            <span class="block h-28 w-28 rounded-full bg-spine shadow-lg shadow-spine/25 transition-transform duration-500 ease-out group-hover:scale-110 group-active:scale-110"></span>
           </a>
 
-          <figure class="reveal img-reveal relative aspect-[4/3] w-full bg-sand">
+          <figure
+            class:list={[
+              "reveal img-reveal relative aspect-[4/3] w-full bg-sand",
+              i % 2 === 1 ? "max-lg:rounded-r-none!" : "max-lg:rounded-l-none!",
+            ]}
+          >
             <img
               src={SITE.logo}
               alt=""
@@ -124,7 +136,7 @@ const base = "";
               class="pointer-events-none absolute left-1/2 top-1/2 w-1/2 -translate-x-1/2 -translate-y-1/2 select-none opacity-[0.06]"
             />
             <img
-              src={`/images/home/${i + 1}.jpg`}
+              src={s.img}
               alt={s.eyebrow}
               class="relative h-full w-full object-cover"
               loading="lazy"
@@ -133,7 +145,7 @@ const base = "";
           </figure>
         </div>
 
-        <div class="text-center">
+        <div class:list={[i % 2 === 1 ? "text-right" : "text-left", "lg:text-center"]}>
           <p class="reveal text-xs font-semibold uppercase tracking-[0.22em] text-spine sm:text-sm">
             {s.eyebrow}
           </p>
@@ -147,7 +159,7 @@ const base = "";
             style="--reveal-delay: 200ms"
           >
             <span class="h-9 w-9 flex-none rounded-full bg-spine transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-11 sm:w-11 sm:group-hover:scale-[1.9]"></span>
-            <span class="font-display text-base font-semibold uppercase tracking-[0.08em] text-charcoal transition-colors duration-300 group-hover:text-spine sm:text-lg">
+            <span class="font-display text-base font-semibold text-charcoal transition-colors duration-300 group-hover:text-spine sm:text-lg">
               {s.link}
             </span>
           </a>
@@ -172,7 +184,7 @@ const base = "";
         style="--reveal-delay: 200ms"
       >
         <span class="h-10 w-10 flex-none rounded-full bg-spine transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-12 sm:w-12 sm:group-hover:scale-[1.9]"></span>
-        <span class="font-display text-lg font-semibold uppercase tracking-[0.08em] text-charcoal transition-colors duration-300 group-hover:text-spine sm:text-xl">
+        <span class="font-display text-lg font-semibold text-charcoal transition-colors duration-300 group-hover:text-spine sm:text-xl">
           {t.ctaBand.cta}
         </span>
       </button>

@@ -15,7 +15,7 @@ const t = useTranslations(lang);
   aria-expanded="false"
 >
   <span class="h-9 w-9 flex-none rounded-full bg-spine-200 transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-12 sm:w-12 sm:group-hover:scale-[1.9]"></span>
-  <span class="font-display text-base font-semibold uppercase tracking-[0.08em] text-white/90 transition-colors duration-300 group-hover:text-white sm:text-lg">
+  <span class="font-display text-base font-semibold text-white/90 transition-colors duration-300 group-hover:text-white sm:text-lg">
     {t.hero.infoLabel}
   </span>
 </button>
@@ -42,7 +42,7 @@ const t = useTranslations(lang);
       </svg>
     </button>
 
-    <p id="info-panel-title" class="info-item text-xs font-semibold uppercase tracking-[0.22em] text-spine-200" style="--i: 0">
+    <p id="info-panel-title" class="info-item text-xs font-semibold tracking-wide text-spine-200" style="--i: 0">
       {t.hero.infoLabel}
     </p>
 
@@ -59,7 +59,7 @@ const t = useTranslations(lang);
       <button
         type="button"
         data-book-trigger
-        class="w-full rounded-full bg-white px-7 py-4 text-base font-semibold text-spine-900 transition hover:bg-spine-50 sm:w-auto"
+        class="w-full rounded-full bg-white px-7 py-4 font-display text-base font-semibold text-spine-900 transition hover:bg-spine-50 sm:w-auto"
       >
         {t.nav.book}
       </button>

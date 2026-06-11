@@ -32,11 +32,11 @@ const el = {
 
   nav: {
     home: "Αρχική",
-    bio: "Βιογραφικό",
+    bio: "Η ομάδα μας",
     services: "Υπηρεσίες",
-    gallery: "Γκαλερί",
+    gallery: "Το κέντρο μας",
     contact: "Επικοινωνία",
-    book: "Κλείστε Ραντεβού",
+    book: "Κλείστε ραντεβού",
     bookShort: "Ραντεβού",
     menu: "Μενού",
     close: "Κλείσιμο",
@@ -55,7 +55,7 @@ const el = {
     subtitle:
       "Στο ORC Osteopathy & Rehabilitation Center, συνδυάζουμε εξειδικευμένη οστεοπαθητική και αποδεδειγμένη φυσιοθεραπεία για να ανακουφίσουμε τον πόνο, να επιταχύνουμε την αποκατάσταση και να σας κρατήσουμε στο καλύτερό σας — σε κάθε στάδιο της ζωής.",
     infoLabel: "Γενικές πληροφορίες",
-    ctaPrimary: "Κλείστε Ραντεβού",
+    ctaPrimary: "Κλείστε ραντεβού",
     ctaSecondary: "Εξερευνήστε τις υπηρεσίες",
   },
 
@@ -102,7 +102,7 @@ const el = {
     title: "Έτοιμοι να κινηθείτε χωρίς πόνο;",
     subtitle:
       "Κλείστε το ραντεβού σας σήμερα. Χρειάζεται μόνο ένα λεπτό — και η αποκατάστασή σας ξεκινά τη στιγμή που το κάνετε.",
-    cta: "Κλείστε Ραντεβού",
+    cta: "Κλείστε ραντεβού",
   },
 
   /* Editorial teaser sections on the home page (medwest-style structure). */
@@ -112,24 +112,21 @@ const el = {
       title: "Υγεία με πρόγραμμα, εξατομικευμένη για εσάς.",
       link: "Οι υπηρεσίες μας",
       href: "/services/",
-    },
-    {
-      eyebrow: "Κίνηση & Απόδοση",
-      title: "Μείνετε σε κίνηση.",
-      link: "Αθλητική αποκατάσταση",
-      href: "/services/",
+      img: "/images/home/physio.svg",
     },
     {
       eyebrow: "Ο χώρος μας",
       title: "Η ολιστική θεραπεία ξεκινά εδώ.",
       link: "Δείτε τον χώρο",
       href: "/gallery/",
+      img: "/images/home/clinic.jpg",
     },
     {
-      eyebrow: "Ο θεραπευτής",
+      eyebrow: "Η ομάδα",
       title: "Πίσω από κάθε θεραπεία, ένας άνθρωπος.",
       link: "Γνωρίστε μας",
       href: "/bio/",
+      img: "/images/home/team.svg",
     },
   ],
 
@@ -190,7 +187,7 @@ const el = {
     unsureTitle: "Δεν είστε σίγουροι ποια υπηρεσία χρειάζεστε;",
     unsureSubtitle:
       "Κλείστε μια αρχική αξιολόγηση και θα σας καθοδηγήσουμε στο κατάλληλο πρόγραμμα.",
-    cta: "Κλείστε Ραντεβού",
+    cta: "Κλείστε ραντεβού",
     list: [
       {
         title: "Φυσιοθεραπεία",
@@ -239,7 +236,7 @@ const el = {
     subtitle: "Ένας ήρεμος, σύγχρονος χώρος σχεδιασμένος για την άνεση και την αποκατάστασή σας.",
     ctaTitle: "Ελάτε να το δείτε μόνοι σας",
     ctaSubtitle: "Κλείστε μια επίσκεψη και δείτε πώς μπορούμε να σας βοηθήσουμε να κινηθείτε καλύτερα.",
-    cta: "Κλείστε Ραντεβού",
+    cta: "Κλείστε ραντεβού",
     imgAlt: "Φωτογραφία κλινικής ORC",
   },
 
@@ -254,7 +251,7 @@ const el = {
     phoneLabel: "Τηλέφωνο",
     emailLabel: "Email",
     hoursLabel: "Ωράριο λειτουργίας",
-    cta: "Κλείστε Ραντεβού",
+    cta: "Κλείστε ραντεβού",
     messageTitle: "Στείλτε μήνυμα",
     messageSubtitle:
       "Για γενικές ερωτήσεις. Για κράτηση, παρακαλώ χρησιμοποιήστε το κουμπί κράτησης.",
@@ -274,7 +271,7 @@ const el = {
     findUs: "Εδώ θα μας βρείτε",
     sayHello: "Πείτε μας γεια",
     followUs: "Ακολουθήστε μας",
-    cta: "Κλείστε Ραντεβού",
+    cta: "Κλείστε ραντεβού",
     rights: "Όλα τα δικαιώματα διατηρούνται.",
   },
 
@@ -312,7 +309,7 @@ const en = {
     services: "Services",
     gallery: "Gallery",
     contact: "Contact",
-    book: "Book Appointment",
+    book: "Book appointment",
     bookShort: "Book",
     menu: "Menu",
     close: "Close",
@@ -331,7 +328,7 @@ const en = {
     subtitle:
       "At ORC Osteopathy & Rehabilitation Center, we combine expert osteopathy and evidence-based physiotherapy to relieve pain, accelerate recovery and keep you moving your best — at every stage of life.",
     infoLabel: "General information",
-    ctaPrimary: "Book Appointment",
+    ctaPrimary: "Book appointment",
     ctaSecondary: "Explore services",
   },
 
@@ -378,7 +375,7 @@ const en = {
     title: "Ready to move without pain?",
     subtitle:
       "Book your appointment today. It only takes a minute — and your recovery starts the moment you do.",
-    cta: "Book Appointment",
+    cta: "Book appointment",
   },
 
   statements: [
@@ -387,24 +384,21 @@ const en = {
       title: "Health by design, tailored to you.",
       link: "Our services",
       href: "/services/",
-    },
-    {
-      eyebrow: "Movement & Performance",
-      title: "Stay in motion.",
-      link: "Sports rehabilitation",
-      href: "/services/",
+      img: "/images/home/physio.svg",
     },
     {
       eyebrow: "Our space",
       title: "Holistic healing starts here.",
       link: "See the clinic",
       href: "/gallery/",
+      img: "/images/home/clinic.jpg",
     },
     {
-      eyebrow: "The practitioner",
+      eyebrow: "The team",
       title: "Behind every treatment, a person.",
       link: "Meet us",
       href: "/bio/",
+      img: "/images/home/team.svg",
     },
   ],
 
@@ -464,7 +458,7 @@ const en = {
     bookBtn: "Book this service",
     unsureTitle: "Not sure which service you need?",
     unsureSubtitle: "Book an initial assessment and we'll guide you to the right plan.",
-    cta: "Book Appointment",
+    cta: "Book appointment",
     list: [
       {
         title: "Physiotherapy",
@@ -513,7 +507,7 @@ const en = {
     subtitle: "A calm, modern clinic designed for your comfort and recovery.",
     ctaTitle: "Come experience it yourself",
     ctaSubtitle: "Book a visit and see how we can help you move better.",
-    cta: "Book Appointment",
+    cta: "Book appointment",
     imgAlt: "ORC clinic photo",
   },
 
@@ -528,7 +522,7 @@ const en = {
     phoneLabel: "Phone",
     emailLabel: "Email",
     hoursLabel: "Opening hours",
-    cta: "Book Appointment",
+    cta: "Book appointment",
     messageTitle: "Send a message",
     messageSubtitle:
       "For general enquiries. To book, please use the booking button.",
@@ -548,7 +542,7 @@ const en = {
     findUs: "Find us here",
     sayHello: "Say hello",
     followUs: "Follow us",
-    cta: "Book Appointment",
+    cta: "Book appointment",
     rights: "All rights reserved.",
   },
 

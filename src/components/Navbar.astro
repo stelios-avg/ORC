@@ -46,7 +46,7 @@ const alternatePath = getAlternatePath(pathname, lang);
       {/* Language switcher */}
       <a
         href={alternatePath}
-        class="nav-pill rounded-full border px-3 py-2 text-xs font-semibold transition-colors duration-300"
+        class="nav-pill rounded-full border px-3 py-2 font-display text-xs font-semibold transition-colors duration-300"
         aria-label={t.nav.switchLangLabel}
         hreflang={lang === "el" ? "en" : "el"}
       >
@@ -57,7 +57,7 @@ const alternatePath = getAlternatePath(pathname, lang);
       <button
         type="button"
         data-book-trigger
-        class="nav-cta rounded-full px-4 py-2 text-xs font-semibold transition-colors duration-300 sm:px-5 sm:py-2.5 sm:text-sm"
+        class="nav-cta rounded-full px-4 py-2 font-display text-xs font-semibold transition-colors duration-300 sm:px-5 sm:py-2.5 sm:text-sm"
       >
         <span class="sm:hidden">{t.nav.bookShort}</span>
         <span class="hidden sm:inline">{t.nav.book}</span>
@@ -72,7 +72,7 @@ const alternatePath = getAlternatePath(pathname, lang);
         aria-expanded="false"
         aria-label={t.nav.menu}
       >
-        <span class="menu-label hidden text-xs font-bold uppercase tracking-[0.18em] sm:inline">
+        <span class="menu-label hidden font-display text-xs font-bold tracking-wide sm:inline">
           {t.nav.menu}
         </span>
         <span class="relative flex h-4 w-5 items-center justify-center">
@@ -119,7 +119,7 @@ const alternatePath = getAlternatePath(pathname, lang);
               ></span>
               <span
                 class:list={[
-                  "font-display text-lg font-semibold uppercase tracking-[0.08em] transition-colors duration-300 sm:text-xl",
+                  "font-display text-lg font-semibold transition-colors duration-300 sm:text-xl",
                   isActive(link.href) ? "text-spine" : "text-charcoal group-hover:text-spine",
                 ]}
               >
@@ -134,11 +134,11 @@ const alternatePath = getAlternatePath(pathname, lang);
     {/* Bottom: contact + book */}
     <div class="menu-item mt-10 grid gap-6 border-t border-charcoal/10 pt-6 sm:grid-cols-3 sm:items-end" style="--i: 5">
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-spine">{t.footer.findUs}</p>
+        <p class="text-xs font-semibold tracking-wide text-spine">{t.footer.findUs}</p>
         <p class="mt-2 text-sm leading-relaxed text-charcoal-muted">{t.address}</p>
       </div>
       <div>
-        <p class="text-xs font-semibold uppercase tracking-[0.2em] text-spine">{t.footer.sayHello}</p>
+        <p class="text-xs font-semibold tracking-wide text-spine">{t.footer.sayHello}</p>
         <p class="mt-2 text-sm text-charcoal-muted">
           <a href={SITE.phoneHref} class="block py-0.5 transition hover:text-spine">{SITE.phone}</a>
           <a href={`mailto:${SITE.email}`} class="block py-0.5 transition hover:text-spine">{SITE.email}</a>
@@ -147,7 +147,7 @@ const alternatePath = getAlternatePath(pathname, lang);
       <button
         type="button"
         data-book-trigger
-        class="w-full rounded-full bg-spine px-6 py-4 text-base font-semibold text-white transition hover:bg-spine-600 sm:w-auto"
+        class="w-full rounded-full bg-spine px-6 py-4 font-display text-base font-semibold text-white transition hover:bg-spine-600 sm:w-auto"
       >
         {t.nav.book}
       </button>
