@@ -50,3 +50,10 @@ export const FRESHA_BOOKING_URL: string =
 
 /** Optional endpoint to capture pre-booking leads before redirecting. */
 export const LEAD_ENDPOINT: string = import.meta.env.PUBLIC_LEAD_ENDPOINT || "";
+
+/**
+ * Web3Forms access key — when set, each pre-booking submission is emailed
+ * to the address the key was issued for. Set PUBLIC_LEAD_ACCESS_KEY in
+ * .env locally and in the Vercel project settings.
+ */
+export const LEAD_ACCESS_KEY: string = import.meta.env.PUBLIC_LEAD_ACCESS_KEY || "";

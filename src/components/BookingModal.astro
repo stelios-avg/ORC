@@ -1,5 +1,5 @@
 ---
-import { FRESHA_BOOKING_URL, LEAD_ENDPOINT } from "../config/site";
+import { FRESHA_BOOKING_URL, LEAD_ENDPOINT, LEAD_ACCESS_KEY } from "../config/site";
 import { useTranslations, type Lang } from "../i18n";
 
 interface Props { lang?: Lang; }
@@ -16,6 +16,7 @@ const t = useTranslations(lang).booking;
   data-reveal-mode="redirect"
   data-fresha-url={FRESHA_BOOKING_URL}
   data-lead-endpoint={LEAD_ENDPOINT}
+  data-lead-key={LEAD_ACCESS_KEY}
   data-err-fullname={t.errFullName}
   data-err-email={t.errEmail}
   data-err-phone={t.errPhone}
@@ -114,8 +115,12 @@ const t = useTranslations(lang).booking;
   const form  = document.getElementById("booking-form") as HTMLFormElement | null;
 
   if (modal && form) {
-    const freshaUrl    = modal.dataset.freshaUrl    || "";
-    const leadEndpoint = modal.dataset.leadEndpoint || "";
+    const freshaUrl = modal.dataset.freshaUrl || "";
+    const leadKey   = modal.dataset.leadKey   || "";
+    // With a Web3Forms key the default endpoint is Web3Forms; a custom
+    // endpoint (Google Sheet webhook etc.) can still override it.
+    const leadEndpoint =
+      modal.dataset.leadEndpoint || (leadKey ? "https://api.web3forms.com/submit" : "");
     const revealMode   = modal.dataset.revealMode   || "redirect";
     const errMap: Record<FieldName, string> = {
       fullName: modal.dataset.errFullname  || "Invalid name.",
@@ -207,7 +212,18 @@ const t = useTranslations(lang).booking;
       setLoading(true);
       if (leadEndpoint) {
         try {
-          await fetch(leadEndpoint, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ ...payload, source: "pre-booking-gate", ts: Date.now() }) });
+          await fetch(leadEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify({
+              ...(leadKey ? { access_key: leadKey } : {}),
+              subject: `Νέο αίτημα ραντεβού: ${payload.fullName}`,
+              from_name: "ORC Website",
+              ...payload,
+              source: "pre-booking-gate",
+              ts: Date.now(),
+            }),
+          });
         } catch (err) { console.warn("Lead capture failed:", err); }
       }
       proceedToFresha();
