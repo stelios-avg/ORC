@@ -106,15 +106,18 @@ const alternatePath = getAlternatePath(pathname, lang);
           <li class="menu-item" style={`--i: ${i}`}>
             <a
               href={link.href}
-              class="group flex min-h-12 items-center gap-5 sm:gap-6"
+              class:list={[
+                "menu-link group flex min-h-12 items-center gap-5 sm:gap-6",
+                i % 2 === 1 ? "max-sm:flex-row-reverse" : "",
+              ]}
               aria-current={isActive(link.href) ? "page" : undefined}
             >
               <span
                 class:list={[
-                  "h-9 w-9 flex-none rounded-full bg-spine transition-transform duration-500 ease-out sm:h-12 sm:w-12",
+                  "menu-dot relative h-14 w-14 flex-none rounded-full bg-spine transition-transform duration-500 ease-out sm:h-12 sm:w-12",
                   isActive(link.href)
-                    ? "scale-[1.5] sm:scale-[1.6]"
-                    : "group-hover:scale-[1.7] sm:group-hover:scale-[1.9]",
+                    ? "scale-[1.35] sm:scale-[1.6]"
+                    : "group-hover:scale-[1.5] sm:group-hover:scale-[1.9]",
                 ]}
               ></span>
               <span
@@ -265,8 +268,29 @@ const alternatePath = getAlternatePath(pathname, lang);
     if (e.key === "Escape" && menuOpen) setMenu(false);
   });
 
-  // Close the menu when a nav link or the book button inside it is used.
-  overlay.querySelectorAll<HTMLElement>("a, [data-book-trigger]").forEach((el) => {
+  // Book button inside the menu: close the menu so the modal is unobstructed.
+  overlay.querySelectorAll<HTMLElement>("[data-book-trigger]").forEach((el) => {
     el.addEventListener("click", () => setMenu(false));
+  });
+
+  // Nav links: the dot expands to cover the screen, then we navigate (medwest).
+  const REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  overlay.querySelectorAll<HTMLAnchorElement>("a.menu-link").forEach((link) => {
+    link.addEventListener("click", (e) => {
+      // Let modified clicks (new tab etc.) and reduced-motion users through.
+      if (REDUCED || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) {
+        setMenu(false);
+        return;
+      }
+      const dot = link.querySelector<HTMLElement>(".menu-dot");
+      if (!dot) return;
+      e.preventDefault();
+      const r = dot.getBoundingClientRect();
+      const scale = Math.ceil((Math.hypot(window.innerWidth, window.innerHeight) * 2) / r.width);
+      dot.style.zIndex = "60";
+      dot.style.transition = "transform 0.6s cubic-bezier(0.76, 0, 0.24, 1)";
+      dot.style.transform = `scale(${scale})`;
+      window.setTimeout(() => window.location.assign(link.href), 600);
+    });
   });
 </script>
