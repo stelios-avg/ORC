@@ -58,8 +58,8 @@ const base = "/en";
             {t.hero.ctaPrimary}
           </span>
         </button>
-        <a href={`${base}/services/`} class="group flex min-h-12 items-center gap-4 sm:gap-5">
-          <span class="h-9 w-9 flex-none rounded-full bg-white/80 transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-11 sm:w-11 sm:group-hover:scale-[1.9]"></span>
+        <a href={`${base}/services/`} data-dot-nav class="group flex min-h-12 items-center gap-4 sm:gap-5">
+          <span data-dot class="relative h-9 w-9 flex-none rounded-full bg-white/80 transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-11 sm:w-11 sm:group-hover:scale-[1.9]"></span>
           <span class="font-display text-base font-semibold text-white/85 transition-colors duration-300 group-hover:text-white sm:text-lg">
             {t.hero.ctaSecondary}
           </span>
@@ -115,12 +115,13 @@ const base = "/en";
           <a
             href={`${base}${s.href}`}
             aria-label={s.link}
+            data-dot-nav
             class:list={[
               "group absolute -top-8 z-10 block lg:hidden",
               i % 2 === 1 ? "-left-7" : "-right-7",
             ]}
           >
-            <span class="block h-28 w-28 rounded-full bg-spine shadow-lg shadow-spine/25 transition-transform duration-500 ease-out group-hover:scale-110 group-active:scale-110"></span>
+            <span data-dot class="relative block h-28 w-28 rounded-full bg-spine shadow-lg shadow-spine/25 transition-transform duration-500 ease-out group-hover:scale-110 group-active:scale-110"></span>
           </a>
 
           <figure
@@ -155,10 +156,11 @@ const base = "/en";
           {/* Desktop: centered dot-link under the title */}
           <a
             href={`${base}${s.href}`}
+            data-dot-nav
             class="reveal group mt-9 hidden min-h-12 items-center gap-4 sm:gap-5 lg:inline-flex"
             style="--reveal-delay: 200ms"
           >
-            <span class="h-9 w-9 flex-none rounded-full bg-spine transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-11 sm:w-11 sm:group-hover:scale-[1.9]"></span>
+            <span data-dot class="relative h-9 w-9 flex-none rounded-full bg-spine transition-transform duration-500 ease-out group-hover:scale-[1.7] sm:h-11 sm:w-11 sm:group-hover:scale-[1.9]"></span>
             <span class="font-display text-base font-semibold text-charcoal transition-colors duration-300 group-hover:text-spine sm:text-lg">
               {s.link}
             </span>

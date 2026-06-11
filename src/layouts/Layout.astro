@@ -90,6 +90,25 @@ const canonical = new URL(Astro.url.pathname, SITE.url).toString();
       } else {
         els.forEach((el) => el.classList.add("revealed"));
       }
+
+      // Dot-expand navigation (medwest): clicking a dot-link grows its dot to
+      // cover the screen, then navigates. Opt in with data-dot-nav on the <a>
+      // and data-dot on the circle span.
+      const DOT_REDUCED = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      document.querySelectorAll<HTMLAnchorElement>("a[data-dot-nav]").forEach((link) => {
+        link.addEventListener("click", (e) => {
+          if (DOT_REDUCED || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+          const dot = link.querySelector<HTMLElement>("[data-dot]");
+          if (!dot) return;
+          e.preventDefault();
+          const r = dot.getBoundingClientRect();
+          const scale = Math.ceil((Math.hypot(window.innerWidth, window.innerHeight) * 2) / r.width);
+          dot.style.zIndex = "200";
+          dot.style.transition = "transform 0.6s cubic-bezier(0.76, 0, 0.24, 1)";
+          dot.style.transform = `scale(${scale})`;
+          window.setTimeout(() => window.location.assign(link.href), 600);
+        });
+      });
     </script>
   </body>
 </html>
