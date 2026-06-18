@@ -20,7 +20,7 @@ const t = useTranslations(lang).booking;
   data-err-fullname={t.errFullName}
   data-err-email={t.errEmail}
   data-err-phone={t.errPhone}
-  data-err-address={t.errAddress}
+  data-err-concern={t.errConcern}
   data-label-submitting={t.submitting}
   data-label-submit={t.submit}
 >
@@ -76,12 +76,13 @@ const t = useTranslations(lang).booking;
         </div>
 
         <div>
-          <label for="bf-address" class="mb-1 block text-sm font-medium text-charcoal">
-            {t.addressLabel} <span class="text-spine">{t.required}</span>
+          <label for="bf-concern" class="mb-1 block text-sm font-medium text-charcoal">
+            {t.concernLabel} <span class="text-spine">{t.required}</span>
           </label>
-          <textarea id="bf-address" name="address" rows="2" autocomplete="street-address" required minlength="5"
+          <p class="mb-2 text-xs text-charcoal-muted">{t.concernHint}</p>
+          <textarea id="bf-concern" name="concern" rows="3" required minlength="10"
             class="w-full resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"></textarea>
-          <p class="mt-1 hidden text-xs text-red-600" data-error-for="address"></p>
+          <p class="mt-1 hidden text-xs text-red-600" data-error-for="concern"></p>
         </div>
       </div>
 
@@ -109,7 +110,7 @@ const t = useTranslations(lang).booking;
 </div>
 
 <script>
-  type FieldName = "fullName" | "email" | "phone" | "address";
+  type FieldName = "fullName" | "email" | "phone" | "concern";
 
   const modal = document.getElementById("booking-modal");
   const form  = document.getElementById("booking-form") as HTMLFormElement | null;
@@ -126,7 +127,7 @@ const t = useTranslations(lang).booking;
       fullName: modal.dataset.errFullname  || "Invalid name.",
       email:    modal.dataset.errEmail     || "Invalid email.",
       phone:    modal.dataset.errPhone     || "Invalid phone.",
-      address:  modal.dataset.errAddress   || "Invalid address.",
+      concern:  modal.dataset.errConcern   || "Please describe your concern.",
     };
     const labelSubmit     = modal.dataset.labelSubmit    || "Continue";
     const labelSubmitting = modal.dataset.labelSubmitting || "Please wait…";
@@ -178,15 +179,15 @@ const t = useTranslations(lang).booking;
       const fullName = String(data.get("fullName") || "").trim();
       const email    = String(data.get("email")    || "").trim();
       const phone    = String(data.get("phone")    || "").trim();
-      const address  = String(data.get("address")  || "").trim();
+      const concern  = String(data.get("concern")  || "").trim();
       let ok = true;
 
       if (fullName.length < 2) { setError("fullName", errMap.fullName); ok = false; } else setError("fullName", "");
       if (!isEmail(email))      { setError("email",    errMap.email);    ok = false; } else setError("email", "");
       if (!isPhone(phone))      { setError("phone",    errMap.phone);    ok = false; } else setError("phone", "");
-      if (address.length < 5)   { setError("address",  errMap.address);  ok = false; } else setError("address", "");
+      if (concern.length < 10)  { setError("concern",  errMap.concern);  ok = false; } else setError("concern", "");
 
-      return { ok, payload: { fullName, email, phone, address } };
+      return { ok, payload: { fullName, email, phone, concern } };
     };
 
     const setLoading = (loading: boolean) => {

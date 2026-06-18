@@ -101,15 +101,12 @@ const alternatePath = getAlternatePath(pathname, lang);
   <div class="relative flex min-h-0 flex-1 flex-col overflow-y-auto px-6 pb-8 pt-28 sm:px-10 lg:px-16">
     {/* Dot-grid nav links */}
     <nav class="my-auto">
-      <ul class="grid grid-cols-1 gap-x-10 gap-y-7 sm:grid-cols-2 sm:gap-y-12 lg:grid-cols-3">
+      <ul class="flex flex-col gap-8 sm:grid sm:grid-cols-2 sm:gap-x-10 sm:gap-y-12 lg:grid-cols-3">
         {navLinks.map((link, i) => (
           <li class="menu-item" style={`--i: ${i}`}>
             <a
               href={link.href}
-              class:list={[
-                "menu-link group flex min-h-12 items-center gap-5 sm:gap-6",
-                i % 2 === 1 ? "max-sm:flex-row-reverse" : "",
-              ]}
+              class="menu-link group flex min-h-12 items-center gap-5 sm:gap-6"
               aria-current={isActive(link.href) ? "page" : undefined}
             >
               <span
@@ -217,13 +214,26 @@ const alternatePath = getAlternatePath(pathname, lang);
   }
   .menu-item {
     opacity: 0;
-    transform: translateY(26px);
-    transition: opacity 0.5s ease, transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    transform: translateY(22px);
+    transition:
+      opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
   }
   #nav-overlay.open .menu-item {
     opacity: 1;
     transform: none;
-    transition-delay: calc(150ms + var(--i) * 60ms);
+    transition-delay: calc(180ms + var(--i) * 85ms);
+  }
+
+  /* Mobile: items slide in sequentially from the left */
+  @media (max-width: 639px) {
+    .menu-item {
+      transform: translateX(-18px) translateY(12px);
+    }
+    #nav-overlay.open .menu-item {
+      transform: none;
+      transition-delay: calc(220ms + var(--i) * 100ms);
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {

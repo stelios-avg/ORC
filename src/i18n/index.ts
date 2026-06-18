@@ -137,11 +137,8 @@ const el = {
     fullNameLabel: "Ονοματεπώνυμο",
     emailLabel: "Email",
     phoneLabel: "Τηλέφωνο",
-    addressLabel: "Διεύθυνση κατοικίας",
-    namePlaceholder: "Γιάννης Παπαδόπουλος",
-    emailPlaceholder: "giannis@example.com",
-    phonePlaceholder: "+30 69 1234 5678",
-    addressPlaceholder: "Οδός, πόλη, ΤΚ",
+    concernLabel: "Αιτία επίσκεψης",
+    concernHint: "Περιγράψτε σύντομα τι σας απασχολεί",
     required: "*",
     consent:
       "Συνεχίζοντας συμφωνείτε να επικοινωνήσουμε μαζί σας για το ραντεβού σας. Χρησιμοποιούμε το Fresha για τη διαχείριση κρατήσεων· θα μεταφερθείτε εκεί για να επιλέξετε την ώρα σας.",
@@ -151,7 +148,7 @@ const el = {
     errFullName: "Παρακαλώ εισάγετε το ονοματεπώνυμό σας.",
     errEmail: "Παρακαλώ εισάγετε μια έγκυρη διεύθυνση email.",
     errPhone: "Παρακαλώ εισάγετε έναν έγκυρο αριθμό τηλεφώνου.",
-    errAddress: "Παρακαλώ εισάγετε τη διεύθυνσή σας.",
+    errConcern: "Παρακαλώ περιγράψτε σύντομα την αιτία της επίσκεψής σας.",
   },
 
   bioPage: {
@@ -192,7 +189,7 @@ const el = {
       {
         title: "Φυσιοθεραπεία",
         desc: "Αποκαταστήστε τη δύναμη, την κινητικότητα και τη λειτουργικότητα μετά από κάκωση, χειρουργείο ή χρόνιο πόνο μέσω χειροπρακτικής θεραπείας και στοχευμένης άσκησης.",
-        points: ["Χειροπρακτική θεραπεία", "Εξατομικευμένη άσκηση", "Αποκατάσταση μετά χειρουργείο"],
+        points: ["Χειροπρακτική θεραπεία", "Εξατομικευμένη άσκηση", "Αποκατάσταση μετά χειρουργείο", "Νευρολογική αποκατάσταση"],
       },
       {
         title: "Οστεοπαθητική",
@@ -205,28 +202,16 @@ const el = {
         points: ["Αξιολόγηση κάκωσης", "Δύναμη & κατάσταση", "Δοκιμή επιστροφής στον αθλητισμό"],
       },
       {
-        title: "Χειροπρακτική Θεραπεία",
-        desc: "Εξειδικευμένες χειροπρακτικές τεχνικές για μείωση πόνου, αποκατάσταση εύρους κίνησης και βελτίωση ποιότητας ιστών.",
-        points: ["Χειρισμός αρθρώσεων", "Θεραπεία σημείων πυροδότησης", "Απελευθέρωση μυοπεριτονίας"],
-      },
-      {
-        title: "Ξηρός Βελονισμός",
-        desc: "Λεπτές βελόνες στοχεύουν μυοπεριτοναϊκά σημεία πυροδότησης για ανακούφιση από μυϊκό πόνο και σφίξιμο.",
-        points: ["Ανακούφιση πόνου", "Χαλάρωση μυών", "Βελτίωση κινητικότητας"],
-      },
-      {
-        title: "Στάση & Εργονομία",
-        desc: "Αξιολόγηση και συμβουλές για βελτιστοποίηση της στάσης σας στην εργασία και στο σπίτι, αποτρέποντας επαναλαμβανόμενες κακώσεις.",
-        points: ["Ρύθμιση χώρου εργασίας", "Εκπαίδευση κίνησης", "Στρατηγικές πρόληψης"],
+        title: "Κλινική Πιλάτες",
+        desc: "Εξατομικευμένα προγράμματα πιλάτες με ιατρική καθοδήγηση για ενδυνάμωση του κορμού, βελτίωση στάσης και αποκατάσταση μετά από τραυματισμό.",
+        points: ["Ενδυνάμωση κορμού", "Βελτίωση στάσης", "Αποκατάσταση & πρόληψη"],
       },
     ],
     icons: [
       "M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5",
       "M12 2a4 4 0 100 8 4 4 0 000-8zM6 22v-3a6 6 0 0112 0v3",
       "M4 12h16M12 4v16M7 7l10 10M17 7L7 17",
-      "M7 11V7a5 5 0 0110 0v4M5 11h14l-1 9H6l-1-9z",
-      "M4 20l16-16M14 4h6v6",
-      "M12 3a3 3 0 100 6 3 3 0 000-6zM6 21v-2a6 6 0 0112 0v2",
+      "M4 18h16M12 4v14M8 8l4-4 4 4",
     ],
   },
 
@@ -409,11 +394,8 @@ const en = {
     fullNameLabel: "Full name",
     emailLabel: "Email",
     phoneLabel: "Phone number",
-    addressLabel: "Physical address",
-    namePlaceholder: "Jane Doe",
-    emailPlaceholder: "jane@example.com",
-    phonePlaceholder: "+357 99 123456",
-    addressPlaceholder: "Street, city, postal code",
+    concernLabel: "Reason for visit",
+    concernHint: "Briefly describe what brings you in",
     required: "*",
     consent:
       "By continuing you agree to be contacted about your appointment. We use Fresha to manage bookings; you'll be taken there to pick your time.",
@@ -423,7 +405,7 @@ const en = {
     errFullName: "Please enter your full name.",
     errEmail: "Please enter a valid email address.",
     errPhone: "Please enter a valid phone number.",
-    errAddress: "Please enter your physical address.",
+    errConcern: "Please briefly describe the reason for your visit.",
   },
 
   bioPage: {
@@ -463,7 +445,7 @@ const en = {
       {
         title: "Physiotherapy",
         desc: "Restore strength, mobility and function after injury, surgery or chronic pain through hands-on therapy and targeted exercise.",
-        points: ["Manual therapy", "Exercise prescription", "Post-surgical rehab"],
+        points: ["Manual therapy", "Exercise prescription", "Post-surgical rehab", "Neurological rehabilitation"],
       },
       {
         title: "Osteopathy",
@@ -476,28 +458,16 @@ const en = {
         points: ["Injury assessment", "Strength & conditioning", "Return-to-sport testing"],
       },
       {
-        title: "Manual Therapy",
-        desc: "Skilled hands-on techniques to reduce pain, restore range of motion and improve tissue quality.",
-        points: ["Joint manipulation", "Trigger point therapy", "Myofascial release"],
-      },
-      {
-        title: "Dry Needling",
-        desc: "Fine needles target myofascial trigger points to relieve muscular pain and tightness.",
-        points: ["Pain relief", "Muscle relaxation", "Improved mobility"],
-      },
-      {
-        title: "Posture & Ergonomics",
-        desc: "Assessment and advice to optimise your posture at work and home, preventing recurring strain.",
-        points: ["Workstation setup", "Movement coaching", "Prevention strategies"],
+        title: "Clinical Pilates",
+        desc: "Individualised, medically guided Pilates programmes to strengthen your core, improve posture and support recovery after injury.",
+        points: ["Core strengthening", "Posture improvement", "Rehabilitation & prevention"],
       },
     ],
     icons: [
       "M12 3v18M5 8l7-5 7 5M5 16l7 5 7-5",
       "M12 2a4 4 0 100 8 4 4 0 000-8zM6 22v-3a6 6 0 0112 0v3",
       "M4 12h16M12 4v16M7 7l10 10M17 7L7 17",
-      "M7 11V7a5 5 0 0110 0v4M5 11h14l-1 9H6l-1-9z",
-      "M4 20l16-16M14 4h6v6",
-      "M12 3a3 3 0 100 6 3 3 0 000-6zM6 21v-2a6 6 0 0112 0v2",
+      "M4 18h16M12 4v14M8 8l4-4 4 4",
     ],
   },
 
