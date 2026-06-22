@@ -23,7 +23,7 @@ const el = {
   dir: "ltr" as const,
 
   /* Real contact details (matching the Fresha listing). */
-  address: "Αιτωλών, Στρόβολος, Λευκωσία, Κύπρος",
+  address: "Περικλέους 63, Στρόβολος 2021, Κύπρος",
   hours: [
     { day: "Δευ – Παρ", time: "09:00 – 13:30" },
     { day: "", time: "15:00 – 19:30" },
@@ -281,7 +281,7 @@ const en = {
   dir: "ltr" as const,
 
   /* Real contact details (matching the Fresha listing). */
-  address: "Aitolon Street, Strovolos, Nicosia, Cyprus",
+  address: "Perikleous 63, Strovolos 2021, Cyprus",
   hours: [
     { day: "Mon – Fri", time: "09:00 – 13:30" },
     { day: "", time: "15:00 – 19:30" },

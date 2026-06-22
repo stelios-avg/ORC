@@ -24,10 +24,10 @@ export const SITE = {
   phone: "+357 96 322622",
   phoneHref: "tel:+35796322622",
   /** Used for the Google Maps embed/query; display strings live in i18n. */
-  address: "Aitolon, Strovolos, Nicosia, Cyprus",
+  address: "Perikleous 63, Strovolos 2021, Cyprus",
   social: {
-    instagram: "https://instagram.com/",
-    facebook: "https://facebook.com/",
+    instagram: "https://www.instagram.com/orc_ostheopathy/",
+    facebook: "https://www.facebook.com/profile.php?id=61575872120846",
   },
 } as const;
 
