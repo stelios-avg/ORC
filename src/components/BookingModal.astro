@@ -24,9 +24,9 @@ const t = useTranslations(lang).booking;
   data-label-submitting={t.submitting}
   data-label-submit={t.submit}
 >
-  <div class="absolute inset-0 bg-spine-900/70 backdrop-blur-sm" data-book-close></div>
+  <div id="booking-backdrop" class="absolute inset-0 bg-spine-900/70 backdrop-blur-sm" data-book-close></div>
 
-  <div class="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+  <div id="booking-card" class="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
     <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
       <div>
         <h2 id="booking-modal-title" class="font-display text-xl font-semibold text-charcoal">
@@ -109,6 +109,31 @@ const t = useTranslations(lang).booking;
   </div>
 </div>
 
+<style>
+  /* Backdrop */
+  @keyframes bmBackdropIn  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes bmBackdropOut { from { opacity: 1; } to { opacity: 0; } }
+  .bm-backdrop-in  { animation: bmBackdropIn  0.25s ease forwards; }
+  .bm-backdrop-out { animation: bmBackdropOut 0.25s ease forwards; }
+
+  /* Card — slides up with a spring feel */
+  @keyframes bmCardIn {
+    from { opacity: 0; transform: translateY(28px) scale(0.97); }
+    to   { opacity: 1; transform: translateY(0)    scale(1); }
+  }
+  @keyframes bmCardOut {
+    from { opacity: 1; transform: translateY(0)    scale(1); }
+    to   { opacity: 0; transform: translateY(18px) scale(0.97); }
+  }
+  .bm-card-in  { animation: bmCardIn  0.35s cubic-bezier(0.22, 1, 0.36, 1) forwards; }
+  .bm-card-out { animation: bmCardOut 0.28s cubic-bezier(0.55, 0, 1, 0.45) forwards; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .bm-backdrop-in, .bm-backdrop-out,
+    .bm-card-in, .bm-card-out { animation: none; }
+  }
+</style>
+
 <script>
   type FieldName = "fullName" | "email" | "phone" | "concern";
 
@@ -139,19 +164,34 @@ const t = useTranslations(lang).booking;
     const iframe        = document.getElementById("booking-iframe") as HTMLIFrameElement | null;
     let lastFocused: HTMLElement | null = null;
 
+    const card     = document.getElementById("booking-card");
+    const backdrop = document.getElementById("booking-backdrop");
+
     const openModal = () => {
       lastFocused = document.activeElement as HTMLElement;
       modal.classList.remove("hidden");
       modal.classList.add("flex");
       document.body.classList.add("no-scroll");
-      window.setTimeout(() => form.querySelector<HTMLInputElement>("input")?.focus(), 50);
+      // Trigger enter animations
+      backdrop?.classList.remove("bm-backdrop-out");
+      backdrop?.classList.add("bm-backdrop-in");
+      card?.classList.remove("bm-card-out");
+      card?.classList.add("bm-card-in");
+      window.setTimeout(() => form.querySelector<HTMLInputElement>("input")?.focus(), 120);
     };
 
     const closeModal = () => {
-      modal.classList.add("hidden");
-      modal.classList.remove("flex");
-      document.body.classList.remove("no-scroll");
-      lastFocused?.focus();
+      // Play exit animations, then hide
+      backdrop?.classList.remove("bm-backdrop-in");
+      backdrop?.classList.add("bm-backdrop-out");
+      card?.classList.remove("bm-card-in");
+      card?.classList.add("bm-card-out");
+      window.setTimeout(() => {
+        modal.classList.add("hidden");
+        modal.classList.remove("flex");
+        document.body.classList.remove("no-scroll");
+        lastFocused?.focus();
+      }, 280);
     };
 
     document.querySelectorAll<HTMLElement>("[data-book-trigger]").forEach((el) =>
