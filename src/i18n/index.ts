@@ -223,10 +223,25 @@ const el = {
     ctaSubtitle: "Κλείστε μια επίσκεψη και δείτε πώς μπορούμε να σας βοηθήσουμε να κινηθείτε καλύτερα.",
     cta: "Κλείστε ραντεβού",
     imgAlt: "Φωτογραφία κλινικής ORC",
-    tabs: [
-      { id: "space", label: "Χώρος", images: ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg"] },
-      { id: "equipment", label: "Εξοπλισμός", images: ["6.jpg","7.jpg","8.jpg"] },
-      { id: "team", label: "Ομάδα", images: ["9.jpg","10.jpg","11.jpg"] },
+    albums: [
+      {
+        id: "space",
+        label: "Ο χώρος μας",
+        cover: "/images/gallery/space/cover.jpg",
+        images: ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg","6.jpg"],
+      },
+      {
+        id: "physio",
+        label: "Φυσιοθεραπευτήριο",
+        cover: "/images/gallery/physio/cover.jpg",
+        images: ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg"],
+      },
+      {
+        id: "pilates",
+        label: "Pilates",
+        cover: "/images/gallery/pilates/cover.jpg",
+        images: ["1.jpg","2.jpg","3.jpg","4.jpg"],
+      },
     ],
   },
 
@@ -484,10 +499,25 @@ const en = {
     ctaSubtitle: "Book a visit and see how we can help you move better.",
     cta: "Book appointment",
     imgAlt: "ORC clinic photo",
-    tabs: [
-      { id: "space", label: "Space", images: ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg"] },
-      { id: "equipment", label: "Equipment", images: ["6.jpg","7.jpg","8.jpg"] },
-      { id: "team", label: "Team", images: ["9.jpg","10.jpg","11.jpg"] },
+    albums: [
+      {
+        id: "space",
+        label: "Our space",
+        cover: "/images/gallery/space/cover.jpg",
+        images: ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg","6.jpg"],
+      },
+      {
+        id: "physio",
+        label: "Physiotherapy room",
+        cover: "/images/gallery/physio/cover.jpg",
+        images: ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg"],
+      },
+      {
+        id: "pilates",
+        label: "Pilates",
+        cover: "/images/gallery/pilates/cover.jpg",
+        images: ["1.jpg","2.jpg","3.jpg","4.jpg"],
+      },
     ],
   },
 

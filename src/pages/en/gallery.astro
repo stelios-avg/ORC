@@ -11,78 +11,70 @@ const g = t.galleryPage;
 <Layout lang={lang} title={t.seo.galleryTitle} description={t.seo.galleryDesc}>
   <PageHeader eyebrow={g.eyebrow} title={g.title} subtitle={g.subtitle} />
 
-  <section class="bg-white pb-0 pt-12">
-    {/* ── Tab bar ── */}
+  {/* ── Album covers ── */}
+  <section id="albums-view" class="bg-white py-16 sm:py-20">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="flex items-center gap-1 border-b border-slate-200 sm:gap-2" role="tablist" id="gallery-tabs">
-        {g.tabs.map((tab, i) => (
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+        {g.albums.map((album, i) => (
           <button
-            role="tab"
-            aria-selected={i === 0 ? "true" : "false"}
-            aria-controls={`panel-${tab.id}`}
-            data-tab={tab.id}
-            class:list={[
-              "gallery-tab relative pb-3 pt-1 font-display text-sm font-semibold tracking-wide transition-colors duration-200 sm:text-base",
-              "px-4 sm:px-6",
-              i === 0 ? "text-spine" : "text-charcoal-muted hover:text-charcoal",
-            ]}
+            class="album-cover group relative overflow-hidden rounded-2xl bg-sand text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-spine"
+            data-album={album.id}
+            style={`--ai:${i}`}
+            aria-label={`Open album: ${album.label}`}
           >
-            {tab.label}
-            {i === 0 && (
-              <span id="tab-indicator" class="absolute bottom-0 left-0 h-[2px] w-full rounded-full bg-spine transition-all duration-400 ease-out"></span>
-            )}
+            <div class="aspect-[4/3] w-full overflow-hidden">
+              <img
+                src={album.cover}
+                alt={album.label}
+                loading="lazy"
+                class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
+                onerror="this.closest('.album-cover').classList.add('no-cover');"
+              />
+            </div>
+            <div class="absolute inset-0 bg-gradient-to-t from-spine-900/80 via-spine-900/20 to-transparent transition-opacity duration-300 group-hover:opacity-90"></div>
+            <div class="absolute bottom-0 left-0 right-0 p-6 sm:p-7">
+              <p class="font-display text-xl font-bold text-white sm:text-2xl">{album.label}</p>
+              <p class="mt-1 text-sm font-medium text-white/60">{album.images.length} photos</p>
+              <span class="mt-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/40 text-white transition-all duration-300 group-hover:border-white group-hover:bg-white/10">
+                <svg class="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+                  <path d="M3 8h10M9 4l4 4-4 4"/>
+                </svg>
+              </span>
+            </div>
           </button>
         ))}
       </div>
     </div>
-
-    {/* ── Panels ── */}
-    {g.tabs.map((tab, tabIdx) => (
-      <div
-        id={`panel-${tab.id}`}
-        role="tabpanel"
-        data-panel={tab.id}
-        class:list={["gallery-panel", tabIdx !== 0 ? "hidden" : ""]}
-      >
-        <div class="overflow-hidden">
-          <div
-            class="gallery-strip flex gap-4 px-4 py-10 sm:px-6 lg:mx-auto lg:max-w-7xl lg:px-8"
-            data-strip
-          >
-            {tab.images.map((img, j) => (
-              <figure
-                class="gallery-card group relative flex-none cursor-pointer overflow-hidden rounded-2xl bg-sand"
-                style={`--j:${j}`}
-                data-card
-              >
-                <img
-                  src={`/images/gallery/${img}`}
-                  alt={`${g.imgAlt} — ${tab.label} ${j + 1}`}
-                  loading="lazy"
-                  class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-                  onerror="this.closest('figure').classList.add('no-img');"
-                />
-                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-spine-900/50 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
-              </figure>
-            ))}
-          </div>
-        </div>
-      </div>
-    ))}
   </section>
 
-  {/* ── Lightbox overlay ── */}
-  <div id="lightbox" class="fixed inset-0 z-[150] hidden items-center justify-center bg-spine-900/90 backdrop-blur-sm" aria-modal="true" role="dialog">
+  {/* ── Album detail view ── */}
+  <section id="album-view" class="hidden bg-white pb-20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="flex items-center gap-4 py-10 sm:py-12">
+        <button id="back-btn" class="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-slate-300 text-charcoal transition hover:border-spine hover:text-spine" aria-label="Back to albums">
+          <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M13 8H3M7 4L3 8l4 4"/>
+          </svg>
+        </button>
+        <h2 id="album-title" class="font-display text-2xl font-bold text-charcoal sm:text-3xl"></h2>
+      </div>
+      <div id="photo-grid" class="columns-1 gap-4 sm:columns-2 lg:columns-3 [&>*]:mb-4"></div>
+    </div>
+  </section>
+
+  {/* ── Lightbox ── */}
+  <div id="lightbox" class="fixed inset-0 z-[150] hidden items-center justify-center bg-spine-900/92 backdrop-blur-sm" aria-modal="true" role="dialog">
     <button id="lb-close" class="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/30 text-white transition hover:bg-white/10" aria-label="Close">
       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
     </button>
     <button id="lb-prev" class="absolute left-4 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/30 text-white transition hover:bg-white/10">
       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
     </button>
-    <img id="lb-img" src="" alt="" class="max-h-[85vh] max-w-[90vw] rounded-xl object-contain shadow-2xl transition-opacity duration-300" />
+    <img id="lb-img" src="" alt="" class="max-h-[85vh] max-w-[90vw] rounded-xl object-contain shadow-2xl" style="transition: opacity 0.25s ease" />
     <button id="lb-next" class="absolute right-4 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/30 text-white transition hover:bg-white/10">
       <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
     </button>
+    <p id="lb-counter" class="absolute bottom-5 left-1/2 -translate-x-1/2 text-sm text-white/50"></p>
   </div>
 
   <section class="bg-sand py-16">
@@ -98,110 +90,112 @@ const g = t.galleryPage;
 </Layout>
 
 <style>
-  .gallery-card {
-    width: clamp(260px, 38vw, 480px);
-    aspect-ratio: 4/3;
+  .album-cover {
     opacity: 0;
-    transform: translateY(24px);
+    transform: translateY(28px);
     transition:
-      opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-    transition-delay: calc(var(--j) * 80ms);
+      opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--ai) * 120ms);
   }
-  .gallery-card.visible {
-    opacity: 1;
-    transform: none;
+  .album-cover.visible { opacity: 1; transform: none; }
+  .photo-item {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--pi) * 60ms);
   }
-  .gallery-card.no-img {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    min-height: 220px;
+  .photo-item.visible { opacity: 1; transform: none; }
+  #album-view.entering {
+    animation: slideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   }
-  .gallery-card.no-img::after {
-    content: "";
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: var(--color-spine-100);
-  }
-  .gallery-panel.entering {
-    animation: panelIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  }
-  @keyframes panelIn {
-    from { opacity: 0; transform: translateX(20px); }
+  @keyframes slideIn {
+    from { opacity: 0; transform: translateX(16px); }
     to   { opacity: 1; transform: none; }
   }
   @media (prefers-reduced-motion: reduce) {
-    .gallery-card { opacity: 1; transform: none; transition: none; }
-    .gallery-panel.entering { animation: none; }
+    .album-cover, .photo-item { opacity: 1; transform: none; transition: none; }
+    #album-view.entering { animation: none; }
   }
 </style>
 
-<script>
-  const tabs = document.querySelectorAll<HTMLButtonElement>(".gallery-tab");
-  const panels = document.querySelectorAll<HTMLElement>(".gallery-panel");
-  const indicator = document.getElementById("tab-indicator");
+<script define:vars={{ albums: g.albums, imgAlt: g.imgAlt }}>
+  const albumsView = document.getElementById("albums-view");
+  const albumView  = document.getElementById("album-view");
+  const albumTitle = document.getElementById("album-title");
+  const photoGrid  = document.getElementById("photo-grid");
+  const backBtn    = document.getElementById("back-btn");
+  const lightbox   = document.getElementById("lightbox");
+  const lbImg      = document.getElementById("lb-img");
+  const lbClose    = document.getElementById("lb-close");
+  const lbPrev     = document.getElementById("lb-prev");
+  const lbNext     = document.getElementById("lb-next");
+  const lbCounter  = document.getElementById("lb-counter");
 
-  const revealCards = (panel: HTMLElement) => {
-    const cards = panel.querySelectorAll<HTMLElement>(".gallery-card");
-    if (!("IntersectionObserver" in window)) {
-      cards.forEach((c) => c.classList.add("visible"));
-      return;
-    }
-    const io = new IntersectionObserver((entries) => {
-      entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); } });
-    }, { threshold: 0.1 });
-    cards.forEach((c) => io.observe(c));
-  };
+  let lbImages = [];
+  let lbCurrent = 0;
 
-  const firstPanel = document.querySelector<HTMLElement>(".gallery-panel");
-  if (firstPanel) revealCards(firstPanel);
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); } });
+  }, { threshold: 0.08 });
+  document.querySelectorAll(".album-cover").forEach((c) => io.observe(c));
 
-  const moveIndicator = (btn: HTMLButtonElement) => {
-    if (!indicator) return;
-    const tabBar = btn.closest("[role=tablist]") as HTMLElement;
-    const barLeft = tabBar.getBoundingClientRect().left;
-    const btnRect = btn.getBoundingClientRect();
-    indicator.style.left = `${btnRect.left - barLeft + tabBar.scrollLeft}px`;
-    indicator.style.width = `${btnRect.width}px`;
-    btn.appendChild(indicator);
-  };
+  document.querySelectorAll(".album-cover").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const albumId = btn.dataset.album;
+      const album = albums.find((a) => a.id === albumId);
+      if (!album) return;
 
-  tabs.forEach((tab) => {
-    tab.addEventListener("click", () => {
-      if (tab.getAttribute("aria-selected") === "true") return;
-      tabs.forEach((t) => { t.setAttribute("aria-selected", "false"); t.classList.remove("text-spine"); t.classList.add("text-charcoal-muted", "hover:text-charcoal"); });
-      tab.setAttribute("aria-selected", "true");
-      tab.classList.add("text-spine");
-      tab.classList.remove("text-charcoal-muted", "hover:text-charcoal");
-      moveIndicator(tab);
-      const targetId = tab.dataset.tab!;
-      panels.forEach((p) => {
-        if (p.dataset.panel === targetId) {
-          p.classList.remove("hidden");
-          p.classList.add("entering");
-          p.addEventListener("animationend", () => p.classList.remove("entering"), { once: true });
-          revealCards(p);
-        } else {
-          p.classList.add("hidden");
-        }
+      albumTitle.textContent = album.label;
+      photoGrid.innerHTML = "";
+
+      album.images.forEach((img, j) => {
+        const src = `/images/gallery/${albumId}/${img}`;
+        const figure = document.createElement("figure");
+        figure.className = "photo-item group relative cursor-pointer overflow-hidden rounded-xl bg-sand";
+        figure.style = `--pi:${j}`;
+        figure.innerHTML = `
+          <img src="${src}" alt="${imgAlt} ${j + 1}" loading="lazy"
+            class="w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+            onerror="this.closest('figure').classList.add('aspect-[4/3]','min-h-[180px]'); this.style.display='none';" />
+          <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-spine-900/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+        `;
+        figure.addEventListener("click", () => {
+          const srcs = Array.from(photoGrid.querySelectorAll("img")).map((i) => i.src);
+          openLb(src, srcs);
+        });
+        photoGrid.appendChild(figure);
+      });
+
+      albumsView.classList.add("hidden");
+      albumView.classList.remove("hidden");
+      albumView.classList.add("entering");
+      albumView.addEventListener("animationend", () => albumView.classList.remove("entering"), { once: true });
+      window.scrollTo({ top: albumView.offsetTop - 80, behavior: "smooth" });
+
+      requestAnimationFrame(() => {
+        const items = photoGrid.querySelectorAll(".photo-item");
+        const pio = new IntersectionObserver((entries) => {
+          entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("visible"); pio.unobserve(e.target); } });
+        }, { threshold: 0.05 });
+        items.forEach((item) => pio.observe(item));
       });
     });
   });
 
-  const lightbox = document.getElementById("lightbox")!;
-  const lbImg    = document.getElementById("lb-img") as HTMLImageElement;
-  const lbClose  = document.getElementById("lb-close")!;
-  const lbPrev   = document.getElementById("lb-prev")!;
-  const lbNext   = document.getElementById("lb-next")!;
-  let lbImages: string[] = [];
-  let lbCurrent = 0;
+  backBtn.addEventListener("click", () => {
+    albumView.classList.add("hidden");
+    albumsView.classList.remove("hidden");
+    window.scrollTo({ top: albumsView.offsetTop - 80, behavior: "smooth" });
+  });
 
-  const openLb = (src: string, imgs: string[]) => {
+  const openLb = (src, imgs) => {
     lbImages = imgs;
     lbCurrent = imgs.indexOf(src);
     lbImg.src = src;
+    updateCounter();
     lightbox.classList.remove("hidden");
     lightbox.classList.add("flex");
     document.body.classList.add("no-scroll");
@@ -211,23 +205,12 @@ const g = t.galleryPage;
     lightbox.classList.remove("flex");
     document.body.classList.remove("no-scroll");
   };
-  const navLb = (dir: 1 | -1) => {
+  const navLb = (dir) => {
     lbCurrent = (lbCurrent + dir + lbImages.length) % lbImages.length;
     lbImg.style.opacity = "0";
-    setTimeout(() => { lbImg.src = lbImages[lbCurrent]; lbImg.style.opacity = "1"; }, 200);
+    setTimeout(() => { lbImg.src = lbImages[lbCurrent]; lbImg.style.opacity = "1"; updateCounter(); }, 220);
   };
-
-  document.querySelectorAll<HTMLElement>(".gallery-panel").forEach((panel) => {
-    panel.querySelectorAll<HTMLElement>(".gallery-card").forEach((card) => {
-      card.addEventListener("click", () => {
-        const img = card.querySelector("img");
-        if (!img) return;
-        const strip = panel.querySelectorAll<HTMLImageElement>(".gallery-card img");
-        const srcs = Array.from(strip).map((i) => i.src);
-        openLb(img.src, srcs);
-      });
-    });
-  });
+  const updateCounter = () => { lbCounter.textContent = `${lbCurrent + 1} / ${lbImages.length}`; };
 
   lbClose.addEventListener("click", closeLb);
   lbPrev.addEventListener("click", () => navLb(-1));
