@@ -6,32 +6,85 @@ import { useTranslations } from "../i18n";
 const lang = "el" as const;
 const t = useTranslations(lang);
 const g = t.galleryPage;
-
-const images = Array.from({ length: 9 }, (_, i) => ({
-  src: `/images/gallery/${i + 1}.jpg`,
-  alt: `${g.imgAlt} ${i + 1}`,
-}));
 ---
 
 <Layout lang={lang} title={t.seo.galleryTitle} description={t.seo.galleryDesc}>
   <PageHeader eyebrow={g.eyebrow} title={g.title} subtitle={g.subtitle} />
 
-  <section class="bg-white py-20">
+  <section class="bg-white pb-0 pt-12">
+    {/* ── Tab bar ── */}
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="columns-1 gap-4 sm:columns-2 lg:columns-3 [&>*]:mb-4">
-        {images.map((img) => (
-          <figure class="group relative overflow-hidden rounded-2xl bg-sand">
-            <img src={img.src} alt={img.alt} loading="lazy"
-              class="w-full object-cover transition duration-500 group-hover:scale-105"
-              onerror="this.closest('figure').classList.add('aspect-[4/3]','flex','items-center','justify-center'); this.remove();" />
-            <figcaption class="pointer-events-none absolute inset-0 hidden items-end bg-gradient-to-t from-spine-900/60 to-transparent p-4 text-sm font-medium text-white group-hover:flex">
-              {img.alt}
-            </figcaption>
-          </figure>
+      <div class="flex items-center gap-1 border-b border-slate-200 sm:gap-2" role="tablist" id="gallery-tabs">
+        {g.tabs.map((tab, i) => (
+          <button
+            role="tab"
+            aria-selected={i === 0 ? "true" : "false"}
+            aria-controls={`panel-${tab.id}`}
+            data-tab={tab.id}
+            class:list={[
+              "gallery-tab relative pb-3 pt-1 font-display text-sm font-semibold tracking-wide transition-colors duration-200 sm:text-base",
+              "px-4 sm:px-6",
+              i === 0 ? "text-spine" : "text-charcoal-muted hover:text-charcoal",
+            ]}
+          >
+            {tab.label}
+            {i === 0 && (
+              <span id="tab-indicator" class="absolute bottom-0 left-0 h-[2px] w-full rounded-full bg-spine transition-all duration-400 ease-out"></span>
+            )}
+          </button>
         ))}
       </div>
     </div>
+
+    {/* ── Panels ── */}
+    {g.tabs.map((tab, tabIdx) => (
+      <div
+        id={`panel-${tab.id}`}
+        role="tabpanel"
+        data-panel={tab.id}
+        class:list={["gallery-panel", tabIdx !== 0 ? "hidden" : ""]}
+      >
+        {/* Horizontal scroll strip — full-bleed on mobile, contained on desktop */}
+        <div class="overflow-hidden">
+          <div
+            class="gallery-strip flex gap-4 px-4 py-10 sm:px-6 lg:mx-auto lg:max-w-7xl lg:px-8"
+            data-strip
+          >
+            {tab.images.map((img, j) => (
+              <figure
+                class="gallery-card group relative flex-none cursor-pointer overflow-hidden rounded-2xl bg-sand"
+                style={`--j:${j}`}
+                data-card
+              >
+                <img
+                  src={`/images/gallery/${img}`}
+                  alt={`${g.imgAlt} — ${tab.label} ${j + 1}`}
+                  loading="lazy"
+                  class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
+                  onerror="this.closest('figure').classList.add('no-img');"
+                />
+                <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-spine-900/50 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+              </figure>
+            ))}
+          </div>
+        </div>
+      </div>
+    ))}
   </section>
+
+  {/* ── Lightbox overlay ── */}
+  <div id="lightbox" class="fixed inset-0 z-[150] hidden items-center justify-center bg-spine-900/90 backdrop-blur-sm" aria-modal="true" role="dialog">
+    <button id="lb-close" class="absolute right-5 top-5 flex h-11 w-11 items-center justify-center rounded-full border border-white/30 text-white transition hover:bg-white/10" aria-label="Κλείσιμο">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>
+    <button id="lb-prev" class="absolute left-4 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/30 text-white transition hover:bg-white/10">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M15 18l-6-6 6-6"/></svg>
+    </button>
+    <img id="lb-img" src="" alt="" class="max-h-[85vh] max-w-[90vw] rounded-xl object-contain shadow-2xl transition-opacity duration-300" />
+    <button id="lb-next" class="absolute right-4 top-1/2 -translate-y-1/2 flex h-11 w-11 items-center justify-center rounded-full border border-white/30 text-white transition hover:bg-white/10">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+    </button>
+  </div>
 
   <section class="bg-sand py-16">
     <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
@@ -44,3 +97,159 @@ const images = Array.from({ length: 9 }, (_, i) => ({
     </div>
   </section>
 </Layout>
+
+<style>
+  .gallery-card {
+    width: clamp(260px, 38vw, 480px);
+    aspect-ratio: 4/3;
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--j) * 80ms);
+  }
+  .gallery-card.visible {
+    opacity: 1;
+    transform: none;
+  }
+  /* No-image placeholder */
+  .gallery-card.no-img {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 220px;
+  }
+  .gallery-card.no-img::after {
+    content: "";
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: var(--color-spine-100);
+  }
+  /* Panel enter animation */
+  .gallery-panel {
+    animation: none;
+  }
+  .gallery-panel.entering {
+    animation: panelIn 0.45s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  }
+  @keyframes panelIn {
+    from { opacity: 0; transform: translateX(20px); }
+    to   { opacity: 1; transform: none; }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .gallery-card { opacity: 1; transform: none; transition: none; }
+    .gallery-panel.entering { animation: none; }
+  }
+</style>
+
+<script>
+  const tabs = document.querySelectorAll<HTMLButtonElement>(".gallery-tab");
+  const panels = document.querySelectorAll<HTMLElement>(".gallery-panel");
+  const indicator = document.getElementById("tab-indicator");
+
+  // ── Card reveal via IntersectionObserver ──
+  const revealCards = (panel: HTMLElement) => {
+    const cards = panel.querySelectorAll<HTMLElement>(".gallery-card");
+    if (!("IntersectionObserver" in window)) {
+      cards.forEach((c) => c.classList.add("visible"));
+      return;
+    }
+    const io = new IntersectionObserver((entries) => {
+      entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); } });
+    }, { threshold: 0.1 });
+    cards.forEach((c) => io.observe(c));
+  };
+
+  // Reveal first panel on load
+  const firstPanel = document.querySelector<HTMLElement>(".gallery-panel");
+  if (firstPanel) revealCards(firstPanel);
+
+  // ── Move indicator under the active tab ──
+  const moveIndicator = (btn: HTMLButtonElement) => {
+    if (!indicator) return;
+    const tabBar = btn.closest("[role=tablist]") as HTMLElement;
+    const barLeft = tabBar.getBoundingClientRect().left;
+    const btnRect = btn.getBoundingClientRect();
+    indicator.style.left = `${btnRect.left - barLeft + tabBar.scrollLeft}px`;
+    indicator.style.width = `${btnRect.width}px`;
+    btn.appendChild(indicator);
+  };
+
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      if (tab.getAttribute("aria-selected") === "true") return;
+      // deactivate all
+      tabs.forEach((t) => { t.setAttribute("aria-selected", "false"); t.classList.remove("text-spine"); t.classList.add("text-charcoal-muted", "hover:text-charcoal"); });
+      // activate clicked
+      tab.setAttribute("aria-selected", "true");
+      tab.classList.add("text-spine");
+      tab.classList.remove("text-charcoal-muted", "hover:text-charcoal");
+      moveIndicator(tab);
+      // swap panel
+      const targetId = tab.dataset.tab!;
+      panels.forEach((p) => {
+        if (p.dataset.panel === targetId) {
+          p.classList.remove("hidden");
+          p.classList.add("entering");
+          p.addEventListener("animationend", () => p.classList.remove("entering"), { once: true });
+          revealCards(p);
+        } else {
+          p.classList.add("hidden");
+        }
+      });
+    });
+  });
+
+  // ── Lightbox ──
+  const lightbox = document.getElementById("lightbox")!;
+  const lbImg    = document.getElementById("lb-img") as HTMLImageElement;
+  const lbClose  = document.getElementById("lb-close")!;
+  const lbPrev   = document.getElementById("lb-prev")!;
+  const lbNext   = document.getElementById("lb-next")!;
+  let lbImages: string[] = [];
+  let lbCurrent = 0;
+
+  const openLb = (src: string, imgs: string[]) => {
+    lbImages = imgs;
+    lbCurrent = imgs.indexOf(src);
+    lbImg.src = src;
+    lightbox.classList.remove("hidden");
+    lightbox.classList.add("flex");
+    document.body.classList.add("no-scroll");
+  };
+  const closeLb = () => {
+    lightbox.classList.add("hidden");
+    lightbox.classList.remove("flex");
+    document.body.classList.remove("no-scroll");
+  };
+  const navLb = (dir: 1 | -1) => {
+    lbCurrent = (lbCurrent + dir + lbImages.length) % lbImages.length;
+    lbImg.style.opacity = "0";
+    setTimeout(() => { lbImg.src = lbImages[lbCurrent]; lbImg.style.opacity = "1"; }, 200);
+  };
+
+  document.querySelectorAll<HTMLElement>(".gallery-panel").forEach((panel) => {
+    panel.querySelectorAll<HTMLElement>(".gallery-card").forEach((card) => {
+      card.addEventListener("click", () => {
+        const img = card.querySelector("img");
+        if (!img) return;
+        const strip = panel.querySelectorAll<HTMLImageElement>(".gallery-card img");
+        const srcs = Array.from(strip).map((i) => i.src);
+        openLb(img.src, srcs);
+      });
+    });
+  });
+
+  lbClose.addEventListener("click", closeLb);
+  lbPrev.addEventListener("click", () => navLb(-1));
+  lbNext.addEventListener("click", () => navLb(1));
+  lightbox.addEventListener("click", (e) => { if (e.target === lightbox) closeLb(); });
+  document.addEventListener("keydown", (e) => {
+    if (!lightbox.classList.contains("flex")) return;
+    if (e.key === "Escape") closeLb();
+    if (e.key === "ArrowLeft") navLb(-1);
+    if (e.key === "ArrowRight") navLb(1);
+  });
+</script>
