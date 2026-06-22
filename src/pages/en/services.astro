@@ -11,26 +11,45 @@ const s = t.servicesPage;
 <Layout lang={lang} title={t.seo.servicesTitle} description={t.seo.servicesDesc}>
   <PageHeader eyebrow={s.eyebrow} title={s.title} subtitle={s.subtitle} />
 
-  <section class="bg-sand py-20">
+  {/* ── Stats row ── */}
+  <section class="border-b border-slate-100 bg-white py-12">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div class="grid grid-cols-2 gap-8 sm:grid-cols-4">
+        {s.stats.map((stat, i) => (
+          <div class="stat-item text-center" style={`--si:${i}`}>
+            <p class="font-display text-4xl font-extrabold text-spine sm:text-5xl">{stat.value}</p>
+            <p class="mt-2 text-sm font-medium uppercase tracking-wide text-charcoal-muted">{stat.label}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  {/* ── Services grid — dark background ── */}
+  <section class="bg-spine-900 py-20">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="mb-12 text-center">
+        <p class="mb-2 font-display text-xs font-semibold uppercase tracking-widest text-spine-200">{s.servicesLabel}</p>
+        <h2 class="font-display text-3xl font-bold text-white sm:text-4xl">{s.servicesTagline}</h2>
+      </div>
+      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {s.list.map((svc, i) => (
-          <div class="flex flex-col rounded-2xl bg-white p-8 shadow-sm ring-1 ring-slate-100 transition hover:-translate-y-1 hover:shadow-lg">
-            <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-spine-50 p-2">
-              <img src={s.icons[i]} alt={svc.title} class="h-full w-full object-contain" />
+          <div class="svc-card group flex flex-col rounded-2xl bg-white/[0.06] p-7 ring-1 ring-white/10 transition duration-300 hover:bg-white/[0.11] hover:-translate-y-1" style={`--ci:${i}`}>
+            <div class="flex h-14 w-14 items-center justify-center rounded-xl bg-spine/20 p-2.5">
+              <img src={s.icons[i]} alt={svc.title} class="h-full w-full object-contain brightness-200 saturate-0" />
             </div>
-            <h3 class="mt-5 font-display text-xl font-semibold text-charcoal">{svc.title}</h3>
-            <p class="mt-2 text-sm text-charcoal-muted">{svc.desc}</p>
-            <ul class="mt-4 space-y-2">
+            <h3 class="mt-5 font-display text-lg font-semibold text-white">{svc.title}</h3>
+            <p class="mt-2 flex-1 text-sm leading-relaxed text-white/60">{svc.desc}</p>
+            <ul class="mt-4 space-y-1.5">
               {svc.points.map((p) => (
-                <li class="flex items-center gap-2 text-sm text-charcoal">
-                  <span class="h-1.5 w-1.5 flex-none rounded-full bg-spine"/>
+                <li class="flex items-start gap-2 text-sm text-white/70">
+                  <span class="mt-1.5 h-1.5 w-1.5 flex-none rounded-full bg-spine-300"/>
                   {p}
                 </li>
               ))}
             </ul>
             <button type="button" data-book-trigger
-              class="mt-6 inline-flex w-full items-center justify-center rounded-full border border-spine px-5 py-2.5 font-display text-sm font-semibold text-spine transition hover:bg-spine hover:text-white">
+              class="mt-6 inline-flex w-full items-center justify-center rounded-full border border-white/30 px-5 py-2.5 font-display text-sm font-semibold text-white transition hover:border-white hover:bg-white hover:text-spine-900">
               {s.bookBtn}
             </button>
           </div>
@@ -39,14 +58,101 @@ const s = t.servicesPage;
     </div>
   </section>
 
-  <section class="bg-spine-900 py-16">
+  {/* ── Why choose us ── */}
+  <section class="bg-white py-20 sm:py-24">
+    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+      <div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+        <div class="why-img order-2 lg:order-1 flex justify-center">
+          <div class="relative h-80 w-80 overflow-hidden rounded-[40%_60%_55%_45%/50%_45%_55%_50%] bg-spine-50 sm:h-96 sm:w-96">
+            <img src={s.whyImage} alt={s.whyTitle}
+              class="h-full w-full object-contain p-8"
+              onerror="this.closest('div').classList.add('flex','items-center','justify-center'); this.remove();" />
+          </div>
+        </div>
+        <div class="why-text order-1 lg:order-2">
+          <p class="mb-3 font-display text-xs font-semibold uppercase tracking-widest text-spine">{s.whyLabel}</p>
+          <h2 class="font-display text-3xl font-bold text-charcoal sm:text-4xl">{s.whyTitle}</h2>
+          <p class="mt-4 text-charcoal-muted">{s.whyDesc}</p>
+          <ul class="mt-8 space-y-4">
+            {s.whyPoints.map((point) => (
+              <li class="flex items-start gap-3">
+                <span class="mt-0.5 flex h-6 w-6 flex-none items-center justify-center rounded-full bg-spine text-white">
+                  <svg class="h-3.5 w-3.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.5">
+                    <path d="M3 8l3.5 3.5L13 4"/>
+                  </svg>
+                </span>
+                <span class="text-charcoal">{point}</span>
+              </li>
+            ))}
+          </ul>
+          <button type="button" data-book-trigger
+            class="mt-9 inline-flex items-center justify-center rounded-full bg-spine px-7 py-3.5 font-display font-semibold text-white transition hover:bg-spine-600">
+            {s.cta}
+          </button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  {/* ── CTA bottom ── */}
+  <section class="bg-sand py-16">
     <div class="mx-auto max-w-3xl px-4 text-center sm:px-6">
-      <h2 class="font-display text-2xl font-bold text-white sm:text-3xl">{s.unsureTitle}</h2>
-      <p class="mt-3 text-slate-300">{s.unsureSubtitle}</p>
+      <h2 class="font-display text-2xl font-bold text-charcoal sm:text-3xl">{s.unsureTitle}</h2>
+      <p class="mt-3 text-charcoal-muted">{s.unsureSubtitle}</p>
       <button type="button" data-book-trigger
-        class="mt-7 inline-flex items-center justify-center rounded-full bg-white px-7 py-3.5 font-display font-semibold text-spine-900 transition hover:bg-spine-50">
+        class="mt-7 inline-flex items-center justify-center rounded-full bg-spine px-7 py-3.5 font-display font-semibold text-white transition hover:bg-spine-600">
         {s.cta}
       </button>
     </div>
   </section>
 </Layout>
+
+<style>
+  .stat-item {
+    opacity: 0;
+    transform: translateY(20px);
+    transition:
+      opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: calc(var(--si) * 90ms);
+  }
+  .stat-item.visible { opacity: 1; transform: none; }
+
+  .svc-card {
+    opacity: 0;
+    transform: translateY(24px);
+    transition:
+      opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+      transform 0.6s cubic-bezier(0.22, 1, 0.36, 1),
+      background-color 0.3s ease,
+      translate 0.3s ease;
+    transition-delay: calc(var(--ci) * 100ms);
+  }
+  .svc-card.visible { opacity: 1; transform: none; }
+
+  .why-img {
+    opacity: 0;
+    transform: translateX(-24px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  .why-img.visible { opacity: 1; transform: none; }
+
+  .why-text {
+    opacity: 0;
+    transform: translateX(24px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1), transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: 120ms;
+  }
+  .why-text.visible { opacity: 1; transform: none; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .stat-item, .svc-card, .why-img, .why-text { opacity: 1; transform: none; transition: none; }
+  }
+</style>
+
+<script>
+  const io = new IntersectionObserver((entries) => {
+    entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); } });
+  }, { threshold: 0.1 });
+  document.querySelectorAll(".stat-item, .svc-card, .why-img, .why-text").forEach((el) => io.observe(el));
+</script>
