@@ -216,6 +216,9 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
   const grid = document.getElementById("cal-grid")!;
   const DAY_START = Number(grid.dataset.dayStart);
+  const DAY_END = Number(grid.dataset.dayEnd);
+  /** total 15' rows in the grid (matches grid-template-rows in the markup) */
+  const TOTAL_ROWS = (DAY_END - DAY_START) * 4 + 4;
   const dateLabel = document.getElementById("date-label")!;
   const emptyMsg = document.getElementById("cal-empty")!;
   const errorMsg = document.getElementById("cal-error")!;
@@ -235,10 +238,12 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     return d.getTime() === today.getTime() ? `Σήμερα · ${label}` : label;
   };
 
-  /** minutes since DAY_START → 15' grid row (1-based) */
+  /** minutes since DAY_START → 15' grid row (1-based), clamped to the grid
+   *  so appointments beyond DAY_END never overflow the layout */
   const toRow = (date: Date) => {
     const mins = (date.getHours() - DAY_START) * 60 + date.getMinutes();
-    return Math.max(1, Math.round(mins / 15) + 1);
+    const row = Math.round(mins / 15) + 1;
+    return Math.min(TOTAL_ROWS + 1, Math.max(1, row));
   };
 
   // ── Load & render the day ──
@@ -268,7 +273,8 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     appts.forEach((a) => {
       const start = new Date(a.start_time);
       const end = new Date(a.end_time);
-      const rowStart = toRow(start);
+      // Cap start to the last row so rowStart + 1 stays within the grid.
+      const rowStart = Math.min(toRow(start), TOTAL_ROWS);
       const rowEnd = Math.max(rowStart + 1, toRow(end));
 
       const block = document.createElement("button");
@@ -305,7 +311,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     const now = new Date();
     const isToday = now.toDateString() === currentDay.toDateString();
     const mins = (now.getHours() - DAY_START) * 60 + now.getMinutes();
-    const totalMins = (Number(grid.dataset.dayEnd) - DAY_START) * 60;
+    const totalMins = (DAY_END - DAY_START) * 60;
     if (!isToday || mins < 0 || mins > totalMins) {
       nowLine.classList.add("hidden");
       return;
@@ -339,12 +345,16 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
   // ── New appointment ──
   document.getElementById("add-appt-btn")!.addEventListener("click", async () => {
-    if (!patients.length) {
-      const { data } = await supabase.from("patients").select("*").order("name");
+    // Always refetch so clients added on /admin/clients show up without a reload.
+    const select = document.getElementById("appt-patient") as HTMLSelectElement;
+    const previous = select.value;
+    const { data, error } = await supabase.from("patients").select("*").order("name");
+    if (!error) {
       patients = (data ?? []) as Patient[];
-      const select = document.getElementById("appt-patient") as HTMLSelectElement;
       select.length = 1;
       patients.forEach((p) => select.add(new Option(p.name, p.id)));
+      // keep the previous selection if that patient still exists
+      if (previous && patients.some((p) => p.id === previous)) select.value = previous;
     }
     openModal(apptModal);
   });
@@ -461,7 +471,14 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   document.getElementById("detail-delete")!.addEventListener("click", async () => {
     if (!selectedAppt) return;
     if (!confirm("Σίγουρα θέλετε να διαγράψετε αυτή την καταχώρηση;")) return;
-    await supabase.from("appointments").delete().eq("id", selectedAppt.id);
+    const deleteBtn = document.getElementById("detail-delete") as HTMLButtonElement;
+    deleteBtn.disabled = true;
+    const { error } = await supabase.from("appointments").delete().eq("id", selectedAppt.id);
+    deleteBtn.disabled = false;
+    if (error) {
+      alert(`Η διαγραφή απέτυχε: ${error.message}`);
+      return;
+    }
     closeModal(detailSheet);
     loadDay();
   });
