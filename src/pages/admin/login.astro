@@ -1,0 +1,88 @@
+---
+import "../../styles/global.css";
+---
+
+<!doctype html>
+<html lang="el">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <link rel="icon" type="image/png" href="/orc-logo.png" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Σύνδεση | ORC Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Commissioner:wght@500;600;700;800&display=swap"
+      rel="stylesheet"
+    />
+  </head>
+  <body class="flex min-h-dvh items-center justify-center bg-sand px-4">
+    <div class="w-full max-w-sm">
+      <div class="mb-8 flex flex-col items-center">
+        <img src="/orc-logo.png" alt="ORC" class="h-16 w-auto" />
+        <h1 class="mt-4 font-display text-xl font-bold text-charcoal">ORC Admin</h1>
+        <p class="mt-1 text-sm text-charcoal-muted">Σύνδεση θεραπευτή</p>
+      </div>
+
+      <form id="login-form" class="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+        <label for="email" class="mb-1 block text-sm font-medium text-charcoal">Email</label>
+        <input
+          id="email" name="email" type="email" autocomplete="email" required
+          class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
+        />
+
+        <label for="password" class="mb-1 mt-4 block text-sm font-medium text-charcoal">Κωδικός</label>
+        <input
+          id="password" name="password" type="password" autocomplete="current-password" required
+          class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
+        />
+
+        <p id="login-error" class="mt-3 hidden text-sm text-red-600"></p>
+
+        <button
+          type="submit" id="login-btn"
+          class="mt-5 w-full rounded-full bg-spine px-6 py-3 font-display font-semibold text-white transition hover:bg-spine-600 disabled:cursor-not-allowed disabled:opacity-60"
+        >
+          Σύνδεση
+        </button>
+      </form>
+    </div>
+
+    <script>
+      import { getSupabase } from "../../lib/supabase";
+
+      const supabase = getSupabase();
+      const form = document.getElementById("login-form") as HTMLFormElement;
+      const errEl = document.getElementById("login-error")!;
+      const btn = document.getElementById("login-btn") as HTMLButtonElement;
+
+      // Already logged in? Skip the form.
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (session) window.location.replace("/admin");
+      });
+
+      form.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        errEl.classList.add("hidden");
+        btn.disabled = true;
+        btn.textContent = "Σύνδεση…";
+
+        const data = new FormData(form);
+        const { error } = await supabase.auth.signInWithPassword({
+          email: String(data.get("email")),
+          password: String(data.get("password")),
+        });
+
+        if (error) {
+          errEl.textContent = "Λάθος email ή κωδικός.";
+          errEl.classList.remove("hidden");
+          btn.disabled = false;
+          btn.textContent = "Σύνδεση";
+          return;
+        }
+        window.location.replace("/admin");
+      });
+    </script>
+  </body>
+</html>

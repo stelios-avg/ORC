@@ -1,0 +1,154 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout title="Πελάτης" active="clients">
+  <a href="/admin/clients" class="mb-4 inline-flex items-center gap-2 font-display text-sm font-semibold text-charcoal-muted transition hover:text-spine">
+    <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
+    Όλοι οι πελάτες
+  </a>
+
+  {/* ── Profile card ── */}
+  <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+    <div class="flex items-center gap-4">
+      <span id="cl-avatar" class="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-spine-50 font-display text-lg font-bold text-spine"></span>
+      <div class="min-w-0">
+        <h1 id="cl-name" class="truncate font-display text-xl font-bold text-charcoal">…</h1>
+        <div class="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
+          <a id="cl-phone" href="#" class="hidden font-medium text-spine underline"></a>
+          <a id="cl-email" href="#" class="hidden truncate text-charcoal-muted underline"></a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {/* ── Medical notes ── */}
+  <div class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+    <div class="mb-2 flex items-center justify-between">
+      <h2 class="font-display text-sm font-bold uppercase tracking-wide text-charcoal">Ιατρικές σημειώσεις</h2>
+      <span id="notes-status" class="text-xs text-charcoal-muted"></span>
+    </div>
+    <textarea
+      id="cl-notes" rows="5" placeholder="Ιστορικό, παρατηρήσεις, θεραπείες…"
+      class="w-full resize-y rounded-lg border border-slate-300 px-3 py-2.5 text-sm text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
+    ></textarea>
+    <button id="save-notes"
+      class="mt-3 w-full rounded-full bg-spine px-6 py-2.5 font-display text-sm font-semibold text-white transition hover:bg-spine-600 disabled:opacity-60">
+      Αποθήκευση σημειώσεων
+    </button>
+  </div>
+
+  {/* ── Appointment history ── */}
+  <div class="mt-4">
+    <h2 class="mb-3 font-display text-sm font-bold uppercase tracking-wide text-charcoal">Ραντεβού</h2>
+    <div id="upcoming-wrap" class="hidden">
+      <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-emerald-600">Επερχόμενα</p>
+      <ul id="upcoming-list" class="mb-4 space-y-2"></ul>
+    </div>
+    <div id="past-wrap" class="hidden">
+      <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Προηγούμενα</p>
+      <ul id="past-list" class="space-y-2"></ul>
+    </div>
+    <p id="history-empty" class="hidden text-center text-sm text-charcoal-muted">Κανένα ραντεβού ακόμη.</p>
+  </div>
+
+  <p id="client-error" class="mt-8 hidden text-center text-sm text-red-600"></p>
+</AdminLayout>
+
+<script>
+  import { getSupabase, type Appointment, type Patient } from "../../lib/supabase";
+
+  const supabase = getSupabase();
+  const id = new URLSearchParams(window.location.search).get("id");
+  const errorMsg = document.getElementById("client-error")!;
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+  const fmtTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+
+  function apptItem(a: Appointment): string {
+    return `
+      <li class="flex items-center justify-between gap-3 rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-slate-100">
+        <div class="min-w-0">
+          <p class="truncate font-display text-sm font-semibold text-charcoal">${a.service ?? "Ραντεβού"}</p>
+          <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)} · ${fmtTime(a.start_time)}–${fmtTime(a.end_time)}</p>
+        </div>
+        ${
+          a.is_paid
+            ? '<span class="flex-none rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Πληρωμένο</span>'
+            : '<span class="flex-none rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">Απλήρωτο</span>'
+        }
+      </li>`;
+  }
+
+  async function load() {
+    if (!id) {
+      errorMsg.textContent = "Δεν βρέθηκε πελάτης.";
+      errorMsg.classList.remove("hidden");
+      return;
+    }
+
+    const [{ data: patient, error: pErr }, { data: appts, error: aErr }] = await Promise.all([
+      supabase.from("patients").select("*").eq("id", id).single(),
+      supabase
+        .from("appointments")
+        .select("*")
+        .eq("patient_id", id)
+        .neq("status", "cancelled")
+        .order("start_time", { ascending: false }),
+    ]);
+
+    if (pErr || !patient) {
+      errorMsg.textContent = `Σφάλμα: ${pErr?.message ?? "δεν βρέθηκε πελάτης"}`;
+      errorMsg.classList.remove("hidden");
+      return;
+    }
+
+    const p = patient as Patient;
+    document.title = `${p.name} | ORC Admin`;
+    document.getElementById("cl-name")!.textContent = p.name;
+    document.getElementById("cl-avatar")!.textContent =
+      p.name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+
+    const phoneEl = document.getElementById("cl-phone") as HTMLAnchorElement;
+    if (p.phone) { phoneEl.textContent = p.phone; phoneEl.href = `tel:${p.phone}`; phoneEl.classList.remove("hidden"); }
+    const emailEl = document.getElementById("cl-email") as HTMLAnchorElement;
+    if (p.email) { emailEl.textContent = p.email; emailEl.href = `mailto:${p.email}`; emailEl.classList.remove("hidden"); }
+
+    (document.getElementById("cl-notes") as HTMLTextAreaElement).value = p.notes ?? "";
+
+    // History split into upcoming / past
+    if (!aErr && appts) {
+      const now = Date.now();
+      const upcoming = (appts as Appointment[]).filter((a) => new Date(a.start_time).getTime() >= now).reverse();
+      const past = (appts as Appointment[]).filter((a) => new Date(a.start_time).getTime() < now);
+
+      if (upcoming.length) {
+        document.getElementById("upcoming-wrap")!.classList.remove("hidden");
+        document.getElementById("upcoming-list")!.innerHTML = upcoming.map(apptItem).join("");
+      }
+      if (past.length) {
+        document.getElementById("past-wrap")!.classList.remove("hidden");
+        document.getElementById("past-list")!.innerHTML = past.map(apptItem).join("");
+      }
+      document.getElementById("history-empty")!.classList.toggle("hidden", appts.length > 0);
+    }
+  }
+
+  // ── Save notes ──
+  const saveBtn = document.getElementById("save-notes") as HTMLButtonElement;
+  const notesStatus = document.getElementById("notes-status")!;
+  saveBtn.addEventListener("click", async () => {
+    if (!id) return;
+    saveBtn.disabled = true;
+    notesStatus.textContent = "Αποθήκευση…";
+    const notes = (document.getElementById("cl-notes") as HTMLTextAreaElement).value;
+    const { error } = await supabase.from("patients").update({ notes }).eq("id", id);
+    saveBtn.disabled = false;
+    notesStatus.textContent = error ? "Σφάλμα αποθήκευσης" : "Αποθηκεύτηκε ✓";
+    setTimeout(() => (notesStatus.textContent = ""), 2500);
+  });
+
+  load();
+</script>

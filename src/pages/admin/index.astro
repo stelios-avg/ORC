@@ -1,0 +1,470 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+
+// Working hours shown on the calendar
+const DAY_START = 8;   // 08:00
+const DAY_END = 21;    // 21:00
+const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_START + i);
+---
+
+<AdminLayout title="Πρόγραμμα" active="calendar">
+  {/* ── Date navigation ── */}
+  <div class="mb-4 flex items-center justify-between gap-2">
+    <button id="prev-day" class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine" aria-label="Προηγούμενη μέρα">
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
+    </button>
+    <button id="today-btn" class="flex-1 rounded-full bg-white px-4 py-2 text-center ring-1 ring-slate-200 transition hover:ring-spine">
+      <span id="date-label" class="font-display text-sm font-bold text-charcoal"></span>
+    </button>
+    <button id="next-day" class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine" aria-label="Επόμενη μέρα">
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg>
+    </button>
+  </div>
+
+  {/* ── Actions ── */}
+  <div class="mb-4 grid grid-cols-2 gap-2">
+    <button id="add-appt-btn" class="flex items-center justify-center gap-2 rounded-full bg-spine px-4 py-2.5 font-display text-sm font-semibold text-white transition hover:bg-spine-600">
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
+      Ραντεβού
+    </button>
+    <button id="block-time-btn" class="flex items-center justify-center gap-2 rounded-full border border-charcoal/30 bg-white px-4 py-2.5 font-display text-sm font-semibold text-charcoal transition hover:border-charcoal">
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M4 4l8 8"/></svg>
+      Αποκλεισμός
+    </button>
+  </div>
+
+  {/* ── Calendar (Fresha-style: hour rail + CSS grid of 15' rows) ── */}
+  <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+    <div class="relative flex">
+      {/* Hour labels */}
+      <div class="w-14 flex-none border-r border-slate-100">
+        {hours.map((h) => (
+          <div class="relative h-16">
+            <span class="absolute -top-2 right-2 text-[11px] font-medium text-charcoal-muted">
+              {String(h).padStart(2, "0")}:00
+            </span>
+          </div>
+        ))}
+      </div>
+
+      {/* Events area: CSS grid, 4 rows per hour (15-minute slots) */}
+      <div
+        id="cal-grid"
+        class="relative flex-1"
+        style={`display:grid; grid-template-rows: repeat(${(DAY_END - DAY_START) * 4 + 4}, 1rem); grid-auto-columns: 1fr;`}
+        data-day-start={DAY_START}
+        data-day-end={DAY_END}
+      >
+        {/* Hour lines */}
+        {hours.map((_, i) => (
+          <div class="pointer-events-none border-t border-slate-100" style={`grid-row: ${i * 4 + 1}; grid-column: 1 / -1;`}></div>
+        ))}
+        {/* "Now" indicator */}
+        <div id="now-line" class="pointer-events-none absolute inset-x-0 z-10 hidden">
+          <div class="relative border-t-2 border-red-400">
+            <span class="absolute -left-1 -top-[5px] h-2 w-2 rounded-full bg-red-400"></span>
+          </div>
+        </div>
+        {/* Appointment blocks injected by JS */}
+      </div>
+    </div>
+  </div>
+
+  <p id="cal-empty" class="mt-6 hidden text-center text-sm text-charcoal-muted">
+    Δεν υπάρχουν ραντεβού για αυτή τη μέρα.
+  </p>
+  <p id="cal-error" class="mt-6 hidden text-center text-sm text-red-600"></p>
+
+  {/* ══ Modal: new appointment ══ */}
+  <div id="appt-modal" class="fixed inset-0 z-[100] hidden items-end justify-center sm:items-center">
+    <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-modal></div>
+    <div class="relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="font-display text-lg font-bold text-charcoal">Νέο ραντεβού</h2>
+        <button data-close-modal class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <form id="appt-form" class="space-y-4">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-patient">Πελάτης</label>
+          <select id="appt-patient" name="patient_id" required
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
+            <option value="">— Επιλέξτε πελάτη —</option>
+          </select>
+          <p class="mt-1 text-xs text-charcoal-muted">
+            Νέος πελάτης; Προσθέστε τον πρώτα στη σελίδα <a href="/admin/clients" class="text-spine underline">Πελάτες</a>.
+          </p>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-service">Υπηρεσία</label>
+          <select id="appt-service" name="service"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
+            <option>Φυσιοθεραπεία</option>
+            <option>Οστεοπαθητική</option>
+            <option>Αθλητική Αποκατάσταση</option>
+            <option>Κλινική Πιλάτες</option>
+            <option>Άλλο</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-start">Ώρα έναρξης</label>
+            <input id="appt-start" name="start" type="time" required step="900" value="09:00"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-duration">Διάρκεια</label>
+            <select id="appt-duration" name="duration"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
+              <option value="30">30′</option>
+              <option value="45">45′</option>
+              <option value="60" selected>1 ώρα</option>
+              <option value="90">1,5 ώρα</option>
+              <option value="120">2 ώρες</option>
+            </select>
+          </div>
+        </div>
+        <p id="appt-form-error" class="hidden text-sm text-red-600"></p>
+        <button type="submit"
+          class="w-full rounded-full bg-spine px-6 py-3 font-display font-semibold text-white transition hover:bg-spine-600 disabled:opacity-60">
+          Αποθήκευση
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {/* ══ Modal: block time ══ */}
+  <div id="block-modal" class="fixed inset-0 z-[100] hidden items-end justify-center sm:items-center">
+    <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-modal></div>
+    <div class="relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="font-display text-lg font-bold text-charcoal">Αποκλεισμός ώρας</h2>
+        <button data-close-modal class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <form id="block-form" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="block-start">Από</label>
+            <input id="block-start" name="start" type="time" required step="900" value="13:00"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="block-end">Έως</label>
+            <input id="block-end" name="end" type="time" required step="900" value="14:00"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="block-reason">Σημείωση (προαιρετικό)</label>
+          <input id="block-reason" name="reason" type="text" placeholder="π.χ. Διάλειμμα"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+        </div>
+        <p id="block-form-error" class="hidden text-sm text-red-600"></p>
+        <button type="submit"
+          class="w-full rounded-full bg-charcoal px-6 py-3 font-display font-semibold text-white transition hover:bg-charcoal/80 disabled:opacity-60">
+          Αποκλεισμός
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {/* ══ Bottom sheet: appointment details ══ */}
+  <div id="detail-sheet" class="fixed inset-0 z-[100] hidden items-end justify-center sm:items-center">
+    <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-modal></div>
+    <div class="relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+      <div class="mb-1 flex items-start justify-between">
+        <h2 id="detail-title" class="font-display text-lg font-bold text-charcoal"></h2>
+        <button data-close-modal class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <p id="detail-time" class="text-sm text-charcoal-muted"></p>
+      <p id="detail-service" class="mt-1 text-sm text-charcoal"></p>
+      <a id="detail-phone" href="#" class="mt-1 hidden text-sm font-medium text-spine underline"></a>
+
+      {/* Paid toggle */}
+      <div id="detail-paid-row" class="mt-5 flex items-center justify-between rounded-xl bg-sand px-4 py-3">
+        <span class="font-display text-sm font-semibold text-charcoal">Πληρωμένο</span>
+        <button id="paid-toggle" role="switch" aria-checked="false"
+          class="relative h-7 w-12 rounded-full bg-slate-300 transition-colors data-[on=true]:bg-emerald-500">
+          <span class="absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200"></span>
+        </button>
+      </div>
+
+      <button id="detail-delete"
+        class="mt-4 w-full rounded-full border border-red-200 px-6 py-2.5 font-display text-sm font-semibold text-red-600 transition hover:bg-red-50">
+        Διαγραφή
+      </button>
+    </div>
+  </div>
+</AdminLayout>
+
+<style>
+  /* Paid switch knob position */
+  #paid-toggle[data-on="true"] span {
+    transform: translateX(1.25rem);
+  }
+</style>
+
+<script>
+  import { getSupabase, type Appointment, type Patient } from "../../lib/supabase";
+
+  const supabase = getSupabase();
+
+  const grid = document.getElementById("cal-grid")!;
+  const DAY_START = Number(grid.dataset.dayStart);
+  const dateLabel = document.getElementById("date-label")!;
+  const emptyMsg = document.getElementById("cal-empty")!;
+  const errorMsg = document.getElementById("cal-error")!;
+  const nowLine = document.getElementById("now-line")!;
+
+  let currentDay = new Date();
+  currentDay.setHours(0, 0, 0, 0);
+  let patients: Patient[] = [];
+  let selectedAppt: Appointment | null = null;
+
+  const fmtTime = (iso: string) =>
+    new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+
+  const dayLabel = (d: Date) => {
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const label = d.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
+    return d.getTime() === today.getTime() ? `Σήμερα · ${label}` : label;
+  };
+
+  /** minutes since DAY_START → 15' grid row (1-based) */
+  const toRow = (date: Date) => {
+    const mins = (date.getHours() - DAY_START) * 60 + date.getMinutes();
+    return Math.max(1, Math.round(mins / 15) + 1);
+  };
+
+  // ── Load & render the day ──
+  async function loadDay() {
+    dateLabel.textContent = dayLabel(currentDay);
+    const dayEnd = new Date(currentDay); dayEnd.setDate(dayEnd.getDate() + 1);
+
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("*, patients(id, name, phone)")
+      .gte("start_time", currentDay.toISOString())
+      .lt("start_time", dayEnd.toISOString())
+      .neq("status", "cancelled")
+      .order("start_time");
+
+    errorMsg.classList.add("hidden");
+    if (error) {
+      errorMsg.textContent = `Σφάλμα φόρτωσης: ${error.message}`;
+      errorMsg.classList.remove("hidden");
+      return;
+    }
+
+    grid.querySelectorAll("[data-appt]").forEach((el) => el.remove());
+    const appts = (data ?? []) as Appointment[];
+    emptyMsg.classList.toggle("hidden", appts.length > 0);
+
+    appts.forEach((a) => {
+      const start = new Date(a.start_time);
+      const end = new Date(a.end_time);
+      const rowStart = toRow(start);
+      const rowEnd = Math.max(rowStart + 1, toRow(end));
+
+      const block = document.createElement("button");
+      block.setAttribute("data-appt", a.id);
+      block.style.gridRow = `${rowStart} / ${rowEnd}`;
+      block.style.gridColumn = "1 / -1";
+
+      if (a.is_blocked_time) {
+        block.className =
+          "z-20 mx-1 my-px overflow-hidden rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1 text-left " +
+          "bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(0,0,0,0.04)_6px,rgba(0,0,0,0.04)_12px)]";
+        block.innerHTML = `
+          <p class="truncate text-xs font-semibold text-charcoal-muted">${a.service || "Κλειστό"}</p>
+          <p class="text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)}</p>`;
+      } else {
+        block.className =
+          "z-20 mx-1 my-px overflow-hidden rounded-lg border-l-4 border-spine bg-spine-50 px-2.5 py-1 text-left transition hover:bg-spine-100";
+        block.innerHTML = `
+          <div class="flex items-center justify-between gap-1">
+            <p class="truncate font-display text-xs font-bold text-spine">${a.patients?.name ?? "—"}</p>
+            ${a.is_paid ? '<span class="flex h-4 w-4 flex-none items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">✓</span>' : ""}
+          </div>
+          <p class="truncate text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}</p>`;
+      }
+
+      block.addEventListener("click", () => openDetail(a));
+      grid.appendChild(block);
+    });
+
+    positionNowLine();
+  }
+
+  function positionNowLine() {
+    const now = new Date();
+    const isToday = now.toDateString() === currentDay.toDateString();
+    const mins = (now.getHours() - DAY_START) * 60 + now.getMinutes();
+    const totalMins = (Number(grid.dataset.dayEnd) - DAY_START) * 60;
+    if (!isToday || mins < 0 || mins > totalMins) {
+      nowLine.classList.add("hidden");
+      return;
+    }
+    nowLine.style.top = `${(mins / totalMins) * 100}%`;
+    nowLine.classList.remove("hidden");
+  }
+  setInterval(positionNowLine, 60_000);
+
+  // ── Date navigation ──
+  const shiftDay = (delta: number) => {
+    currentDay.setDate(currentDay.getDate() + delta);
+    loadDay();
+  };
+  document.getElementById("prev-day")!.addEventListener("click", () => shiftDay(-1));
+  document.getElementById("next-day")!.addEventListener("click", () => shiftDay(1));
+  document.getElementById("today-btn")!.addEventListener("click", () => {
+    currentDay = new Date(); currentDay.setHours(0, 0, 0, 0);
+    loadDay();
+  });
+
+  // ── Modals ──
+  const apptModal = document.getElementById("appt-modal")!;
+  const blockModal = document.getElementById("block-modal")!;
+  const detailSheet = document.getElementById("detail-sheet")!;
+  const openModal = (m: HTMLElement) => { m.classList.remove("hidden"); m.classList.add("flex"); };
+  const closeModal = (m: HTMLElement) => { m.classList.add("hidden"); m.classList.remove("flex"); };
+  document.querySelectorAll("[data-close-modal]").forEach((el) =>
+    el.addEventListener("click", () => [apptModal, blockModal, detailSheet].forEach(closeModal)),
+  );
+
+  // ── New appointment ──
+  document.getElementById("add-appt-btn")!.addEventListener("click", async () => {
+    if (!patients.length) {
+      const { data } = await supabase.from("patients").select("*").order("name");
+      patients = (data ?? []) as Patient[];
+      const select = document.getElementById("appt-patient") as HTMLSelectElement;
+      select.length = 1;
+      patients.forEach((p) => select.add(new Option(p.name, p.id)));
+    }
+    openModal(apptModal);
+  });
+
+  document.getElementById("appt-form")!.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const fd = new FormData(form);
+    const err = document.getElementById("appt-form-error")!;
+    err.classList.add("hidden");
+
+    const [h, m] = String(fd.get("start")).split(":").map(Number);
+    const start = new Date(currentDay); start.setHours(h, m, 0, 0);
+    const end = new Date(start.getTime() + Number(fd.get("duration")) * 60_000);
+
+    const { error } = await supabase.from("appointments").insert({
+      patient_id: String(fd.get("patient_id")),
+      service: String(fd.get("service")),
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+    });
+
+    if (error) {
+      err.textContent = error.message;
+      err.classList.remove("hidden");
+      return;
+    }
+    form.reset();
+    closeModal(apptModal);
+    loadDay();
+  });
+
+  // ── Block time ──
+  document.getElementById("block-time-btn")!.addEventListener("click", () => openModal(blockModal));
+
+  document.getElementById("block-form")!.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const fd = new FormData(form);
+    const err = document.getElementById("block-form-error")!;
+    err.classList.add("hidden");
+
+    const [sh, sm] = String(fd.get("start")).split(":").map(Number);
+    const [eh, em] = String(fd.get("end")).split(":").map(Number);
+    const start = new Date(currentDay); start.setHours(sh, sm, 0, 0);
+    const end = new Date(currentDay); end.setHours(eh, em, 0, 0);
+
+    if (end <= start) {
+      err.textContent = "Η ώρα λήξης πρέπει να είναι μετά την έναρξη.";
+      err.classList.remove("hidden");
+      return;
+    }
+
+    const { error } = await supabase.from("appointments").insert({
+      is_blocked_time: true,
+      service: String(fd.get("reason") || "Κλειστό"),
+      start_time: start.toISOString(),
+      end_time: end.toISOString(),
+    });
+
+    if (error) {
+      err.textContent = error.message;
+      err.classList.remove("hidden");
+      return;
+    }
+    form.reset();
+    closeModal(blockModal);
+    loadDay();
+  });
+
+  // ── Detail sheet + paid toggle + delete ──
+  const paidToggle = document.getElementById("paid-toggle")!;
+
+  function openDetail(a: Appointment) {
+    selectedAppt = a;
+    document.getElementById("detail-title")!.textContent =
+      a.is_blocked_time ? (a.service || "Κλειστό") : (a.patients?.name ?? "Ραντεβού");
+    document.getElementById("detail-time")!.textContent =
+      `${fmtTime(a.start_time)} – ${fmtTime(a.end_time)}`;
+    document.getElementById("detail-service")!.textContent = a.is_blocked_time ? "" : (a.service ?? "");
+
+    const phoneEl = document.getElementById("detail-phone") as HTMLAnchorElement;
+    if (!a.is_blocked_time && a.patients?.phone) {
+      phoneEl.textContent = a.patients.phone;
+      phoneEl.href = `tel:${a.patients.phone}`;
+      phoneEl.classList.remove("hidden");
+    } else {
+      phoneEl.classList.add("hidden");
+    }
+
+    document.getElementById("detail-paid-row")!.classList.toggle("hidden", a.is_blocked_time);
+    paidToggle.dataset.on = String(a.is_paid);
+    paidToggle.setAttribute("aria-checked", String(a.is_paid));
+    openModal(detailSheet);
+  }
+
+  paidToggle.addEventListener("click", async () => {
+    if (!selectedAppt) return;
+    const next = !(paidToggle.dataset.on === "true");
+    // optimistic UI, revert on failure
+    paidToggle.dataset.on = String(next);
+    paidToggle.setAttribute("aria-checked", String(next));
+    const { error } = await supabase
+      .from("appointments").update({ is_paid: next }).eq("id", selectedAppt.id);
+    if (error) {
+      paidToggle.dataset.on = String(!next);
+      paidToggle.setAttribute("aria-checked", String(!next));
+      return;
+    }
+    selectedAppt.is_paid = next;
+    loadDay();
+  });
+
+  document.getElementById("detail-delete")!.addEventListener("click", async () => {
+    if (!selectedAppt) return;
+    if (!confirm("Σίγουρα θέλετε να διαγράψετε αυτή την καταχώρηση;")) return;
+    await supabase.from("appointments").delete().eq("id", selectedAppt.id);
+    closeModal(detailSheet);
+    loadDay();
+  });
+
+  loadDay();
+</script>

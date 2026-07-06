@@ -1,0 +1,47 @@
+-- ─────────────────────────────────────────────────────────────
+-- ORC Admin — database schema
+-- Run this in the Supabase SQL Editor (Dashboard → SQL Editor).
+-- ─────────────────────────────────────────────────────────────
+
+-- Patients / clients of the clinic
+create table if not exists public.patients (
+  id         uuid primary key default gen_random_uuid(),
+  name       text not null,
+  phone      text,
+  email      text,
+  notes      text,                      -- medical history / free-form notes
+  created_at timestamptz not null default now()
+);
+
+-- Appointments + blocked-out time slots
+create table if not exists public.appointments (
+  id              uuid primary key default gen_random_uuid(),
+  patient_id      uuid references public.patients(id) on delete cascade,
+  service         text,                 -- e.g. "Φυσιοθεραπεία" (or reason for a block)
+  start_time      timestamptz not null,
+  end_time        timestamptz not null,
+  status          text not null default 'confirmed',  -- confirmed | cancelled | completed
+  is_paid         boolean not null default false,
+  is_blocked_time boolean not null default false,
+  created_at      timestamptz not null default now(),
+  constraint valid_range check (end_time > start_time)
+);
+
+create index if not exists appointments_start_time_idx on public.appointments (start_time);
+create index if not exists appointments_patient_idx    on public.appointments (patient_id);
+
+-- ── Row Level Security ──
+-- Only logged-in users (the therapists) can touch the data.
+-- Create the therapist user in Dashboard → Authentication → Users → Add user.
+alter table public.patients     enable row level security;
+alter table public.appointments enable row level security;
+
+create policy "Authenticated full access on patients"
+  on public.patients for all
+  to authenticated
+  using (true) with check (true);
+
+create policy "Authenticated full access on appointments"
+  on public.appointments for all
+  to authenticated
+  using (true) with check (true);

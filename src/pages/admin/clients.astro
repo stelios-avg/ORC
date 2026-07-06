@@ -1,0 +1,152 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout title="Πελάτες" active="clients">
+  <div class="mb-4 flex items-center gap-2">
+    <div class="relative flex-1">
+      <svg class="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-charcoal-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+        <circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/>
+      </svg>
+      <input
+        id="client-search" type="search" placeholder="Αναζήτηση πελάτη…"
+        class="w-full rounded-full border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
+      />
+    </div>
+    <button id="add-client-btn" class="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-spine text-white transition hover:bg-spine-600" aria-label="Νέος πελάτης">
+      <svg class="h-5 w-5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
+    </button>
+  </div>
+
+  <ul id="client-list" class="space-y-2"></ul>
+  <p id="clients-empty" class="mt-8 hidden text-center text-sm text-charcoal-muted">Δεν βρέθηκαν πελάτες.</p>
+  <p id="clients-error" class="mt-8 hidden text-center text-sm text-red-600"></p>
+
+  {/* ══ Modal: new client ══ */}
+  <div id="client-modal" class="fixed inset-0 z-[100] hidden items-end justify-center sm:items-center">
+    <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-modal></div>
+    <div class="relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="font-display text-lg font-bold text-charcoal">Νέος πελάτης</h2>
+        <button data-close-modal class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <form id="client-form" class="space-y-4">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="cl-name">Ονοματεπώνυμο *</label>
+          <input id="cl-name" name="name" type="text" required minlength="2"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="cl-phone">Τηλέφωνο</label>
+          <input id="cl-phone" name="phone" type="tel"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="cl-email">Email</label>
+          <input id="cl-email" name="email" type="email"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+        </div>
+        <p id="client-form-error" class="hidden text-sm text-red-600"></p>
+        <button type="submit"
+          class="w-full rounded-full bg-spine px-6 py-3 font-display font-semibold text-white transition hover:bg-spine-600 disabled:opacity-60">
+          Αποθήκευση
+        </button>
+      </form>
+    </div>
+  </div>
+</AdminLayout>
+
+<script>
+  import { getSupabase, type Patient } from "../../lib/supabase";
+
+  const supabase = getSupabase();
+  const list = document.getElementById("client-list")!;
+  const emptyMsg = document.getElementById("clients-empty")!;
+  const errorMsg = document.getElementById("clients-error")!;
+  const search = document.getElementById("client-search") as HTMLInputElement;
+
+  let allPatients: Patient[] = [];
+
+  const initials = (name: string) =>
+    name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+
+  function render(patients: Patient[]) {
+    list.innerHTML = "";
+    emptyMsg.classList.toggle("hidden", patients.length > 0);
+    patients.forEach((p) => {
+      const li = document.createElement("li");
+      li.innerHTML = `
+        <a href="/admin/client?id=${p.id}"
+           class="flex items-center gap-3 rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-slate-100 transition hover:ring-spine/40">
+          <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-spine-50 font-display text-sm font-bold text-spine">${initials(p.name)}</span>
+          <span class="min-w-0 flex-1">
+            <span class="block truncate font-display text-sm font-semibold text-charcoal">${p.name}</span>
+            <span class="block truncate text-xs text-charcoal-muted">${p.phone ?? ""}</span>
+          </span>
+          <svg class="h-4 w-4 flex-none text-charcoal-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg>
+        </a>`;
+      list.appendChild(li);
+    });
+  }
+
+  async function load() {
+    const { data, error } = await supabase.from("patients").select("*").order("name");
+    if (error) {
+      errorMsg.textContent = `Σφάλμα φόρτωσης: ${error.message}`;
+      errorMsg.classList.remove("hidden");
+      return;
+    }
+    allPatients = (data ?? []) as Patient[];
+    render(allPatients);
+  }
+
+  search.addEventListener("input", () => {
+    const q = search.value.trim().toLowerCase();
+    render(
+      q
+        ? allPatients.filter(
+            (p) =>
+              p.name.toLowerCase().includes(q) ||
+              (p.phone ?? "").includes(q) ||
+              (p.email ?? "").toLowerCase().includes(q),
+          )
+        : allPatients,
+    );
+  });
+
+  // ── New client modal ──
+  const modal = document.getElementById("client-modal")!;
+  document.getElementById("add-client-btn")!.addEventListener("click", () => {
+    modal.classList.remove("hidden"); modal.classList.add("flex");
+  });
+  modal.querySelectorAll("[data-close-modal]").forEach((el) =>
+    el.addEventListener("click", () => { modal.classList.add("hidden"); modal.classList.remove("flex"); }),
+  );
+
+  document.getElementById("client-form")!.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const form = e.target as HTMLFormElement;
+    const fd = new FormData(form);
+    const err = document.getElementById("client-form-error")!;
+    err.classList.add("hidden");
+
+    const { error } = await supabase.from("patients").insert({
+      name: String(fd.get("name")).trim(),
+      phone: String(fd.get("phone") || "").trim() || null,
+      email: String(fd.get("email") || "").trim() || null,
+    });
+
+    if (error) {
+      err.textContent = error.message;
+      err.classList.remove("hidden");
+      return;
+    }
+    form.reset();
+    modal.classList.add("hidden"); modal.classList.remove("flex");
+    load();
+  });
+
+  load();
+</script>
