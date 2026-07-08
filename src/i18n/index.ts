@@ -152,6 +152,7 @@ const el = {
     // step 2: date & time
     pickTitle: "Επιλέξτε ημέρα & ώρα",
     pickSubtitle: "Διάρκεια συνεδρίας: 1 ώρα",
+    pickDayHint: "Επιλέξτε μια ημέρα για να δείτε τις διαθέσιμες ώρες.",
     loadingSlots: "Φόρτωση διαθεσιμότητας…",
     noSlots: "Δεν υπάρχουν διαθέσιμες ώρες αυτή την ημέρα.",
     closedDay: "Κλειστά",
@@ -463,6 +464,7 @@ const en = {
     // step 2: date & time
     pickTitle: "Pick a day & time",
     pickSubtitle: "Session duration: 1 hour",
+    pickDayHint: "Pick a day to see available times.",
     loadingSlots: "Loading availability…",
     noSlots: "No available times on this day.",
     closedDay: "Closed",

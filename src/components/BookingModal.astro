@@ -26,6 +26,7 @@ const t = useTranslations(lang).booking;
   data-label-booking={t.booking}
   data-label-confirm={t.confirmBtn}
   data-msg-no-slots={t.noSlots}
+  data-msg-pick-day={t.pickDayHint}
   data-msg-closed={t.closedDay}
   data-msg-slot-taken={t.slotTaken}
   data-msg-book-error={t.bookError}
@@ -114,11 +115,24 @@ const t = useTranslations(lang).booking;
         <p class="font-display text-sm font-bold text-charcoal">{t.pickTitle}</p>
         <p class="mt-0.5 text-xs text-charcoal-muted">{t.pickSubtitle}</p>
 
-        {/* Day strip */}
-        <div id="day-strip" class="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-2"></div>
+        {/* Month calendar */}
+        <div class="mt-4 flex items-center justify-between">
+          <button type="button" id="cal-prev" aria-label="Previous month"
+            class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-charcoal transition hover:border-spine hover:text-spine disabled:cursor-not-allowed disabled:opacity-30">
+            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
+          </button>
+          <p id="cal-month-label" class="font-display text-sm font-bold capitalize text-charcoal"></p>
+          <button type="button" id="cal-next" aria-label="Next month"
+            class="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 text-charcoal transition hover:border-spine hover:text-spine disabled:cursor-not-allowed disabled:opacity-30">
+            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg>
+          </button>
+        </div>
+        <div id="cal-weekdays" class="mt-3 grid grid-cols-7 text-center text-[11px] font-semibold uppercase text-charcoal-muted"></div>
+        <div id="cal-days" class="mt-1 grid grid-cols-7 gap-1"></div>
 
-        {/* Slots */}
-        <div id="slot-status" class="mt-4 text-center text-sm text-charcoal-muted">{t.loadingSlots}</div>
+        {/* Slots — revealed once a day is picked */}
+        <p id="slot-day-label" class="mt-5 hidden font-display text-sm font-semibold capitalize text-charcoal"></p>
+        <div id="slot-status" class="mt-3 text-center text-sm text-charcoal-muted">{t.pickDayHint}</div>
         <div id="slot-grid" class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4"></div>
 
         <button type="button" id="back-to-1"
@@ -228,7 +242,7 @@ const t = useTranslations(lang).booking;
     const SLOT_MIN = 60;
     const STEP_MIN = 30;
     const CLOSED_DAYS = [0, 6]; // Sunday, Saturday
-    const DAYS_AHEAD = 21;
+    const MAX_MONTHS_AHEAD = 2; // bookable window: this month + 2
     const MIN_LEAD_MS = 60 * 60 * 1000; // can't book less than 1h ahead
 
     const card     = document.getElementById("booking-card");
@@ -236,10 +250,15 @@ const t = useTranslations(lang).booking;
     const step2    = document.getElementById("booking-step-2")!;
     const step3    = document.getElementById("booking-step-3")!;
     const success  = document.getElementById("booking-success")!;
-    const dayStrip = document.getElementById("day-strip")!;
     const slotGrid = document.getElementById("slot-grid")!;
     const slotStatus = document.getElementById("slot-status")!;
+    const slotDayLabel = document.getElementById("slot-day-label")!;
     const subtitle = document.getElementById("booking-subtitle")!;
+    const calPrev  = document.getElementById("cal-prev") as HTMLButtonElement;
+    const calNext  = document.getElementById("cal-next") as HTMLButtonElement;
+    const calMonthLabel = document.getElementById("cal-month-label")!;
+    const calWeekdays   = document.getElementById("cal-weekdays")!;
+    const calDays       = document.getElementById("cal-days")!;
 
     let lastFocused: HTMLElement | null = null;
     let payload = { fullName: "", email: "", phone: "", concern: "" };
@@ -328,47 +347,84 @@ const t = useTranslations(lang).booking;
         window.location.href = freshaUrl;
         return;
       }
-      buildDayStrip();
+      // Fresh calendar state: no day pre-selected, hours stay hidden.
+      selectedDay = null;
+      viewMonth = startOfMonth(new Date());
+      slotGrid.innerHTML = "";
+      slotDayLabel.classList.add("hidden");
+      slotStatus.textContent = ds.msgPickDay || "";
+      slotStatus.classList.remove("hidden");
+      buildCalendar();
       showStep(step2);
     });
 
-    // ── Step 2: day strip + slots ──
-    function buildDayStrip() {
-      dayStrip.innerHTML = "";
-      const today = new Date(); today.setHours(0, 0, 0, 0);
-      let firstSelectable: HTMLButtonElement | null = null;
+    // ── Step 2: month calendar + slots ──
+    const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+    let viewMonth = startOfMonth(new Date());
 
-      for (let i = 0; i < DAYS_AHEAD; i++) {
-        const d = new Date(today); d.setDate(d.getDate() + i);
-        const closed = CLOSED_DAYS.includes(d.getDay());
+    // Weekday header (Monday-first), generated once from the locale.
+    (() => {
+      const monday = new Date(2024, 0, 1); // a known Monday
+      for (let i = 0; i < 7; i++) {
+        const d = new Date(monday); d.setDate(monday.getDate() + i);
+        const el = document.createElement("span");
+        el.textContent = d.toLocaleDateString(lang, { weekday: "short" }).slice(0, 2);
+        calWeekdays.appendChild(el);
+      }
+    })();
+
+    function buildCalendar() {
+      calMonthLabel.textContent = viewMonth.toLocaleDateString(lang, { month: "long", year: "numeric" });
+      calDays.innerHTML = "";
+
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      const minMonth = startOfMonth(today);
+      const maxMonth = new Date(today.getFullYear(), today.getMonth() + MAX_MONTHS_AHEAD, 1);
+      calPrev.disabled = viewMonth <= minMonth;
+      calNext.disabled = viewMonth >= maxMonth;
+
+      // Blank cells before the 1st (Monday-first offset)
+      const offset = (viewMonth.getDay() + 6) % 7;
+      for (let i = 0; i < offset; i++) calDays.appendChild(document.createElement("span"));
+
+      const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+      for (let day = 1; day <= daysInMonth; day++) {
+        const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day);
+        const disabled = d < today || CLOSED_DAYS.includes(d.getDay());
+        const isSelected = selectedDay?.getTime() === d.getTime();
+        const isToday = d.getTime() === today.getTime();
+
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.disabled = closed;
+        btn.disabled = disabled;
         btn.className =
-          "day-btn flex w-14 flex-none flex-col items-center rounded-xl border px-2 py-2 transition " +
-          (closed
-            ? "cursor-not-allowed border-slate-100 text-slate-300"
-            : "border-slate-200 text-charcoal hover:border-spine");
-        btn.innerHTML = `
-          <span class="text-[10px] font-semibold uppercase">${d.toLocaleDateString(lang, { weekday: "short" })}</span>
-          <span class="font-display text-lg font-bold">${d.getDate()}</span>
-          <span class="text-[10px]">${d.toLocaleDateString(lang, { month: "short" })}</span>`;
-        btn.addEventListener("click", () => selectDay(d, btn));
-        dayStrip.appendChild(btn);
-        if (!closed && !firstSelectable) firstSelectable = btn;
+          "cal-day flex h-10 items-center justify-center rounded-lg font-display text-sm font-semibold transition " +
+          (disabled
+            ? "cursor-not-allowed text-slate-300"
+            : isSelected
+              ? "bg-spine text-white"
+              : "text-charcoal hover:bg-spine-50 hover:text-spine" +
+                (isToday ? " ring-1 ring-spine/40" : ""));
+        btn.textContent = String(day);
+        btn.addEventListener("click", () => {
+          selectedDay = d;
+          buildCalendar(); // re-render selection highlight
+          slotDayLabel.textContent = d.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" });
+          slotDayLabel.classList.remove("hidden");
+          loadSlots(d);
+        });
+        calDays.appendChild(btn);
       }
-      // Auto-select the first open day
-      if (firstSelectable) firstSelectable.click();
     }
 
-    function selectDay(d: Date, btn: HTMLButtonElement) {
-      selectedDay = d;
-      dayStrip.querySelectorAll(".day-btn").forEach((b) =>
-        b.classList.remove("border-spine", "bg-spine-50", "text-spine"),
-      );
-      btn.classList.add("border-spine", "bg-spine-50", "text-spine");
-      loadSlots(d);
-    }
+    calPrev.addEventListener("click", () => {
+      viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+      buildCalendar();
+    });
+    calNext.addEventListener("click", () => {
+      viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+      buildCalendar();
+    });
 
     async function loadSlots(day: Date) {
       slotGrid.innerHTML = "";
