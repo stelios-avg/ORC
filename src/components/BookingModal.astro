@@ -13,7 +13,7 @@ const t = useTranslations(lang).booking;
   role="dialog"
   aria-modal="true"
   aria-labelledby="booking-modal-title"
-  data-reveal-mode="redirect"
+  data-lang={lang}
   data-fresha-url={FRESHA_BOOKING_URL}
   data-lead-endpoint={LEAD_ENDPOINT}
   data-lead-key={LEAD_ACCESS_KEY}
@@ -23,16 +23,22 @@ const t = useTranslations(lang).booking;
   data-err-concern={t.errConcern}
   data-label-submitting={t.submitting}
   data-label-submit={t.submit}
+  data-label-booking={t.booking}
+  data-label-confirm={t.confirmBtn}
+  data-msg-no-slots={t.noSlots}
+  data-msg-closed={t.closedDay}
+  data-msg-slot-taken={t.slotTaken}
+  data-msg-book-error={t.bookError}
 >
   <div id="booking-backdrop" class="absolute inset-0 bg-spine-900/70 backdrop-blur-sm" data-book-close></div>
 
-  <div id="booking-card" class="relative z-10 w-full max-w-lg overflow-hidden rounded-2xl bg-white shadow-2xl">
+  <div id="booking-card" class="relative z-10 flex max-h-[92dvh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
     <div class="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-5">
       <div>
         <h2 id="booking-modal-title" class="font-display text-xl font-semibold text-charcoal">
           {t.title}
         </h2>
-        <p class="mt-1 text-sm text-charcoal-muted">{t.subtitle}</p>
+        <p id="booking-subtitle" class="mt-1 text-sm text-charcoal-muted">{t.subtitle}</p>
       </div>
       <button
         type="button"
@@ -46,64 +52,118 @@ const t = useTranslations(lang).booking;
       </button>
     </div>
 
-    <form id="booking-form" novalidate class="px-6 py-5">
-      <div class="grid grid-cols-1 gap-4">
-        <div>
-          <label for="bf-name" class="mb-1 block text-sm font-medium text-charcoal">
-            {t.fullNameLabel} <span class="text-spine">{t.required}</span>
-          </label>
-          <input id="bf-name" name="fullName" type="text" autocomplete="name" required minlength="2"
-            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
-          <p class="mt-1 hidden text-xs text-red-600" data-error-for="fullName"></p>
+    <div class="overflow-y-auto">
+      {/* ══ Step 1: details ══ */}
+      <form id="booking-form" novalidate class="px-6 py-5" data-step="1">
+        <div class="grid grid-cols-1 gap-4">
+          <div>
+            <label for="bf-name" class="mb-1 block text-sm font-medium text-charcoal">
+              {t.fullNameLabel} <span class="text-spine">{t.required}</span>
+            </label>
+            <input id="bf-name" name="fullName" type="text" autocomplete="name" required minlength="2"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+            <p class="mt-1 hidden text-xs text-red-600" data-error-for="fullName"></p>
+          </div>
+
+          <div>
+            <label for="bf-email" class="mb-1 block text-sm font-medium text-charcoal">
+              {t.emailLabel} <span class="text-spine">{t.required}</span>
+            </label>
+            <input id="bf-email" name="email" type="email" autocomplete="email" required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+            <p class="mt-1 hidden text-xs text-red-600" data-error-for="email"></p>
+          </div>
+
+          <div>
+            <label for="bf-phone" class="mb-1 block text-sm font-medium text-charcoal">
+              {t.phoneLabel} <span class="text-spine">{t.required}</span>
+            </label>
+            <input id="bf-phone" name="phone" type="tel" autocomplete="tel" required
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+            <p class="mt-1 hidden text-xs text-red-600" data-error-for="phone"></p>
+          </div>
+
+          <div>
+            <label for="bf-concern" class="mb-1 block text-sm font-medium text-charcoal">
+              {t.concernLabel} <span class="text-spine">{t.required}</span>
+            </label>
+            <p class="mb-2 text-xs text-charcoal-muted">{t.concernHint}</p>
+            <textarea id="bf-concern" name="concern" rows="3" required minlength="10"
+              class="w-full resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"></textarea>
+            <p class="mt-1 hidden text-xs text-red-600" data-error-for="concern"></p>
+          </div>
         </div>
 
-        <div>
-          <label for="bf-email" class="mb-1 block text-sm font-medium text-charcoal">
-            {t.emailLabel} <span class="text-spine">{t.required}</span>
-          </label>
-          <input id="bf-email" name="email" type="email" autocomplete="email" required
-            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
-          <p class="mt-1 hidden text-xs text-red-600" data-error-for="email"></p>
-        </div>
+        <p class="mt-4 text-xs leading-relaxed text-charcoal-muted">{t.consent}</p>
 
-        <div>
-          <label for="bf-phone" class="mb-1 block text-sm font-medium text-charcoal">
-            {t.phoneLabel} <span class="text-spine">{t.required}</span>
-          </label>
-          <input id="bf-phone" name="phone" type="tel" autocomplete="tel" required
-            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
-          <p class="mt-1 hidden text-xs text-red-600" data-error-for="phone"></p>
-        </div>
+        <button
+          type="submit"
+          class="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-spine px-6 py-3 font-display font-semibold text-white shadow-lg shadow-spine/20 transition hover:bg-spine-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-spine focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
+          data-submit-btn
+        >
+          <span data-submit-label>{t.submit}</span>
+          <svg data-submit-spinner class="hidden h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+        </button>
+      </form>
 
-        <div>
-          <label for="bf-concern" class="mb-1 block text-sm font-medium text-charcoal">
-            {t.concernLabel} <span class="text-spine">{t.required}</span>
-          </label>
-          <p class="mb-2 text-xs text-charcoal-muted">{t.concernHint}</p>
-          <textarea id="bf-concern" name="concern" rows="3" required minlength="10"
-            class="w-full resize-none rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"></textarea>
-          <p class="mt-1 hidden text-xs text-red-600" data-error-for="concern"></p>
-        </div>
+      {/* ══ Step 2: pick day & time ══ */}
+      <div id="booking-step-2" class="hidden px-6 py-5" data-step="2">
+        <p class="font-display text-sm font-bold text-charcoal">{t.pickTitle}</p>
+        <p class="mt-0.5 text-xs text-charcoal-muted">{t.pickSubtitle}</p>
+
+        {/* Day strip */}
+        <div id="day-strip" class="-mx-1 mt-4 flex gap-2 overflow-x-auto px-1 pb-2"></div>
+
+        {/* Slots */}
+        <div id="slot-status" class="mt-4 text-center text-sm text-charcoal-muted">{t.loadingSlots}</div>
+        <div id="slot-grid" class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4"></div>
+
+        <button type="button" id="back-to-1"
+          class="mt-5 w-full rounded-full border border-slate-300 px-6 py-2.5 font-display text-sm font-semibold text-charcoal transition hover:border-spine hover:text-spine">
+          ← {t.back}
+        </button>
       </div>
 
-      <p class="mt-4 text-xs leading-relaxed text-charcoal-muted">{t.consent}</p>
+      {/* ══ Step 3: confirm ══ */}
+      <div id="booking-step-3" class="hidden px-6 py-5" data-step="3">
+        <p class="font-display text-sm font-bold text-charcoal">{t.confirmTitle}</p>
+        <div class="mt-4 space-y-2 rounded-xl bg-sand p-4 text-sm">
+          <p class="font-display text-base font-bold text-charcoal" id="confirm-name"></p>
+          <p class="text-charcoal" id="confirm-when"></p>
+          <p class="text-charcoal-muted" id="confirm-contact"></p>
+        </div>
+        <p id="confirm-error" class="mt-3 hidden text-sm text-red-600"></p>
+        <button type="button" id="confirm-btn"
+          class="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-spine px-6 py-3 font-display font-semibold text-white shadow-lg shadow-spine/20 transition hover:bg-spine-600 disabled:cursor-not-allowed disabled:opacity-60">
+          <span id="confirm-label">{t.confirmBtn}</span>
+          <svg id="confirm-spinner" class="hidden h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
+            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
+          </svg>
+        </button>
+        <button type="button" id="back-to-2"
+          class="mt-3 w-full rounded-full border border-slate-300 px-6 py-2.5 font-display text-sm font-semibold text-charcoal transition hover:border-spine hover:text-spine">
+          ← {t.back}
+        </button>
+      </div>
 
-      <button
-        type="submit"
-        class="mt-5 flex w-full items-center justify-center gap-2 rounded-full bg-spine px-6 py-3 font-display font-semibold text-white shadow-lg shadow-spine/20 transition hover:bg-spine-600 focus:outline-none focus-visible:ring-2 focus-visible:ring-spine focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-60"
-        data-submit-btn
-      >
-        <span data-submit-label>{t.submit}</span>
-        <svg data-submit-spinner class="hidden h-5 w-5 animate-spin" viewBox="0 0 24 24" fill="none">
-          <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-          <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>
-        </svg>
-      </button>
-    </form>
-
-    <div id="booking-iframe-wrap" class="hidden px-6 pb-6">
-      <div class="overflow-hidden rounded-xl border border-slate-200">
-        <iframe id="booking-iframe" title="Fresha booking" class="h-[70vh] w-full" loading="lazy" src="about:blank"></iframe>
+      {/* ══ Success ══ */}
+      <div id="booking-success" class="hidden px-6 py-10 text-center" data-step="4">
+        <span class="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-emerald-100">
+          <svg class="h-8 w-8 text-emerald-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 12l5 5L20 6"/>
+          </svg>
+        </span>
+        <h3 class="mt-4 font-display text-xl font-bold text-charcoal">{t.successTitle}</h3>
+        <p class="mt-2 text-sm text-charcoal-muted" id="success-when"></p>
+        <p class="mt-1 text-sm text-charcoal-muted">{t.successMsg}</p>
+        <button type="button" data-book-close
+          class="mt-6 w-full rounded-full bg-spine px-6 py-3 font-display font-semibold text-white transition hover:bg-spine-600">
+          {t.successClose}
+        </button>
       </div>
     </div>
   </div>
@@ -135,44 +195,69 @@ const t = useTranslations(lang).booking;
 </style>
 
 <script>
+  import { getSupabase } from "../lib/supabase";
+
   type FieldName = "fullName" | "email" | "phone" | "concern";
 
   const modal = document.getElementById("booking-modal");
   const form  = document.getElementById("booking-form") as HTMLFormElement | null;
 
   if (modal && form) {
-    const freshaUrl = modal.dataset.freshaUrl || "";
-    const leadKey   = modal.dataset.leadKey   || "";
-    // With a Web3Forms key the default endpoint is Web3Forms; a custom
-    // endpoint (Google Sheet webhook etc.) can still override it.
+    const ds = modal.dataset;
+    const lang       = modal.dataset.lang === "en" ? "en-GB" : "el-GR";
+    const freshaUrl  = modal.dataset.freshaUrl || "";
+    const leadKey    = modal.dataset.leadKey   || "";
     const leadEndpoint =
       modal.dataset.leadEndpoint || (leadKey ? "https://api.web3forms.com/submit" : "");
-    const revealMode   = modal.dataset.revealMode   || "redirect";
     const errMap: Record<FieldName, string> = {
       fullName: modal.dataset.errFullname  || "Invalid name.",
       email:    modal.dataset.errEmail     || "Invalid email.",
       phone:    modal.dataset.errPhone     || "Invalid phone.",
       concern:  modal.dataset.errConcern   || "Please describe your concern.",
     };
-    const labelSubmit     = modal.dataset.labelSubmit    || "Continue";
-    const labelSubmitting = modal.dataset.labelSubmitting || "Please wait…";
 
-    const submitBtn     = form.querySelector<HTMLButtonElement>("[data-submit-btn]");
-    const submitLabel   = form.querySelector<HTMLElement>("[data-submit-label]");
-    const submitSpinner = form.querySelector<HTMLElement>("[data-submit-spinner]");
-    const iframeWrap    = document.getElementById("booking-iframe-wrap");
-    const iframe        = document.getElementById("booking-iframe") as HTMLIFrameElement | null;
-    let lastFocused: HTMLElement | null = null;
+    // Supabase is optional: if it's not configured, fall back to Fresha.
+    let supabase: ReturnType<typeof getSupabase> | null = null;
+    try { supabase = getSupabase(); } catch { supabase = null; }
+
+    // ── Clinic opening hours (minutes from midnight), 1h sessions, 30' steps ──
+    const WINDOWS: Array<[number, number]> = [
+      [9 * 60, 13 * 60 + 30],   // 09:00 – 13:30
+      [15 * 60, 19 * 60 + 30],  // 15:00 – 19:30
+    ];
+    const SLOT_MIN = 60;
+    const STEP_MIN = 30;
+    const CLOSED_DAYS = [0, 6]; // Sunday, Saturday
+    const DAYS_AHEAD = 21;
+    const MIN_LEAD_MS = 60 * 60 * 1000; // can't book less than 1h ahead
 
     const card     = document.getElementById("booking-card");
     const backdrop = document.getElementById("booking-backdrop");
+    const step2    = document.getElementById("booking-step-2")!;
+    const step3    = document.getElementById("booking-step-3")!;
+    const success  = document.getElementById("booking-success")!;
+    const dayStrip = document.getElementById("day-strip")!;
+    const slotGrid = document.getElementById("slot-grid")!;
+    const slotStatus = document.getElementById("slot-status")!;
+    const subtitle = document.getElementById("booking-subtitle")!;
 
+    let lastFocused: HTMLElement | null = null;
+    let payload = { fullName: "", email: "", phone: "", concern: "" };
+    let selectedDay: Date | null = null;
+    let selectedStart: Date | null = null;
+
+    const steps = [form, step2, step3, success];
+    const showStep = (el: HTMLElement) => {
+      steps.forEach((s) => s!.classList.toggle("hidden", s !== el));
+      subtitle.classList.toggle("hidden", el !== form);
+    };
+
+    // ── Open / close ──
     const openModal = () => {
       lastFocused = document.activeElement as HTMLElement;
       modal.classList.remove("hidden");
       modal.classList.add("flex");
       document.body.classList.add("no-scroll");
-      // Trigger enter animations
       backdrop?.classList.remove("bm-backdrop-out");
       backdrop?.classList.add("bm-backdrop-in");
       card?.classList.remove("bm-card-out");
@@ -181,7 +266,6 @@ const t = useTranslations(lang).booking;
     };
 
     const closeModal = () => {
-      // Play exit animations, then hide
       backdrop?.classList.remove("bm-backdrop-in");
       backdrop?.classList.add("bm-backdrop-out");
       card?.classList.remove("bm-card-in");
@@ -190,6 +274,7 @@ const t = useTranslations(lang).booking;
         modal.classList.add("hidden");
         modal.classList.remove("flex");
         document.body.classList.remove("no-scroll");
+        showStep(form);
         lastFocused?.focus();
       }, 280);
     };
@@ -204,6 +289,7 @@ const t = useTranslations(lang).booking;
       if (e.key === "Escape" && !modal.classList.contains("hidden")) closeModal();
     });
 
+    // ── Step 1: validation ──
     const setError = (field: FieldName, message: string) => {
       const el    = form.querySelector<HTMLElement>(`[data-error-for="${field}"]`);
       const input = form.querySelector<HTMLElement>(`[name="${field}"]`);
@@ -230,44 +316,186 @@ const t = useTranslations(lang).booking;
       return { ok, payload: { fullName, email, phone, concern } };
     };
 
-    const setLoading = (loading: boolean) => {
-      if (submitBtn) submitBtn.disabled = loading;
-      submitSpinner?.classList.toggle("hidden", !loading);
-      if (submitLabel) submitLabel.textContent = loading ? labelSubmitting : labelSubmit;
-    };
-
-    const proceedToFresha = () => {
-      if (revealMode === "iframe" && iframe && iframeWrap) {
-        iframe.src = freshaUrl;
-        form.classList.add("hidden");
-        iframeWrap.classList.remove("hidden");
-      } else {
-        window.location.href = freshaUrl;
-      }
-    };
-
-    form.addEventListener("submit", async (e) => {
+    form.addEventListener("submit", (e) => {
       e.preventDefault();
-      const { ok, payload } = validate();
-      if (!ok) { form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); return; }
-      setLoading(true);
-      if (leadEndpoint) {
-        try {
-          await fetch(leadEndpoint, {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Accept: "application/json" },
-            body: JSON.stringify({
-              ...(leadKey ? { access_key: leadKey } : {}),
-              subject: `Νέο αίτημα ραντεβού: ${payload.fullName}`,
-              from_name: "ORC Website",
-              ...payload,
-              source: "pre-booking-gate",
-              ts: Date.now(),
-            }),
-          });
-        } catch (err) { console.warn("Lead capture failed:", err); }
+      const res = validate();
+      if (!res.ok) { form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); return; }
+      payload = res.payload;
+
+      if (!supabase) {
+        // No Supabase configured → legacy behaviour: straight to Fresha.
+        sendLead("pre-booking-gate");
+        window.location.href = freshaUrl;
+        return;
       }
-      proceedToFresha();
+      buildDayStrip();
+      showStep(step2);
     });
+
+    // ── Step 2: day strip + slots ──
+    function buildDayStrip() {
+      dayStrip.innerHTML = "";
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+      let firstSelectable: HTMLButtonElement | null = null;
+
+      for (let i = 0; i < DAYS_AHEAD; i++) {
+        const d = new Date(today); d.setDate(d.getDate() + i);
+        const closed = CLOSED_DAYS.includes(d.getDay());
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.disabled = closed;
+        btn.className =
+          "day-btn flex w-14 flex-none flex-col items-center rounded-xl border px-2 py-2 transition " +
+          (closed
+            ? "cursor-not-allowed border-slate-100 text-slate-300"
+            : "border-slate-200 text-charcoal hover:border-spine");
+        btn.innerHTML = `
+          <span class="text-[10px] font-semibold uppercase">${d.toLocaleDateString(lang, { weekday: "short" })}</span>
+          <span class="font-display text-lg font-bold">${d.getDate()}</span>
+          <span class="text-[10px]">${d.toLocaleDateString(lang, { month: "short" })}</span>`;
+        btn.addEventListener("click", () => selectDay(d, btn));
+        dayStrip.appendChild(btn);
+        if (!closed && !firstSelectable) firstSelectable = btn;
+      }
+      // Auto-select the first open day
+      if (firstSelectable) firstSelectable.click();
+    }
+
+    function selectDay(d: Date, btn: HTMLButtonElement) {
+      selectedDay = d;
+      dayStrip.querySelectorAll(".day-btn").forEach((b) =>
+        b.classList.remove("border-spine", "bg-spine-50", "text-spine"),
+      );
+      btn.classList.add("border-spine", "bg-spine-50", "text-spine");
+      loadSlots(d);
+    }
+
+    async function loadSlots(day: Date) {
+      slotGrid.innerHTML = "";
+      slotStatus.textContent = ds.labelSubmitting || "…";
+      slotStatus.classList.remove("hidden");
+
+      const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
+      const { data, error } = await supabase!.rpc("get_busy_slots", { p_day: iso });
+
+      if (error) {
+        slotStatus.textContent = ds.msgBookError || "Error";
+        return;
+      }
+
+      const busy = (data ?? []).map((b: { busy_start: string; busy_end: string }) => ({
+        start: new Date(b.busy_start).getTime(),
+        end: new Date(b.busy_end).getTime(),
+      }));
+
+      const now = Date.now();
+      const slots: Date[] = [];
+      for (const [winStart, winEnd] of WINDOWS) {
+        for (let m = winStart; m + SLOT_MIN <= winEnd; m += STEP_MIN) {
+          const s = new Date(day); s.setHours(Math.floor(m / 60), m % 60, 0, 0);
+          const e = s.getTime() + SLOT_MIN * 60_000;
+          if (s.getTime() < now + MIN_LEAD_MS) continue;
+          if (busy.some((b: {start:number; end:number}) => b.start < e && b.end > s.getTime())) continue;
+          slots.push(s);
+        }
+      }
+
+      if (!slots.length) {
+        slotStatus.textContent = ds.msgNoSlots || "No slots";
+        return;
+      }
+
+      slotStatus.classList.add("hidden");
+      slots.forEach((s) => {
+        const btn = document.createElement("button");
+        btn.type = "button";
+        btn.className =
+          "rounded-full border border-slate-200 px-2 py-2 font-display text-sm font-semibold text-charcoal transition hover:border-spine hover:bg-spine-50 hover:text-spine";
+        btn.textContent = s.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+        btn.addEventListener("click", () => {
+          selectedStart = s;
+          fillConfirm();
+          showStep(step3);
+        });
+        slotGrid.appendChild(btn);
+      });
+    }
+
+    // ── Step 3: confirm + book ──
+    const confirmBtn = document.getElementById("confirm-btn") as HTMLButtonElement;
+    const confirmErr = document.getElementById("confirm-error")!;
+
+    function fillConfirm() {
+      if (!selectedStart) return;
+      document.getElementById("confirm-name")!.textContent = payload.fullName;
+      document.getElementById("confirm-when")!.textContent =
+        `${selectedStart.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" })} · ` +
+        `${selectedStart.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}`;
+      document.getElementById("confirm-contact")!.textContent = `${payload.phone} · ${payload.email}`;
+      confirmErr.classList.add("hidden");
+    }
+
+    confirmBtn.addEventListener("click", async () => {
+      if (!selectedStart || !supabase) return;
+      confirmErr.classList.add("hidden");
+      confirmBtn.disabled = true;
+      document.getElementById("confirm-label")!.textContent = ds.labelBooking || "…";
+      document.getElementById("confirm-spinner")!.classList.remove("hidden");
+
+      const end = new Date(selectedStart.getTime() + SLOT_MIN * 60_000);
+      const { error } = await supabase.rpc("book_appointment", {
+        p_name: payload.fullName,
+        p_email: payload.email,
+        p_phone: payload.phone,
+        p_concern: payload.concern,
+        p_start: selectedStart.toISOString(),
+        p_end: end.toISOString(),
+      });
+
+      confirmBtn.disabled = false;
+      document.getElementById("confirm-label")!.textContent = ds.labelConfirm || "Confirm";
+      document.getElementById("confirm-spinner")!.classList.add("hidden");
+
+      if (error) {
+        const taken = error.message.includes("slot_taken");
+        confirmErr.textContent = taken
+          ? (ds.msgSlotTaken || "Slot taken")
+          : (ds.msgBookError || "Error");
+        confirmErr.classList.remove("hidden");
+        if (taken && selectedDay) {
+          // refresh availability and send the user back to pick again
+          window.setTimeout(() => { showStep(step2); loadSlots(selectedDay!); }, 1200);
+        }
+        return;
+      }
+
+      sendLead("online-booking", selectedStart);
+      document.getElementById("success-when")!.textContent =
+        `${selectedStart.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" })} · ` +
+        `${selectedStart.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}`;
+      showStep(success);
+    });
+
+    // ── Navigation between steps ──
+    document.getElementById("back-to-1")!.addEventListener("click", () => showStep(form));
+    document.getElementById("back-to-2")!.addEventListener("click", () => showStep(step2));
+
+    // ── Lead email (best effort, non-blocking) ──
+    function sendLead(source: string, when?: Date) {
+      if (!leadEndpoint) return;
+      fetch(leadEndpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "application/json" },
+        body: JSON.stringify({
+          ...(leadKey ? { access_key: leadKey } : {}),
+          subject: `Νέο ραντεβού: ${payload.fullName}${when ? ` — ${when.toLocaleString("el-GR")}` : ""}`,
+          from_name: "ORC Website",
+          ...payload,
+          ...(when ? { appointment: when.toISOString() } : {}),
+          source,
+          ts: Date.now(),
+        }),
+      }).catch((err) => console.warn("Lead capture failed:", err));
+    }
   }
 </script>

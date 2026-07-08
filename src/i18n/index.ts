@@ -133,7 +133,7 @@ const el = {
   booking: {
     title: "Κλείστε το ραντεβού σας",
     subtitle:
-      "Μερικά γρήγορα στοιχεία και θα σας πάμε κατευθείαν στο ημερολόγιο κρατήσεών μας.",
+      "Μερικά γρήγορα στοιχεία και μετά επιλέγετε ημέρα και ώρα.",
     fullNameLabel: "Ονοματεπώνυμο",
     emailLabel: "Email",
     phoneLabel: "Τηλέφωνο",
@@ -141,14 +141,31 @@ const el = {
     concernHint: "Περιγράψτε σύντομα τι σας απασχολεί",
     required: "*",
     consent:
-      "Συνεχίζοντας συμφωνείτε να επικοινωνήσουμε μαζί σας για το ραντεβού σας. Χρησιμοποιούμε το Fresha για τη διαχείριση κρατήσεων· θα μεταφερθείτε εκεί για να επιλέξετε την ώρα σας.",
-    submit: "Συνέχεια στην κράτηση",
+      "Συνεχίζοντας συμφωνείτε να επικοινωνήσουμε μαζί σας για το ραντεβού σας.",
+    submit: "Συνέχεια",
     submitting: "Παρακαλώ περιμένετε…",
     closeLabel: "Κλείσιμο",
     errFullName: "Παρακαλώ εισάγετε το ονοματεπώνυμό σας.",
     errEmail: "Παρακαλώ εισάγετε μια έγκυρη διεύθυνση email.",
     errPhone: "Παρακαλώ εισάγετε έναν έγκυρο αριθμό τηλεφώνου.",
     errConcern: "Παρακαλώ περιγράψτε σύντομα την αιτία της επίσκεψής σας.",
+    // step 2: date & time
+    pickTitle: "Επιλέξτε ημέρα & ώρα",
+    pickSubtitle: "Διάρκεια συνεδρίας: 1 ώρα",
+    loadingSlots: "Φόρτωση διαθεσιμότητας…",
+    noSlots: "Δεν υπάρχουν διαθέσιμες ώρες αυτή την ημέρα.",
+    closedDay: "Κλειστά",
+    back: "Πίσω",
+    // step 3: confirm
+    confirmTitle: "Επιβεβαίωση ραντεβού",
+    confirmBtn: "Επιβεβαίωση κράτησης",
+    booking: "Γίνεται κράτηση…",
+    slotTaken: "Η ώρα μόλις κλείστηκε από άλλον. Παρακαλώ επιλέξτε άλλη.",
+    bookError: "Κάτι πήγε στραβά. Δοκιμάστε ξανά ή καλέστε μας.",
+    // success
+    successTitle: "Το ραντεβού σας κλείστηκε!",
+    successMsg: "Θα επικοινωνήσουμε μαζί σας για επιβεβαίωση. Σας περιμένουμε!",
+    successClose: "Τέλεια, ευχαριστώ",
   },
 
   bioPage: {
@@ -428,23 +445,38 @@ const en = {
 
   booking: {
     title: "Book your appointment",
-    subtitle:
-      "A few quick details and we'll take you straight to our booking calendar.",
+    subtitle: "A few quick details, then pick a day and time.",
     fullNameLabel: "Full name",
     emailLabel: "Email",
     phoneLabel: "Phone number",
     concernLabel: "Reason for visit",
     concernHint: "Briefly describe what brings you in",
     required: "*",
-    consent:
-      "By continuing you agree to be contacted about your appointment. We use Fresha to manage bookings; you'll be taken there to pick your time.",
-    submit: "Continue to booking",
+    consent: "By continuing you agree to be contacted about your appointment.",
+    submit: "Continue",
     submitting: "Just a sec…",
     closeLabel: "Close booking form",
     errFullName: "Please enter your full name.",
     errEmail: "Please enter a valid email address.",
     errPhone: "Please enter a valid phone number.",
     errConcern: "Please briefly describe the reason for your visit.",
+    // step 2: date & time
+    pickTitle: "Pick a day & time",
+    pickSubtitle: "Session duration: 1 hour",
+    loadingSlots: "Loading availability…",
+    noSlots: "No available times on this day.",
+    closedDay: "Closed",
+    back: "Back",
+    // step 3: confirm
+    confirmTitle: "Confirm appointment",
+    confirmBtn: "Confirm booking",
+    booking: "Booking…",
+    slotTaken: "That time was just taken. Please pick another.",
+    bookError: "Something went wrong. Try again or give us a call.",
+    // success
+    successTitle: "Your appointment is booked!",
+    successMsg: "We'll be in touch to confirm. See you soon!",
+    successClose: "Great, thanks",
   },
 
   bioPage: {
