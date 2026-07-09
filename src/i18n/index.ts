@@ -90,10 +90,6 @@ const el = {
         title: "Οστεοπαθητική",
         desc: "Ολιστική χειροπρακτική αντιμετώπιση που απευθύνεται στη ρίζα του πόνου σας.",
       },
-      {
-        title: "Αθλητική Αποκατάσταση",
-        desc: "Προγράμματα επιστροφής στον αθλητισμό για αθλητές που αναρρώνουν από κάκωση.",
-      },
     ],
   },
 
@@ -204,7 +200,7 @@ const el = {
     stats: [
       { value: "8+", label: "Χρόνια εμπειρίας" },
       { value: "1.500+", label: "Ικανοποιημένοι ασθενείς" },
-      { value: "4", label: "Εξειδικευμένες υπηρεσίες" },
+      { value: "3", label: "Εξειδικευμένες υπηρεσίες" },
       { value: "100%", label: "Εξατομικευμένη φροντίδα" },
     ],
     whyLabel: "Γιατί να μας επιλέξετε",
@@ -225,17 +221,22 @@ const el = {
       {
         title: "Φυσιοθεραπεία",
         desc: "Αποκαταστήστε τη δύναμη, την κινητικότητα και τη λειτουργικότητα μετά από κάκωση, χειρουργείο ή χρόνιο πόνο μέσω χειροπρακτικής θεραπείας και στοχευμένης άσκησης.",
-        points: ["Χειροπρακτική θεραπεία", "Εξατομικευμένη άσκηση", "Αποκατάσταση μετά χειρουργείο", "Νευρολογική αποκατάσταση"],
+        points: [
+          "Αποκατάσταση μετά χειρουργείο",
+          "Νευρολογική αποκατάσταση",
+          "Εξειδικευμένη αξιολόγηση και αποκατάσταση μυοσκελετικών προβλημάτων",
+          "Θεραπευτική άσκηση και ενδυνάμωση",
+          "Βελτίωση κινητικότητας και λειτουργικότητας",
+          "Επανάκτηση σε καθημερινές και αθλητικές δραστηριότητες",
+          "Αξιολόγηση κάκωσης",
+          "Δύναμη & κατάσταση",
+          "Δοκιμή επιστροφής στον αθλητισμό",
+        ],
       },
       {
         title: "Οστεοπαθητική",
         desc: "Μια ολιστική, σφαιρική προσέγγιση με ήπιες χειροπρακτικές τεχνικές για βελτίωση κινητικότητας, ανακούφιση από τάση και αντιμετώπιση βαθύτερων αιτιών.",
         points: ["Κινητοποίηση σπονδύλων & αρθρώσεων", "Αποσυμπίεση μαλακών ιστών", "Ορθοστατική διόρθωση"],
-      },
-      {
-        title: "Αθλητική Αποκατάσταση",
-        desc: "Δομημένα προγράμματα επιστροφής στον αθλητισμό για αθλητές όλων των επιπέδων, από διαχείριση κάκωσης έως βελτιστοποίηση απόδοσης.",
-        points: ["Αξιολόγηση κάκωσης", "Δύναμη & κατάσταση", "Δοκιμή επιστροφής στον αθλητισμό"],
       },
       {
         title: "Κλινική Πιλάτες",
@@ -246,7 +247,6 @@ const el = {
     icons: [
       "/images/services/physiotherapy.png",
       "/images/services/osteopathy.png",
-      "/images/services/sports.png",
       "/images/services/pilates.png",
     ],
   },
@@ -323,7 +323,7 @@ const el = {
     bioTitle: "Βιογραφικό",
     bioDesc: "Γνωρίστε τον θεραπευτή πίσω από το ORC Osteopathy & Rehabilitation Center.",
     servicesTitle: "Υπηρεσίες",
-    servicesDesc: "Φυσιοθεραπεία, οστεοπαθητική, αθλητική αποκατάσταση και πολλά άλλα στο ORC.",
+    servicesDesc: "Φυσιοθεραπεία, οστεοπαθητική, κλινική πιλάτες και πολλά άλλα στο ORC.",
     galleryTitle: "Ο Χώρος μας",
     galleryDesc: "Ρίξτε μια ματιά στο εσωτερικό του ORC Osteopathy & Rehabilitation Center.",
     contactTitle: "Επικοινωνία",
@@ -403,10 +403,6 @@ const en = {
       {
         title: "Osteopathy",
         desc: "Whole-body manual treatment that addresses the root cause of your pain.",
-      },
-      {
-        title: "Sports Rehabilitation",
-        desc: "Return-to-play programmes for athletes recovering from injury.",
       },
     ],
   },
@@ -515,7 +511,7 @@ const en = {
     stats: [
       { value: "8+", label: "Years of experience" },
       { value: "1,500+", label: "Satisfied patients" },
-      { value: "4", label: "Specialised services" },
+      { value: "3", label: "Specialised services" },
       { value: "100%", label: "Personalised care" },
     ],
     whyLabel: "Why choose us",
@@ -535,17 +531,22 @@ const en = {
       {
         title: "Physiotherapy",
         desc: "Restore strength, mobility and function after injury, surgery or chronic pain through hands-on therapy and targeted exercise.",
-        points: ["Manual therapy", "Exercise prescription", "Post-surgical rehab", "Neurological rehabilitation"],
+        points: [
+          "Post-surgical rehabilitation",
+          "Neurological rehabilitation",
+          "Specialist assessment and musculoskeletal rehabilitation",
+          "Therapeutic exercise and strengthening",
+          "Improved mobility and function",
+          "Return to daily and sporting activities",
+          "Injury assessment",
+          "Strength & conditioning",
+          "Return-to-sport testing",
+        ],
       },
       {
         title: "Osteopathy",
         desc: "A holistic, whole-body approach using gentle manual techniques to improve mobility, relieve tension and address root causes.",
         points: ["Spinal & joint mobilisation", "Soft tissue release", "Postural correction"],
-      },
-      {
-        title: "Sports Rehabilitation",
-        desc: "Structured return-to-play programmes for athletes of all levels, from injury management to performance optimisation.",
-        points: ["Injury assessment", "Strength & conditioning", "Return-to-sport testing"],
       },
       {
         title: "Clinical Pilates",
@@ -556,7 +557,6 @@ const en = {
     icons: [
       "/images/services/physiotherapy.png",
       "/images/services/osteopathy.png",
-      "/images/services/sports.png",
       "/images/services/pilates.png",
     ],
   },
@@ -633,7 +633,7 @@ const en = {
     bioTitle: "Bio",
     bioDesc: "Meet the practitioner behind ORC Osteopathy & Rehabilitation Center.",
     servicesTitle: "Services",
-    servicesDesc: "Physiotherapy, osteopathy, sports rehabilitation and more at ORC.",
+    servicesDesc: "Physiotherapy, osteopathy, clinical pilates and more at ORC.",
     galleryTitle: "Gallery",
     galleryDesc: "Take a look inside ORC Osteopathy & Rehabilitation Center.",
     contactTitle: "Contact",
