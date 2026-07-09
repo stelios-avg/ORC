@@ -195,7 +195,7 @@ const el = {
       "Ολοκληρωμένες, αποδεδειγμένες θεραπείες προσαρμοσμένες στο σώμα και τους στόχους σας.",
     bookBtn: "Κλείστε ραντεβού",
     servicesLabel: "Οι υπηρεσίες μας",
-    servicesTagline: "Παρέχουμε τις καλύτερες θεραπείες",
+    servicesTagline: "Ολοκληρωμένες θεραπείες προσαρμοσμένες στις ανάγκες και στους στόχους κάθε ασθενή",
     learnMore: "Μάθετε περισσότερα",
     stats: [
       { value: "8+", label: "Χρόνια εμπειρίας" },
@@ -205,7 +205,7 @@ const el = {
     ],
     whyLabel: "Γιατί να μας επιλέξετε",
     whyTitle: "Θεραπεία προσαρμοσμένη στον κάθε ασθενή",
-    whyDesc: "Στο ORC δεν εφαρμόζουμε τυποποιημένες λύσεις. Κάθε πρόγραμμα σχεδιάζεται αποκλειστικά για εσάς, με βάση τις ανάγκες, τους στόχους και τον τρόπο ζωής σας.",
+    whyDesc: "Μοναδικός συνδυασμός οστεοπαθητικής και φυσιοθεραπείας, προσφέροντας μια ολοκληρωμένη προσέγγιση στη θεραπεία, την κίνηση και τη λειτουργικότητα του σώματος.",
     whyPoints: [
       "Εξειδικευμένη ομάδα θεραπευτών",
       "Σύγχρονες τεχνικές & εξοπλισμός",
@@ -236,7 +236,12 @@ const el = {
       {
         title: "Οστεοπαθητική",
         desc: "Μια ολιστική, σφαιρική προσέγγιση με ήπιες χειροπρακτικές τεχνικές για βελτίωση κινητικότητας, ανακούφιση από τάση και αντιμετώπιση βαθύτερων αιτιών.",
-        points: ["Κινητοποίηση σπονδύλων & αρθρώσεων", "Αποσυμπίεση μαλακών ιστών", "Ορθοστατική διόρθωση"],
+        points: [
+          "Ολιστική αξιολόγηση ολόκληρου του σώματος",
+          "Εξειδικευμένες τεχνικές κινητοποίησης",
+          "Μυοπεριτονιακή απελευθέρωση",
+          "Βελτίωση στάσης και κινητικότητας",
+        ],
       },
       {
         title: "Κλινική Πιλάτες",
@@ -305,7 +310,7 @@ const el = {
   },
 
   footer: {
-    tagline: "Φροντίδα βασισμένη σε αποδείξεις στη φυσιοθεραπεία & οστεοπαθητική.",
+    tagline: "Φροντίδα βασισμένη σε ερευνητικά άρθρα.",
     exploreTitle: "Εξερεύνηση",
     contactTitle: "Επικοινωνία",
     hoursTitle: "Ωράριο λειτουργίας",
@@ -506,7 +511,7 @@ const en = {
       "Comprehensive, evidence-based treatments tailored to your body and your goals.",
     bookBtn: "Book appointment",
     servicesLabel: "Our services",
-    servicesTagline: "We provide the best treatments",
+    servicesTagline: "Comprehensive treatments tailored to each patient's needs and goals",
     learnMore: "Learn more",
     stats: [
       { value: "8+", label: "Years of experience" },
@@ -516,7 +521,7 @@ const en = {
     ],
     whyLabel: "Why choose us",
     whyTitle: "Treatment tailored to every patient",
-    whyDesc: "At ORC we don't offer one-size-fits-all solutions. Every programme is designed exclusively for you, based on your needs, goals and lifestyle.",
+    whyDesc: "A unique combination of osteopathy and physiotherapy, offering a comprehensive approach to treatment, movement and body function.",
     whyPoints: [
       "Specialist team of therapists",
       "Modern techniques & equipment",
@@ -546,7 +551,12 @@ const en = {
       {
         title: "Osteopathy",
         desc: "A holistic, whole-body approach using gentle manual techniques to improve mobility, relieve tension and address root causes.",
-        points: ["Spinal & joint mobilisation", "Soft tissue release", "Postural correction"],
+        points: [
+          "Holistic whole-body assessment",
+          "Specialist mobilisation techniques",
+          "Myofascial release",
+          "Posture and mobility improvement",
+        ],
       },
       {
         title: "Clinical Pilates",
@@ -615,7 +625,7 @@ const en = {
   },
 
   footer: {
-    tagline: "Evidence-based physiotherapy & osteopathy care.",
+    tagline: "Care based on research articles.",
     exploreTitle: "Explore",
     contactTitle: "Contact",
     hoursTitle: "Opening hours",
