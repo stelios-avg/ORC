@@ -3,7 +3,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
 // Working hours shown on the calendar
 const DAY_START = 8;   // 08:00
-const DAY_END = 21;    // 21:00
+const DAY_END = 19;    // 19:00
 const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_START + i);
 ---
 
@@ -132,7 +132,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-start">Ώρα έναρξης</label>
-            <input id="appt-start" name="start" type="time" required step="900" value="09:00"
+            <input id="appt-start" name="start" type="time" required step="900" value="08:00"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
           <div>

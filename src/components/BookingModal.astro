@@ -236,8 +236,7 @@ const t = useTranslations(lang).booking;
 
     // ── Clinic opening hours (minutes from midnight), 1h sessions, 30' steps ──
     const WINDOWS: Array<[number, number]> = [
-      [9 * 60, 13 * 60 + 30],   // 09:00 – 13:30
-      [15 * 60, 19 * 60 + 30],  // 15:00 – 19:30
+      [8 * 60, 19 * 60],   // 08:00 – 19:00
     ];
     const SLOT_MIN = 60;
     const STEP_MIN = 30;

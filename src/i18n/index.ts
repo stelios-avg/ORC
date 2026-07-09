@@ -25,8 +25,7 @@ const el = {
   /* Real contact details (matching the Fresha listing). */
   address: "Περικλέους 63, Στρόβολος 2021, Κύπρος",
   hours: [
-    { day: "Δευ – Παρ", time: "09:00 – 13:30" },
-    { day: "", time: "15:00 – 19:30" },
+    { day: "Δευ – Παρ", time: "08:00 – 19:00" },
     { day: "Σαβ – Κυρ", time: "Κλειστά" },
   ],
 
@@ -340,8 +339,7 @@ const en = {
   /* Real contact details (matching the Fresha listing). */
   address: "Perikleous 63, Strovolos 2021, Cyprus",
   hours: [
-    { day: "Mon – Fri", time: "09:00 – 13:30" },
-    { day: "", time: "15:00 – 19:30" },
+    { day: "Mon – Fri", time: "08:00 – 19:00" },
     { day: "Sat – Sun", time: "Closed" },
   ],
 
