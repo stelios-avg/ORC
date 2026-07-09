@@ -36,6 +36,7 @@ export interface Appointment {
   start_time: string;
   end_time: string;
   status: "confirmed" | "cancelled" | "completed";
+  notes: string | null;
   is_paid: boolean;
   is_blocked_time: boolean;
   created_at: string;

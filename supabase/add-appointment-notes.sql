@@ -1,28 +1,14 @@
 -- ─────────────────────────────────────────────────────────────
--- ORC public booking — RPC functions
--- Run this in the Supabase SQL Editor (after schema.sql).
---
--- Visitors (anon) never touch the tables directly; they only call
--- these two functions. RLS on the tables stays authenticated-only.
+-- Migration: store the booking reason on the appointment itself
+-- Run this in the Supabase SQL Editor.
 -- ─────────────────────────────────────────────────────────────
 
--- 1) Busy ranges for one day: exposes ONLY start/end times, never patient data.
-create or replace function public.get_busy_slots(p_day date)
-returns table (busy_start timestamptz, busy_end timestamptz)
-language sql
-security definer
-set search_path = public
-stable
-as $$
-  select a.start_time, a.end_time
-  from public.appointments a
-  where a.status <> 'cancelled'
-    and a.start_time >= p_day::timestamptz
-    and a.start_time <  (p_day + 1)::timestamptz;
-$$;
+-- 1) New column on appointments
+alter table public.appointments
+  add column if not exists notes text;
 
--- 2) Book an appointment: validates the slot, finds-or-creates the patient,
---    inserts the appointment. Raises 'slot_taken' if the slot was grabbed.
+-- 2) book_appointment now saves the visitor's concern on the appointment
+--    (it also keeps appending it to the patient's medical notes, as before).
 create or replace function public.book_appointment(
   p_name    text,
   p_email   text,
@@ -93,9 +79,3 @@ begin
   return v_appt_id;
 end;
 $$;
-
--- Lock the functions down: only callable, nothing else leaks.
-revoke all on function public.get_busy_slots(date) from public;
-revoke all on function public.book_appointment(text, text, text, text, timestamptz, timestamptz) from public;
-grant execute on function public.get_busy_slots(date) to anon, authenticated;
-grant execute on function public.book_appointment(text, text, text, text, timestamptz, timestamptz) to anon, authenticated;

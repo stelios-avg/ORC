@@ -21,6 +21,7 @@ create table if not exists public.appointments (
   start_time      timestamptz not null,
   end_time        timestamptz not null,
   status          text not null default 'confirmed',  -- confirmed | cancelled | completed
+  notes           text,                 -- e.g. reason given in an online booking
   is_paid         boolean not null default false,
   is_blocked_time boolean not null default false,
   created_at      timestamptz not null default now(),

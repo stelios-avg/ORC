@@ -185,6 +185,12 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       <p id="detail-service" class="mt-1 text-sm text-charcoal"></p>
       <a id="detail-phone" href="#" class="mt-1 hidden text-sm font-medium text-spine underline"></a>
 
+      {/* Reason for visit (from the online booking form) */}
+      <div id="detail-notes-row" class="mt-4 hidden rounded-xl border border-spine/15 bg-spine-50/60 px-4 py-3">
+        <p class="font-display text-xs font-semibold uppercase tracking-wide text-spine">Αιτία επίσκεψης</p>
+        <p id="detail-notes" class="mt-1 whitespace-pre-line text-sm text-charcoal"></p>
+      </div>
+
       {/* Paid toggle */}
       <div id="detail-paid-row" class="mt-5 flex items-center justify-between rounded-xl bg-sand px-4 py-3">
         <span class="font-display text-sm font-semibold text-charcoal">Πληρωμένο</span>
@@ -444,6 +450,11 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     } else {
       phoneEl.classList.add("hidden");
     }
+
+    const notesRow = document.getElementById("detail-notes-row")!;
+    const hasNotes = !a.is_blocked_time && !!a.notes?.trim();
+    notesRow.classList.toggle("hidden", !hasNotes);
+    if (hasNotes) document.getElementById("detail-notes")!.textContent = a.notes!.trim();
 
     document.getElementById("detail-paid-row")!.classList.toggle("hidden", a.is_blocked_time);
     paidToggle.dataset.on = String(a.is_paid);
