@@ -8,7 +8,23 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 const supabaseUrl = import.meta.env.PUBLIC_SUPABASE_URL as string | undefined;
 const supabaseKey = import.meta.env.PUBLIC_SUPABASE_ANON_KEY as string | undefined;
 
+const REMEMBER_KEY = "orc-admin-remember";
+
 let client: SupabaseClient | null = null;
+
+/** Whether the therapist chose to stay signed in between browser sessions. */
+export function getRememberMe(): boolean {
+  return localStorage.getItem(REMEMBER_KEY) !== "0";
+}
+
+export function setRememberMe(remember: boolean) {
+  localStorage.setItem(REMEMBER_KEY, remember ? "1" : "0");
+}
+
+/** Drop the cached client so the next call picks up a new auth storage. */
+export function resetSupabaseClient() {
+  client = null;
+}
 
 export function getSupabase(): SupabaseClient {
   if (!supabaseUrl || !supabaseKey) {
@@ -16,7 +32,14 @@ export function getSupabase(): SupabaseClient {
       "Missing PUBLIC_SUPABASE_URL / PUBLIC_SUPABASE_ANON_KEY. Add them to .env (and Vercel).",
     );
   }
-  if (!client) client = createClient(supabaseUrl, supabaseKey);
+  if (!client) {
+    client = createClient(supabaseUrl, supabaseKey, {
+      auth: {
+        persistSession: true,
+        storage: getRememberMe() ? localStorage : sessionStorage,
+      },
+    });
+  }
   return client;
 }
 

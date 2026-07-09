@@ -40,6 +40,14 @@ import "../../styles/global.css";
 
         <p id="login-error" class="mt-3 hidden text-sm text-red-600"></p>
 
+        <label class="mt-4 flex cursor-pointer items-center gap-2.5">
+          <input
+            id="remember-me" name="remember" type="checkbox" checked
+            class="h-4 w-4 rounded border-slate-300 text-spine focus:ring-spine/30"
+          />
+          <span class="text-sm text-charcoal">Να παραμείνω συνδεδεμένος</span>
+        </label>
+
         <button
           type="submit" id="login-btn"
           class="mt-5 w-full rounded-full bg-spine px-6 py-3 font-display font-semibold text-white transition hover:bg-spine-600 disabled:cursor-not-allowed disabled:opacity-60"
@@ -50,7 +58,10 @@ import "../../styles/global.css";
     </div>
 
     <script>
-      import { getSupabase } from "../../lib/supabase";
+      import { getSupabase, getRememberMe, setRememberMe, resetSupabaseClient } from "../../lib/supabase";
+
+      const rememberEl = document.getElementById("remember-me") as HTMLInputElement;
+      rememberEl.checked = getRememberMe();
 
       const supabase = getSupabase();
       const form = document.getElementById("login-form") as HTMLFormElement;
@@ -68,8 +79,12 @@ import "../../styles/global.css";
         btn.disabled = true;
         btn.textContent = "Σύνδεση…";
 
+        setRememberMe(rememberEl.checked);
+        resetSupabaseClient();
+        const auth = getSupabase();
+
         const data = new FormData(form);
-        const { error } = await supabase.auth.signInWithPassword({
+        const { error } = await auth.auth.signInWithPassword({
           email: String(data.get("email")),
           password: String(data.get("password")),
         });

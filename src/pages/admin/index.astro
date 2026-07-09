@@ -8,21 +8,35 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 ---
 
 <AdminLayout title="Πρόγραμμα" active="calendar">
-  {/* ── Date navigation ── */}
+  {/* ── Date navigation + view toggle ── */}
   <div class="mb-4 flex items-center justify-between gap-2">
-    <button id="prev-day" class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine" aria-label="Προηγούμενη μέρα">
+    <button id="cal-prev" class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine" aria-label="Προηγούμενο">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
     </button>
     <button id="today-btn" class="flex-1 rounded-full bg-white px-4 py-2 text-center ring-1 ring-slate-200 transition hover:ring-spine">
       <span id="date-label" class="font-display text-sm font-bold text-charcoal"></span>
     </button>
-    <button id="next-day" class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine" aria-label="Επόμενη μέρα">
+    <button id="cal-next" class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine" aria-label="Επόμενο">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg>
     </button>
   </div>
 
-  {/* ── Actions ── */}
-  <div class="mb-4 grid grid-cols-2 gap-2">
+  {/* Day / month zoom toggle */}
+  <div class="mb-4 flex rounded-full bg-white p-1 ring-1 ring-slate-200">
+    <button id="view-day-btn" type="button"
+      class="view-btn flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 font-display text-xs font-semibold transition">
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6h12M5 1v3M11 1v3"/></svg>
+      Ημέρα
+    </button>
+    <button id="view-month-btn" type="button"
+      class="view-btn flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 font-display text-xs font-semibold transition">
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
+      Μήνας
+    </button>
+  </div>
+
+  {/* ── Actions (day view only) ── */}
+  <div id="day-actions" class="mb-4 grid grid-cols-2 gap-2">
     <button id="add-appt-btn" class="flex items-center justify-center gap-2 rounded-full bg-spine px-4 py-2.5 font-display text-sm font-semibold text-white transition hover:bg-spine-600">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
       Ραντεβού
@@ -33,7 +47,8 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     </button>
   </div>
 
-  {/* ── Calendar (Fresha-style: hour rail + CSS grid of 15' rows) ── */}
+  {/* ── Day view: hourly calendar ── */}
+  <div id="day-view">
   <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
     <div class="relative flex">
       {/* Hour labels */}
@@ -68,6 +83,13 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
         {/* Appointment blocks injected by JS */}
       </div>
     </div>
+  </div>
+  </div>
+
+  {/* ── Month view: zoomed-out day grid ── */}
+  <div id="month-view" class="hidden overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+    <div id="month-weekdays" class="grid grid-cols-7 text-center text-[11px] font-semibold uppercase text-charcoal-muted"></div>
+    <div id="month-days" class="mt-2 grid grid-cols-7 gap-1.5"></div>
   </div>
 
   <p id="cal-empty" class="mt-6 hidden text-center text-sm text-charcoal-muted">
@@ -213,6 +235,16 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   #paid-toggle[data-on="true"] span {
     transform: translateX(1.25rem);
   }
+  .view-btn[data-active="true"] {
+    background-color: var(--color-spine);
+    color: white;
+  }
+  .view-btn[data-active="false"] {
+    color: var(--color-charcoal-muted);
+  }
+  .view-btn[data-active="false"]:hover {
+    color: var(--color-charcoal);
+  }
 </style>
 
 <script>
@@ -229,11 +261,21 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   const emptyMsg = document.getElementById("cal-empty")!;
   const errorMsg = document.getElementById("cal-error")!;
   const nowLine = document.getElementById("now-line")!;
+  const dayView = document.getElementById("day-view")!;
+  const monthView = document.getElementById("month-view")!;
+  const dayActions = document.getElementById("day-actions")!;
+  const monthDays = document.getElementById("month-days")!;
+  const monthWeekdays = document.getElementById("month-weekdays")!;
+  const viewDayBtn = document.getElementById("view-day-btn")!;
+  const viewMonthBtn = document.getElementById("view-month-btn")!;
 
   let currentDay = new Date();
   currentDay.setHours(0, 0, 0, 0);
+  let viewMonth = new Date(currentDay.getFullYear(), currentDay.getMonth(), 1);
+  let viewMode: "day" | "month" = "day";
   let patients: Patient[] = [];
   let selectedAppt: Appointment | null = null;
+  let monthAppts: Appointment[] = [];
 
   const fmtTime = (iso: string) =>
     new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
@@ -252,9 +294,112 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     return Math.min(TOTAL_ROWS + 1, Math.max(1, row));
   };
 
+  const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
+  const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
+
+  // Weekday header for month grid (Monday-first), built once.
+  (() => {
+    const monday = new Date(2024, 0, 1);
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(monday); d.setDate(monday.getDate() + i);
+      const el = document.createElement("span");
+      el.textContent = d.toLocaleDateString("el-GR", { weekday: "short" }).slice(0, 2);
+      monthWeekdays.appendChild(el);
+    }
+  })();
+
+  function setViewMode(mode: "day" | "month") {
+    viewMode = mode;
+    viewDayBtn.dataset.active = String(mode === "day");
+    viewMonthBtn.dataset.active = String(mode === "month");
+    dayView.classList.toggle("hidden", mode !== "day");
+    monthView.classList.toggle("hidden", mode !== "month");
+    dayActions.classList.toggle("hidden", mode !== "day");
+    emptyMsg.classList.add("hidden");
+    refresh();
+  }
+
+  function updateNavLabel() {
+    if (viewMode === "day") {
+      dateLabel.textContent = dayLabel(currentDay);
+    } else {
+      dateLabel.textContent = viewMonth.toLocaleDateString("el-GR", { month: "long", year: "numeric" });
+    }
+  }
+
+  function refresh() {
+    updateNavLabel();
+    if (viewMode === "day") loadDay();
+    else loadMonth();
+  }
+
+  // ── Month overview (zoomed out) ──
+  async function loadMonth() {
+    monthDays.innerHTML = "";
+    errorMsg.classList.add("hidden");
+
+    const monthStart = startOfMonth(viewMonth);
+    const monthEnd = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+
+    const { data, error } = await supabase
+      .from("appointments")
+      .select("*, patients(id, name, phone)")
+      .gte("start_time", monthStart.toISOString())
+      .lt("start_time", monthEnd.toISOString())
+      .neq("status", "cancelled")
+      .order("start_time");
+
+    if (error) {
+      errorMsg.textContent = `Σφάλμα φόρτωσης: ${error.message}`;
+      errorMsg.classList.remove("hidden");
+      return;
+    }
+
+    monthAppts = (data ?? []) as Appointment[];
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+
+    const offset = (viewMonth.getDay() + 6) % 7;
+    for (let i = 0; i < offset; i++) monthDays.appendChild(document.createElement("span"));
+
+    const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+    for (let day = 1; day <= daysInMonth; day++) {
+      const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day);
+      const dayAppts = monthAppts.filter((a) => sameDay(new Date(a.start_time), d));
+      const regular = dayAppts.filter((a) => !a.is_blocked_time);
+      const blocked = dayAppts.filter((a) => a.is_blocked_time);
+      const isToday = sameDay(d, today);
+      const isSelected = sameDay(d, currentDay);
+
+      const btn = document.createElement("button");
+      btn.type = "button";
+      btn.className =
+        "month-day flex min-h-[4.5rem] flex-col rounded-xl border p-2 text-left transition " +
+        (isSelected
+          ? "border-spine bg-spine-50 ring-1 ring-spine/30"
+          : isToday
+            ? "border-spine/30 bg-white ring-1 ring-spine/20"
+            : "border-slate-100 bg-white hover:border-spine/30 hover:bg-spine-50/40");
+
+      const countLabel = regular.length
+        ? `${regular.length} ραντεβ.${blocked.length ? ` · ${blocked.length} κλ.` : ""}`
+        : blocked.length ? `${blocked.length} κλειστό` : "";
+
+      btn.innerHTML = `
+        <span class="font-display text-sm font-bold ${isToday ? "text-spine" : "text-charcoal"}">${day}</span>
+        ${countLabel ? `<span class="mt-1 text-[10px] font-medium leading-tight text-charcoal-muted">${countLabel}</span>` : ""}
+        ${regular.length ? `<span class="mt-auto truncate text-[10px] text-spine">${regular.slice(0, 2).map((a) => a.patients?.name?.split(" ")[0] ?? "—").join(", ")}${regular.length > 2 ? "…" : ""}</span>` : ""}`;
+
+      btn.addEventListener("click", () => {
+        currentDay = new Date(d);
+        setViewMode("day");
+      });
+      monthDays.appendChild(btn);
+    }
+  }
+
   // ── Load & render the day ──
   async function loadDay() {
-    dateLabel.textContent = dayLabel(currentDay);
+    updateNavLabel();
     const dayEnd = new Date(currentDay); dayEnd.setDate(dayEnd.getDate() + 1);
 
     const { data, error } = await supabase
@@ -328,15 +473,32 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   setInterval(positionNowLine, 60_000);
 
   // ── Date navigation ──
-  const shiftDay = (delta: number) => {
-    currentDay.setDate(currentDay.getDate() + delta);
-    loadDay();
-  };
-  document.getElementById("prev-day")!.addEventListener("click", () => shiftDay(-1));
-  document.getElementById("next-day")!.addEventListener("click", () => shiftDay(1));
+  document.getElementById("cal-prev")!.addEventListener("click", () => {
+    if (viewMode === "day") {
+      currentDay.setDate(currentDay.getDate() - 1);
+    } else {
+      viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+    }
+    refresh();
+  });
+  document.getElementById("cal-next")!.addEventListener("click", () => {
+    if (viewMode === "day") {
+      currentDay.setDate(currentDay.getDate() + 1);
+    } else {
+      viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+    }
+    refresh();
+  });
   document.getElementById("today-btn")!.addEventListener("click", () => {
     currentDay = new Date(); currentDay.setHours(0, 0, 0, 0);
-    loadDay();
+    viewMonth = startOfMonth(currentDay);
+    refresh();
+  });
+
+  viewDayBtn.addEventListener("click", () => setViewMode("day"));
+  viewMonthBtn.addEventListener("click", () => {
+    viewMonth = startOfMonth(currentDay);
+    setViewMode("month");
   });
 
   // ── Modals ──
@@ -390,7 +552,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     }
     form.reset();
     closeModal(apptModal);
-    loadDay();
+    refresh();
   });
 
   // ── Block time ──
@@ -428,7 +590,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     }
     form.reset();
     closeModal(blockModal);
-    loadDay();
+    refresh();
   });
 
   // ── Detail sheet + paid toggle + delete ──
@@ -476,7 +638,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       return;
     }
     selectedAppt.is_paid = next;
-    loadDay();
+    refresh();
   });
 
   document.getElementById("detail-delete")!.addEventListener("click", async () => {
@@ -491,8 +653,8 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       return;
     }
     closeModal(detailSheet);
-    loadDay();
+    refresh();
   });
 
-  loadDay();
+  setViewMode("day");
 </script>
