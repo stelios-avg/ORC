@@ -234,12 +234,12 @@ const t = useTranslations(lang).booking;
     let supabase: ReturnType<typeof getSupabase> | null = null;
     try { supabase = getSupabase(); } catch { supabase = null; }
 
-    // ── Clinic opening hours (minutes from midnight), 1h sessions, 30' steps ──
+    // ── Clinic opening hours (minutes from midnight), 45' sessions, back-to-back ──
     const WINDOWS: Array<[number, number]> = [
       [8 * 60, 19 * 60],   // 08:00 – 19:00
     ];
-    const SLOT_MIN = 60;
-    const STEP_MIN = 30;
+    const SLOT_MIN = 45;
+    const STEP_MIN = 45;
     const CLOSED_DAYS = [0, 6]; // Sunday, Saturday
     const MAX_MONTHS_AHEAD = 2; // bookable window: this month + 2
     const MIN_LEAD_MS = 60 * 60 * 1000; // can't book less than 1h ahead

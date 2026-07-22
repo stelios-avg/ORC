@@ -146,7 +146,7 @@ const el = {
     errConcern: "Παρακαλώ περιγράψτε σύντομα την αιτία της επίσκεψής σας.",
     // step 2: date & time
     pickTitle: "Επιλέξτε ημέρα & ώρα",
-    pickSubtitle: "Διάρκεια συνεδρίας: 1 ώρα",
+    pickSubtitle: "Διάρκεια συνεδρίας: 45 λεπτά",
     pickDayHint: "Επιλέξτε μια ημέρα για να δείτε τις διαθέσιμες ώρες.",
     loadingSlots: "Φόρτωση διαθεσιμότητας…",
     noSlots: "Δεν υπάρχουν διαθέσιμες ώρες αυτή την ημέρα.",
@@ -462,7 +462,7 @@ const en = {
     errConcern: "Please briefly describe the reason for your visit.",
     // step 2: date & time
     pickTitle: "Pick a day & time",
-    pickSubtitle: "Session duration: 1 hour",
+    pickSubtitle: "Session duration: 45 minutes",
     pickDayHint: "Pick a day to see available times.",
     loadingSlots: "Loading availability…",
     noSlots: "No available times on this day.",
