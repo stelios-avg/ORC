@@ -52,9 +52,20 @@ export interface Patient {
   created_at: string;
 }
 
+export interface TherapistRow {
+  id: string;
+  slug: string;
+  name_el: string;
+  name_en: string;
+  specialty: string;
+  sort_order: number;
+  active: boolean;
+}
+
 export interface Appointment {
   id: string;
   patient_id: string | null;
+  therapist_id: string | null;
   service: string | null;
   start_time: string;
   end_time: string;
@@ -69,4 +80,6 @@ export interface Appointment {
   created_at: string;
   /** joined relation (when selected with `patients(...)`) */
   patients?: Pick<Patient, "id" | "name" | "phone"> | null;
+  /** joined relation (when selected with `therapists(...)`) */
+  therapists?: Pick<TherapistRow, "id" | "slug" | "name_el" | "name_en"> | null;
 }

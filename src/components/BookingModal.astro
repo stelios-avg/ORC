@@ -1,10 +1,19 @@
 ---
 import { FRESHA_BOOKING_URL, LEAD_ENDPOINT, LEAD_ACCESS_KEY } from "../config/site";
 import { useTranslations, type Lang } from "../i18n";
+import { BOOKABLE_SERVICES, THERAPISTS } from "../lib/therapists";
 
 interface Props { lang?: Lang; }
 const { lang = "el" } = Astro.props;
 const t = useTranslations(lang).booking;
+const services = BOOKABLE_SERVICES.map((s) => ({
+  key: s.key,
+  label: lang === "en" ? s.labelEn : s.labelEl,
+  therapistId: THERAPISTS.find((th) => th.slug === s.therapistSlug)!.id,
+  therapistName: lang === "en"
+    ? THERAPISTS.find((th) => th.slug === s.therapistSlug)!.nameEn
+    : THERAPISTS.find((th) => th.slug === s.therapistSlug)!.nameEl,
+}));
 ---
 
 <div
@@ -30,6 +39,8 @@ const t = useTranslations(lang).booking;
   data-msg-closed={t.closedDay}
   data-msg-slot-taken={t.slotTaken}
   data-msg-book-error={t.bookError}
+  data-err-service={t.errService}
+  data-with-therapist={t.withTherapist}
 >
   <div id="booking-backdrop" class="absolute inset-0 bg-spine-900/70 backdrop-blur-sm" data-book-close></div>
 
@@ -57,6 +68,35 @@ const t = useTranslations(lang).booking;
       {/* ══ Step 1: details ══ */}
       <form id="booking-form" novalidate class="px-6 py-5" data-step="1">
         <div class="grid grid-cols-1 gap-4">
+          <fieldset>
+            <legend class="mb-1 block text-sm font-medium text-charcoal">
+              {t.serviceLabel} <span class="text-spine">{t.required}</span>
+            </legend>
+            <p class="mb-2 text-xs text-charcoal-muted">{t.serviceHint}</p>
+            <div class="grid grid-cols-1 gap-2">
+              {services.map((s) => (
+                <label class="flex cursor-pointer items-start gap-3 rounded-xl border border-slate-200 px-3 py-3 transition has-[:checked]:border-spine has-[:checked]:bg-spine-50">
+                  <input
+                    type="radio"
+                    name="service"
+                    value={s.key}
+                    required
+                    class="mt-1 text-spine focus:ring-spine"
+                    data-therapist-id={s.therapistId}
+                    data-service-label={s.label}
+                    data-therapist-name={s.therapistName}
+                    checked={s.key === "physiotherapy"}
+                  />
+                  <span>
+                    <span class="block font-display text-sm font-semibold text-charcoal">{s.label}</span>
+                    <span class="mt-0.5 block text-xs text-charcoal-muted">{t.withTherapist} {s.therapistName}</span>
+                  </span>
+                </label>
+              ))}
+            </div>
+            <p class="mt-1 hidden text-xs text-red-600" data-error-for="service"></p>
+          </fieldset>
+
           <div>
             <label for="bf-name" class="mb-1 block text-sm font-medium text-charcoal">
               {t.fullNameLabel} <span class="text-spine">{t.required}</span>
@@ -146,6 +186,7 @@ const t = useTranslations(lang).booking;
         <p class="font-display text-sm font-bold text-charcoal">{t.confirmTitle}</p>
         <div class="mt-4 space-y-2 rounded-xl bg-sand p-4 text-sm">
           <p class="font-display text-base font-bold text-charcoal" id="confirm-name"></p>
+          <p class="text-charcoal" id="confirm-service"></p>
           <p class="text-charcoal" id="confirm-when"></p>
           <p class="text-charcoal-muted" id="confirm-contact"></p>
         </div>
@@ -211,7 +252,7 @@ const t = useTranslations(lang).booking;
 <script>
   import { getSupabase } from "../lib/supabase";
 
-  type FieldName = "fullName" | "email" | "phone" | "concern";
+  type FieldName = "fullName" | "email" | "phone" | "concern" | "service";
 
   const modal = document.getElementById("booking-modal");
   const form  = document.getElementById("booking-form") as HTMLFormElement | null;
@@ -219,15 +260,18 @@ const t = useTranslations(lang).booking;
   if (modal && form) {
     const ds = modal.dataset;
     const lang       = modal.dataset.lang === "en" ? "en-GB" : "el-GR";
+    const pageLang   = modal.dataset.lang === "en" ? "en" : "el";
     const freshaUrl  = modal.dataset.freshaUrl || "";
     const leadKey    = modal.dataset.leadKey   || "";
     const leadEndpoint =
       modal.dataset.leadEndpoint || (leadKey ? "https://api.web3forms.com/submit" : "");
+    const withTherapist = modal.dataset.withTherapist || "with";
     const errMap: Record<FieldName, string> = {
       fullName: modal.dataset.errFullname  || "Invalid name.",
       email:    modal.dataset.errEmail     || "Invalid email.",
       phone:    modal.dataset.errPhone     || "Invalid phone.",
       concern:  modal.dataset.errConcern   || "Please describe your concern.",
+      service:  modal.dataset.errService   || "Please choose a service.",
     };
 
     // Supabase is optional: if it's not configured, fall back to Fresha.
@@ -260,7 +304,16 @@ const t = useTranslations(lang).booking;
     const calDays       = document.getElementById("cal-days")!;
 
     let lastFocused: HTMLElement | null = null;
-    let payload = { fullName: "", email: "", phone: "", concern: "" };
+    let payload = {
+      fullName: "",
+      email: "",
+      phone: "",
+      concern: "",
+      serviceKey: "",
+      serviceLabel: "",
+      therapistId: "",
+      therapistName: "",
+    };
     let selectedDay: Date | null = null;
     let selectedStart: Date | null = null;
 
@@ -324,14 +377,26 @@ const t = useTranslations(lang).booking;
       const email    = String(data.get("email")    || "").trim();
       const phone    = String(data.get("phone")    || "").trim();
       const concern  = String(data.get("concern")  || "").trim();
+      const serviceKey = String(data.get("service") || "").trim();
+      const serviceRadio = form.querySelector<HTMLInputElement>(`input[name="service"]:checked`);
+      const therapistId = serviceRadio?.dataset.therapistId || "";
+      const serviceLabel = serviceRadio?.dataset.serviceLabel || "";
+      const therapistName = serviceRadio?.dataset.therapistName || "";
       let ok = true;
 
+      if (!serviceKey || !therapistId) { setError("service", errMap.service); ok = false; } else setError("service", "");
       if (fullName.length < 2) { setError("fullName", errMap.fullName); ok = false; } else setError("fullName", "");
       if (!isEmail(email))      { setError("email",    errMap.email);    ok = false; } else setError("email", "");
       if (!isPhone(phone))      { setError("phone",    errMap.phone);    ok = false; } else setError("phone", "");
       if (concern.length < 10)  { setError("concern",  errMap.concern);  ok = false; } else setError("concern", "");
 
-      return { ok, payload: { fullName, email, phone, concern } };
+      return {
+        ok,
+        payload: {
+          fullName, email, phone, concern,
+          serviceKey, serviceLabel, therapistId, therapistName,
+        },
+      };
     };
 
     form.addEventListener("submit", (e) => {
@@ -431,7 +496,10 @@ const t = useTranslations(lang).booking;
       slotStatus.classList.remove("hidden");
 
       const iso = `${day.getFullYear()}-${String(day.getMonth() + 1).padStart(2, "0")}-${String(day.getDate()).padStart(2, "0")}`;
-      const { data, error } = await supabase!.rpc("get_busy_slots", { p_day: iso });
+      const { data, error } = await supabase!.rpc("get_busy_slots", {
+        p_day: iso,
+        p_therapist_id: payload.therapistId,
+      });
 
       if (error) {
         slotStatus.textContent = ds.msgBookError || "Error";
@@ -483,6 +551,8 @@ const t = useTranslations(lang).booking;
     function fillConfirm() {
       if (!selectedStart) return;
       document.getElementById("confirm-name")!.textContent = payload.fullName;
+      document.getElementById("confirm-service")!.textContent =
+        `${payload.serviceLabel} · ${withTherapist} ${payload.therapistName}`;
       document.getElementById("confirm-when")!.textContent =
         `${selectedStart.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" })} · ` +
         `${selectedStart.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}`;
@@ -505,6 +575,8 @@ const t = useTranslations(lang).booking;
         p_concern: payload.concern,
         p_start: selectedStart.toISOString(),
         p_end: end.toISOString(),
+        p_therapist_id: payload.therapistId,
+        p_service: payload.serviceLabel,
       });
 
       confirmBtn.disabled = false;
@@ -546,7 +618,12 @@ const t = useTranslations(lang).booking;
           ...(leadKey ? { access_key: leadKey } : {}),
           subject: `Νέο ραντεβού: ${payload.fullName}${when ? ` — ${when.toLocaleString("el-GR")}` : ""}`,
           from_name: "ORC Website",
-          ...payload,
+          fullName: payload.fullName,
+          email: payload.email,
+          phone: payload.phone,
+          concern: payload.concern,
+          service: payload.serviceLabel,
+          therapist: payload.therapistName,
           ...(when ? { appointment: when.toISOString() } : {}),
           source,
           ts: Date.now(),
@@ -557,7 +634,6 @@ const t = useTranslations(lang).booking;
     // ── Confirmation email to the patient (Supabase Edge Function → Brevo) ──
     function sendPatientConfirmation(when: Date) {
       if (!supabase) return;
-      const pageLang = modal.dataset.lang === "en" ? "en" : "el";
       supabase.functions
         .invoke("send-booking-confirmation", {
           body: {
@@ -565,6 +641,8 @@ const t = useTranslations(lang).booking;
             email: payload.email,
             phone: payload.phone,
             concern: payload.concern,
+            service: payload.serviceLabel,
+            therapist: payload.therapistName,
             start: when.toISOString(),
             lang: pageLang,
           },

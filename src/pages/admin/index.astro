@@ -1,5 +1,6 @@
 ---
 import AdminLayout from "../../layouts/AdminLayout.astro";
+import { THERAPISTS } from "../../lib/therapists";
 
 // Working hours shown on the calendar
 const DAY_START = 8;   // 08:00
@@ -22,7 +23,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   </div>
 
   {/* Day / month zoom toggle */}
-  <div class="mb-4 flex rounded-full bg-white p-1 ring-1 ring-slate-200">
+  <div class="mb-3 flex rounded-full bg-white p-1 ring-1 ring-slate-200">
     <button id="view-day-btn" type="button"
       class="view-btn flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 font-display text-xs font-semibold transition">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6h12M5 1v3M11 1v3"/></svg>
@@ -33,6 +34,22 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
       Μήνας
     </button>
+  </div>
+
+  {/* Therapist filter — everyone with admin access can see all calendars */}
+  <div id="therapist-tabs" class="mb-4 flex gap-1 overflow-x-auto rounded-full bg-white p-1 ring-1 ring-slate-200">
+    <button type="button" data-therapist-filter="all"
+      class="therapist-tab flex-none rounded-full px-3 py-2 font-display text-xs font-semibold transition data-[active=true]:bg-charcoal data-[active=true]:text-white data-[active=false]:text-charcoal-muted"
+      data-active="true">
+      Όλοι
+    </button>
+    {THERAPISTS.map((th) => (
+      <button type="button" data-therapist-filter={th.id}
+        class="therapist-tab flex-none rounded-full px-3 py-2 font-display text-xs font-semibold transition data-[active=true]:bg-charcoal data-[active=true]:text-white data-[active=false]:text-charcoal-muted"
+        data-active="false">
+        {th.nameEl}
+      </button>
+    ))}
   </div>
 
   {/* ── Actions (day view only) ── */}
@@ -47,9 +64,13 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     </button>
   </div>
 
-  {/* ── Day view: hourly calendar ── */}
+  {/* ── Day view: hourly calendar (1+ therapist columns) ── */}
   <div id="day-view">
   <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+    <div id="cal-col-headers" class="flex border-b border-slate-100">
+      <div class="w-14 flex-none"></div>
+      <div id="cal-col-headers-inner" class="grid flex-1"></div>
+    </div>
     <div class="relative flex">
       {/* Hour labels */}
       <div class="w-14 flex-none border-r border-slate-100">
@@ -62,25 +83,20 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
         ))}
       </div>
 
-      {/* Events area: CSS grid, 4 rows per hour (15-minute slots) */}
+      {/* Events area: CSS grid, 4 rows per hour (15-minute slots) × N therapist cols */}
       <div
         id="cal-grid"
         class="relative flex-1"
-        style={`display:grid; grid-template-rows: repeat(${(DAY_END - DAY_START) * 4 + 4}, 1rem); grid-auto-columns: 1fr;`}
+        style={`display:grid; grid-template-rows: repeat(${(DAY_END - DAY_START) * 4 + 4}, 1rem);`}
         data-day-start={DAY_START}
         data-day-end={DAY_END}
       >
-        {/* Hour lines */}
-        {hours.map((_, i) => (
-          <div class="pointer-events-none border-t border-slate-100" style={`grid-row: ${i * 4 + 1}; grid-column: 1 / -1;`}></div>
-        ))}
-        {/* "Now" indicator */}
+        {/* Hour lines + appointment blocks injected by JS */}
         <div id="now-line" class="pointer-events-none absolute inset-x-0 z-10 hidden">
           <div class="relative border-t-2 border-red-400">
             <span class="absolute -left-1 -top-[5px] h-2 w-2 rounded-full bg-red-400"></span>
           </div>
         </div>
-        {/* Appointment blocks injected by JS */}
       </div>
     </div>
   </div>
@@ -117,6 +133,15 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
           <p class="mt-1 text-xs text-charcoal-muted">
             Νέος πελάτης; Προσθέστε τον πρώτα στη σελίδα <a href="/admin/clients" class="text-spine underline">Πελάτες</a>.
           </p>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-therapist">Θεραπευτής</label>
+          <select id="appt-therapist" name="therapist_id" required
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
+            {THERAPISTS.map((th) => (
+              <option value={th.id}>{th.nameEl}</option>
+            ))}
+          </select>
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-service">Υπηρεσία</label>
@@ -166,6 +191,15 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
         </button>
       </div>
       <form id="block-form" class="space-y-4">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="block-therapist">Θεραπευτής</label>
+          <select id="block-therapist" name="therapist_id" required
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
+            {THERAPISTS.map((th) => (
+              <option value={th.id}>{th.nameEl}</option>
+            ))}
+          </select>
+        </div>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="mb-1 block text-sm font-medium text-charcoal" for="block-start">Από</label>
@@ -203,7 +237,17 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
         </button>
       </div>
       <p id="detail-time" class="text-sm text-charcoal-muted"></p>
-      <p id="detail-service" class="mt-1 text-sm text-charcoal"></p>
+      <p id="detail-service" class="mt-0.5 text-sm text-charcoal"></p>
+      <div id="detail-therapist-row" class="mt-3">
+        <label class="mb-1 block text-xs font-medium text-charcoal-muted" for="detail-therapist">Θεραπευτής</label>
+        <select id="detail-therapist"
+          class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
+          {THERAPISTS.map((th) => (
+            <option value={th.id}>{th.nameEl}</option>
+          ))}
+        </select>
+        <p class="mt-1 text-[11px] text-charcoal-muted">Μπορείτε να μεταφέρετε το ραντεβού σε άλλον θεραπευτή.</p>
+      </div>
       <a id="detail-phone" href="#" class="mt-1 hidden text-sm font-medium text-spine underline"></a>
 
       {/* Reason for visit (from the online booking form) */}
@@ -275,14 +319,22 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
 <script>
   import { getSupabase, type Appointment, type Patient } from "../../lib/supabase";
+  import {
+    THERAPISTS,
+    DEFAULT_THERAPIST_ID,
+    getTherapist,
+    suggestTherapistIdForService,
+  } from "../../lib/therapists";
 
   const supabase = getSupabase();
 
   const grid = document.getElementById("cal-grid")!;
+  const colHeadersInner = document.getElementById("cal-col-headers-inner")!;
   const DAY_START = Number(grid.dataset.dayStart);
   const DAY_END = Number(grid.dataset.dayEnd);
   /** total 15' rows in the grid (matches grid-template-rows in the markup) */
   const TOTAL_ROWS = (DAY_END - DAY_START) * 4 + 4;
+  const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_START + i);
   const dateLabel = document.getElementById("date-label")!;
   const emptyMsg = document.getElementById("cal-empty")!;
   const errorMsg = document.getElementById("cal-error")!;
@@ -294,14 +346,59 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   const monthWeekdays = document.getElementById("month-weekdays")!;
   const viewDayBtn = document.getElementById("view-day-btn")!;
   const viewMonthBtn = document.getElementById("view-month-btn")!;
+  const apptTherapistSelect = document.getElementById("appt-therapist") as HTMLSelectElement;
+  const blockTherapistSelect = document.getElementById("block-therapist") as HTMLSelectElement;
+  const apptServiceSelect = document.getElementById("appt-service") as HTMLSelectElement;
 
   let currentDay = new Date();
   currentDay.setHours(0, 0, 0, 0);
   let viewMonth = new Date(currentDay.getFullYear(), currentDay.getMonth(), 1);
   let viewMode: "day" | "month" = "day";
+  /** null = show all therapists side by side */
+  let therapistFilter: string | null = null;
   let patients: Patient[] = [];
   let selectedAppt: Appointment | null = null;
   let monthAppts: Appointment[] = [];
+
+  const APPT_SELECT = "*, patients(id, name, phone), therapists(id, slug, name_el, name_en)";
+
+  function visibleTherapists() {
+    if (therapistFilter) {
+      const one = THERAPISTS.find((t) => t.id === therapistFilter);
+      return one ? [one] : THERAPISTS;
+    }
+    return THERAPISTS;
+  }
+
+  function therapistName(a: Appointment): string {
+    if (a.therapists?.name_el) return a.therapists.name_el;
+    return getTherapist(a.therapist_id)?.nameEl ?? "—";
+  }
+
+  function setDefaultTherapistSelects() {
+    const preferred = therapistFilter ?? DEFAULT_THERAPIST_ID;
+    if (preferred) {
+      apptTherapistSelect.value = preferred;
+      blockTherapistSelect.value = preferred;
+    }
+  }
+
+  document.querySelectorAll<HTMLButtonElement>("[data-therapist-filter]").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const v = btn.dataset.therapistFilter || "all";
+      therapistFilter = v === "all" ? null : v;
+      document.querySelectorAll<HTMLButtonElement>("[data-therapist-filter]").forEach((b) => {
+        b.dataset.active = String(b === btn);
+      });
+      setDefaultTherapistSelects();
+      refresh();
+    });
+  });
+
+  apptServiceSelect.addEventListener("change", () => {
+    const suggested = suggestTherapistIdForService(apptServiceSelect.value);
+    if (suggested) apptTherapistSelect.value = suggested;
+  });
 
   const fmtTime = (iso: string) =>
     new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
@@ -367,13 +464,16 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     const monthStart = startOfMonth(viewMonth);
     const monthEnd = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
 
-    const { data, error } = await supabase
+    let q = supabase
       .from("appointments")
-      .select("*, patients(id, name, phone)")
+      .select(APPT_SELECT)
       .gte("start_time", monthStart.toISOString())
       .lt("start_time", monthEnd.toISOString())
       .neq("status", "cancelled")
       .order("start_time");
+    if (therapistFilter) q = q.eq("therapist_id", therapistFilter);
+
+    const { data, error } = await q;
 
     if (error) {
       errorMsg.textContent = `Σφάλμα φόρτωσης: ${error.message}`;
@@ -423,18 +523,53 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     }
   }
 
+  function setupDayColumns(cols: typeof THERAPISTS) {
+    colHeadersInner.style.gridTemplateColumns = `repeat(${cols.length}, minmax(0, 1fr))`;
+    colHeadersInner.innerHTML = cols.map((th) => {
+      const accent = th.accent === "sky" ? "text-sky-700" : "text-spine";
+      return `<div class="border-l border-slate-100 px-2 py-2 text-center font-display text-xs font-bold ${accent}">${th.nameEl}</div>`;
+    }).join("");
+
+    grid.style.gridTemplateColumns = `repeat(${cols.length}, minmax(0, 1fr))`;
+    grid.querySelectorAll("[data-appt], [data-hour-line], [data-col-rule]").forEach((el) => el.remove());
+
+    hours.forEach((_, i) => {
+      const line = document.createElement("div");
+      line.setAttribute("data-hour-line", "");
+      line.className = "pointer-events-none border-t border-slate-100";
+      line.style.gridRow = String(i * 4 + 1);
+      line.style.gridColumn = "1 / -1";
+      grid.appendChild(line);
+    });
+
+    // Vertical dividers between therapist columns
+    for (let c = 2; c <= cols.length; c++) {
+      const rule = document.createElement("div");
+      rule.setAttribute("data-col-rule", "");
+      rule.className = "pointer-events-none border-l border-slate-100";
+      rule.style.gridRow = "1 / -1";
+      rule.style.gridColumn = String(c);
+      grid.appendChild(rule);
+    }
+  }
+
   // ── Load & render the day ──
   async function loadDay() {
     updateNavLabel();
     const dayEnd = new Date(currentDay); dayEnd.setDate(dayEnd.getDate() + 1);
+    const cols = visibleTherapists();
+    setupDayColumns(cols);
 
-    const { data, error } = await supabase
+    let q = supabase
       .from("appointments")
-      .select("*, patients(id, name, phone)")
+      .select(APPT_SELECT)
       .gte("start_time", currentDay.toISOString())
       .lt("start_time", dayEnd.toISOString())
       .neq("status", "cancelled")
       .order("start_time");
+    if (therapistFilter) q = q.eq("therapist_id", therapistFilter);
+
+    const { data, error } = await q;
 
     errorMsg.classList.add("hidden");
     if (error) {
@@ -443,45 +578,52 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       return;
     }
 
-    grid.querySelectorAll("[data-appt]").forEach((el) => el.remove());
     const appts = (data ?? []) as Appointment[];
     emptyMsg.classList.toggle("hidden", appts.length > 0);
 
     appts.forEach((a) => {
       const start = new Date(a.start_time);
       const end = new Date(a.end_time);
-      // Cap start to the last row so rowStart + 1 stays within the grid.
       const rowStart = Math.min(toRow(start), TOTAL_ROWS);
       const rowEnd = Math.max(rowStart + 1, toRow(end));
+
+      let colIdx = cols.findIndex((t) => t.id === a.therapist_id);
+      if (colIdx < 0) colIdx = 0; // unassigned → first visible column
 
       const block = document.createElement("button");
       block.setAttribute("data-appt", a.id);
       block.style.gridRow = `${rowStart} / ${rowEnd}`;
-      block.style.gridColumn = "1 / -1";
+      block.style.gridColumn = String(colIdx + 1);
+
+      const th = getTherapist(a.therapist_id);
+      const isSky = th?.accent === "sky";
 
       if (a.is_blocked_time) {
         block.className =
-          "z-20 mx-1 my-px overflow-hidden rounded-lg border border-slate-300 bg-slate-100 px-2.5 py-1 text-left " +
+          "z-20 mx-0.5 my-px overflow-hidden rounded-lg border border-slate-300 bg-slate-100 px-2 py-1 text-left " +
           "bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(0,0,0,0.04)_6px,rgba(0,0,0,0.04)_12px)]";
         block.innerHTML = `
           <p class="truncate text-xs font-semibold text-charcoal-muted">${a.service || "Κλειστό"}</p>
           <p class="text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)}</p>`;
       } else {
-        block.className =
-          "z-20 mx-1 my-px overflow-hidden rounded-lg border-l-4 border-spine bg-spine-50 px-2.5 py-1 text-left transition hover:bg-spine-100";
+        block.className = isSky
+          ? "z-20 mx-0.5 my-px overflow-hidden rounded-lg border-l-4 border-sky-500 bg-sky-50 px-2 py-1 text-left transition hover:bg-sky-100"
+          : "z-20 mx-0.5 my-px overflow-hidden rounded-lg border-l-4 border-spine bg-spine-50 px-2 py-1 text-left transition hover:bg-spine-100";
+        const nameColor = isSky ? "text-sky-700" : "text-spine";
         const payable = payableAmount(a);
         const amountLabel = payable != null
           ? `<span class="flex-none text-[10px] font-semibold ${a.is_paid ? "text-emerald-600" : "text-charcoal-muted"}">${fmtEuro(payable)}</span>`
           : "";
+        const showTherapist = !therapistFilter;
         block.innerHTML = `
           <div class="flex items-center justify-between gap-1">
-            <p class="truncate font-display text-xs font-bold text-spine">${a.patients?.name ?? "—"}</p>
+            <p class="truncate font-display text-xs font-bold ${nameColor}">${a.patients?.name ?? "—"}</p>
             <span class="flex flex-none items-center gap-1">
               ${amountLabel}
               ${a.is_paid ? '<span class="flex h-4 w-4 flex-none items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">✓</span>' : ""}
             </span>
           </div>
-          <p class="truncate text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}</p>`;
+          <p class="truncate text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
       }
 
       block.addEventListener("click", () => openDetail(a));
@@ -554,9 +696,11 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       patients = (data ?? []) as Patient[];
       select.length = 1;
       patients.forEach((p) => select.add(new Option(p.name, p.id)));
-      // keep the previous selection if that patient still exists
       if (previous && patients.some((p) => p.id === previous)) select.value = previous;
     }
+    setDefaultTherapistSelects();
+    const suggested = suggestTherapistIdForService(apptServiceSelect.value);
+    if (suggested && !therapistFilter) apptTherapistSelect.value = suggested;
     openModal(apptModal);
   });
 
@@ -573,6 +717,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
     const { error } = await supabase.from("appointments").insert({
       patient_id: String(fd.get("patient_id")),
+      therapist_id: String(fd.get("therapist_id")),
       service: String(fd.get("service")),
       start_time: start.toISOString(),
       end_time: end.toISOString(),
@@ -584,12 +729,16 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       return;
     }
     form.reset();
+    setDefaultTherapistSelects();
     closeModal(apptModal);
     refresh();
   });
 
   // ── Block time ──
-  document.getElementById("block-time-btn")!.addEventListener("click", () => openModal(blockModal));
+  document.getElementById("block-time-btn")!.addEventListener("click", () => {
+    setDefaultTherapistSelects();
+    openModal(blockModal);
+  });
 
   document.getElementById("block-form")!.addEventListener("submit", async (e) => {
     e.preventDefault();
@@ -611,6 +760,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
     const { error } = await supabase.from("appointments").insert({
       is_blocked_time: true,
+      therapist_id: String(fd.get("therapist_id")),
       service: String(fd.get("reason") || "Κλειστό"),
       start_time: start.toISOString(),
       end_time: end.toISOString(),
@@ -622,6 +772,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       return;
     }
     form.reset();
+    setDefaultTherapistSelects();
     closeModal(blockModal);
     refresh();
   });
@@ -664,6 +815,9 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   priceInput.addEventListener("input", updatePayablePreview);
   discountInput.addEventListener("input", updatePayablePreview);
 
+  const detailTherapistSelect = document.getElementById("detail-therapist") as HTMLSelectElement;
+  const detailTherapistRow = document.getElementById("detail-therapist-row")!;
+
   function openDetail(a: Appointment) {
     selectedAppt = a;
     document.getElementById("detail-title")!.textContent =
@@ -671,6 +825,8 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     document.getElementById("detail-time")!.textContent =
       `${fmtTime(a.start_time)} – ${fmtTime(a.end_time)}`;
     document.getElementById("detail-service")!.textContent = a.is_blocked_time ? "" : (a.service ?? "");
+    detailTherapistRow.classList.remove("hidden");
+    detailTherapistSelect.value = a.therapist_id ?? DEFAULT_THERAPIST_ID;
 
     const phoneEl = document.getElementById("detail-phone") as HTMLAnchorElement;
     if (!a.is_blocked_time && a.patients?.phone) {
@@ -699,6 +855,33 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     paidToggle.setAttribute("aria-checked", String(a.is_paid));
     openModal(detailSheet);
   }
+
+  detailTherapistSelect.addEventListener("change", async () => {
+    if (!selectedAppt) return;
+    const nextId = detailTherapistSelect.value;
+    const prevId = selectedAppt.therapist_id;
+    if (nextId === prevId) return;
+
+    detailTherapistSelect.disabled = true;
+    const { error } = await supabase
+      .from("appointments")
+      .update({ therapist_id: nextId })
+      .eq("id", selectedAppt.id);
+    detailTherapistSelect.disabled = false;
+
+    if (error) {
+      detailTherapistSelect.value = prevId ?? DEFAULT_THERAPIST_ID;
+      alert(`Αποτυχία μεταφοράς: ${error.message}`);
+      return;
+    }
+
+    selectedAppt.therapist_id = nextId;
+    const th = getTherapist(nextId);
+    selectedAppt.therapists = th
+      ? { id: th.id, slug: th.slug, name_el: th.nameEl, name_en: th.nameEn }
+      : null;
+    refresh();
+  });
 
   priceSaveBtn.addEventListener("click", async () => {
     if (!selectedAppt) return;

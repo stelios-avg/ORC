@@ -128,7 +128,10 @@ const el = {
   booking: {
     title: "Κλείστε το ραντεβού σας",
     subtitle:
-      "Μερικά γρήγορα στοιχεία και μετά επιλέγετε ημέρα και ώρα.",
+      "Επιλέξτε υπηρεσία, συμπληρώστε τα στοιχεία σας και μετά ημέρα και ώρα.",
+    serviceLabel: "Υπηρεσία",
+    serviceHint: "Η διαθεσιμότητα εξαρτάται από τον θεραπευτή της υπηρεσίας.",
+    errService: "Παρακαλώ επιλέξτε υπηρεσία.",
     fullNameLabel: "Ονοματεπώνυμο",
     emailLabel: "Email",
     phoneLabel: "Τηλέφωνο",
@@ -158,6 +161,7 @@ const el = {
     booking: "Γίνεται κράτηση…",
     slotTaken: "Η ώρα μόλις κλείστηκε από άλλον. Παρακαλώ επιλέξτε άλλη.",
     bookError: "Κάτι πήγε στραβά. Δοκιμάστε ξανά ή καλέστε μας.",
+    withTherapist: "με",
     // success
     successTitle: "Το ραντεβού σας κλείστηκε!",
     successMsg: "Θα επικοινωνήσουμε μαζί σας για επιβεβαίωση. Σας περιμένουμε!",
@@ -445,7 +449,10 @@ const en = {
 
   booking: {
     title: "Book your appointment",
-    subtitle: "A few quick details, then pick a day and time.",
+    subtitle: "Choose a service, add your details, then pick a day and time.",
+    serviceLabel: "Service",
+    serviceHint: "Availability depends on the therapist for that service.",
+    errService: "Please choose a service.",
     fullNameLabel: "Full name",
     emailLabel: "Email",
     phoneLabel: "Phone number",
@@ -474,6 +481,7 @@ const en = {
     booking: "Booking…",
     slotTaken: "That time was just taken. Please pick another.",
     bookError: "Something went wrong. Try again or give us a call.",
+    withTherapist: "with",
     // success
     successTitle: "Your appointment is booked!",
     successMsg: "We'll be in touch to confirm. See you soon!",

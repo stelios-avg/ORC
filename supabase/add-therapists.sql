@@ -1,18 +1,61 @@
 -- ─────────────────────────────────────────────────────────────
--- ORC public booking — RPC functions
--- Run this in the Supabase SQL Editor (after schema.sql + therapists).
---
--- Visitors (anon) never touch the tables directly; they only call
--- these two functions. RLS on the tables stays authenticated-only
--- (except read-only therapists for labels).
+-- Multi-therapist schedules (Fresha-style)
+-- Run in Supabase SQL Editor after schema.sql.
+-- Fixed UUIDs so the website can map services → therapists.
 -- ─────────────────────────────────────────────────────────────
 
+-- Χαράλαμπος → οστεοπαθητική
+-- Ραφαέλλος → φυσιοθεραπεία (+ κλινική πιλάτες online)
+create table if not exists public.therapists (
+  id         uuid primary key,
+  slug       text not null unique,
+  name_el    text not null,
+  name_en    text not null,
+  specialty  text not null, -- osteopathy | physiotherapy
+  sort_order int not null default 0,
+  active     boolean not null default true,
+  created_at timestamptz not null default now()
+);
+
+insert into public.therapists (id, slug, name_el, name_en, specialty, sort_order)
+values
+  ('11111111-1111-4111-8111-111111111111', 'charalambos', 'Χαράλαμπος', 'Charalambos', 'osteopathy', 1),
+  ('22222222-2222-4222-8222-222222222222', 'rafaellos', 'Ραφαέλλος', 'Rafaellos', 'physiotherapy', 2)
+on conflict (id) do update set
+  slug = excluded.slug,
+  name_el = excluded.name_el,
+  name_en = excluded.name_en,
+  specialty = excluded.specialty,
+  sort_order = excluded.sort_order,
+  active = true;
+
+alter table public.appointments
+  add column if not exists therapist_id uuid references public.therapists(id);
+
+create index if not exists appointments_therapist_start_idx
+  on public.appointments (therapist_id, start_time);
+
+alter table public.therapists enable row level security;
+
+drop policy if exists "Authenticated full access on therapists" on public.therapists;
+create policy "Authenticated full access on therapists"
+  on public.therapists for all
+  to authenticated
+  using (true) with check (true);
+
+-- Public can read active therapists (needed for online booking labels).
+drop policy if exists "Anon read active therapists" on public.therapists;
+create policy "Anon read active therapists"
+  on public.therapists for select
+  to anon
+  using (active = true);
+
+-- ── Replace booking RPCs: busy slots + book are scoped per therapist ──
 drop function if exists public.get_busy_slots(date);
 drop function if exists public.get_busy_slots(date, uuid);
 drop function if exists public.book_appointment(text, text, text, text, timestamptz, timestamptz);
 drop function if exists public.book_appointment(text, text, text, text, timestamptz, timestamptz, uuid, text);
 
--- 1) Busy ranges for one therapist on one day (no patient data).
 create or replace function public.get_busy_slots(p_day date, p_therapist_id uuid)
 returns table (busy_start timestamptz, busy_end timestamptz)
 language sql
@@ -28,7 +71,6 @@ as $$
     and a.start_time <  (p_day + 1)::timestamptz;
 $$;
 
--- 2) Book an appointment on a therapist's calendar.
 create or replace function public.book_appointment(
   p_name         text,
   p_email        text,
@@ -67,6 +109,7 @@ begin
     raise exception 'too_long';
   end if;
 
+  -- Overlap only against this therapist's calendar
   if exists (
     select 1 from public.appointments a
     where a.status <> 'cancelled'
