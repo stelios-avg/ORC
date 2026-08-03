@@ -525,6 +525,7 @@ const t = useTranslations(lang).booking;
       }
 
       sendLead("online-booking", selectedStart);
+      sendPatientConfirmation(selectedStart);
       document.getElementById("success-when")!.textContent =
         `${selectedStart.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" })} · ` +
         `${selectedStart.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}`;
@@ -535,7 +536,7 @@ const t = useTranslations(lang).booking;
     document.getElementById("back-to-1")!.addEventListener("click", () => showStep(form));
     document.getElementById("back-to-2")!.addEventListener("click", () => showStep(step2));
 
-    // ── Lead email (best effort, non-blocking) ──
+    // ── Lead email to the clinic (best effort, non-blocking) ──
     function sendLead(source: string, when?: Date) {
       if (!leadEndpoint) return;
       fetch(leadEndpoint, {
@@ -551,6 +552,27 @@ const t = useTranslations(lang).booking;
           ts: Date.now(),
         }),
       }).catch((err) => console.warn("Lead capture failed:", err));
+    }
+
+    // ── Confirmation email to the patient (Supabase Edge Function → Brevo) ──
+    function sendPatientConfirmation(when: Date) {
+      if (!supabase) return;
+      const pageLang = modal.dataset.lang === "en" ? "en" : "el";
+      supabase.functions
+        .invoke("send-booking-confirmation", {
+          body: {
+            name: payload.fullName,
+            email: payload.email,
+            phone: payload.phone,
+            concern: payload.concern,
+            start: when.toISOString(),
+            lang: pageLang,
+          },
+        })
+        .then(({ error }) => {
+          if (error) console.warn("Patient confirmation email failed:", error.message);
+        })
+        .catch((err) => console.warn("Patient confirmation email failed:", err));
     }
   }
 </script>

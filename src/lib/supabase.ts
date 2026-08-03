@@ -60,6 +60,10 @@ export interface Appointment {
   end_time: string;
   status: "confirmed" | "cancelled" | "completed";
   notes: string | null;
+  /** List/session price in EUR (admin-set). Null = not set. */
+  price: number | null;
+  /** Fixed-amount discount in EUR (not a percentage). */
+  discount: number;
   is_paid: boolean;
   is_blocked_time: boolean;
   created_at: string;

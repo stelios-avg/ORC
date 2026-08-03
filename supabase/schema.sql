@@ -22,6 +22,8 @@ create table if not exists public.appointments (
   end_time        timestamptz not null,
   status          text not null default 'confirmed',  -- confirmed | cancelled | completed
   notes           text,                 -- e.g. reason given in an online booking
+  price           numeric(10, 2),       -- list/session price in EUR (admin-set)
+  discount        numeric(10, 2) not null default 0, -- fixed EUR off (not %); payable = max(0, price - discount)
   is_paid         boolean not null default false,
   is_blocked_time boolean not null default false,
   created_at      timestamptz not null default now(),
