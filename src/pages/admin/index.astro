@@ -1,6 +1,6 @@
 ---
 import AdminLayout from "../../layouts/AdminLayout.astro";
-import { THERAPISTS } from "../../lib/therapists";
+import { ADMIN_SERVICES, THERAPISTS } from "../../lib/therapists";
 
 // Working hours shown on the calendar
 const DAY_START = 8;   // 08:00
@@ -176,12 +176,24 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
           <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-service">Υπηρεσία</label>
           <select id="appt-service" name="service"
             class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
-            <option>Φυσιοθεραπεία</option>
-            <option>Οστεοπαθητική</option>
-            <option>Κλινική Πιλάτες</option>
-            <option>Άλλο</option>
+            {ADMIN_SERVICES.map((s) => (
+              <option value={s.label} data-default-price={s.defaultPrice ?? ""}>{s.label}</option>
+            ))}
           </select>
         </div>
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-price">Τιμή (€)</label>
+            <input id="appt-price" name="price" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-discount">Έκπτωση (€)</label>
+            <input id="appt-discount" name="discount" type="number" min="0" step="0.01" inputmode="decimal" placeholder="0" value="0"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
+        </div>
+        <p class="text-xs text-charcoal-muted">Η τιμή γεμίζει αυτόματα από την υπηρεσία· η έκπτωση μένει επεξεργάσιμη.</p>
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-start">Ώρα έναρξης</label>
@@ -193,8 +205,8 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
             <select id="appt-duration" name="duration"
               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
               <option value="30">30′</option>
-              <option value="45">45′</option>
-              <option value="60" selected>1 ώρα</option>
+              <option value="45" selected>45′</option>
+              <option value="60">1 ώρα</option>
               <option value="90">1,5 ώρα</option>
               <option value="120">2 ώρες</option>
             </select>
@@ -355,6 +367,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     getTherapist,
     suggestTherapistIdForService,
     therapistAccentClasses,
+    defaultPriceForAdminService,
   } from "../../lib/therapists";
   import { canViewTherapistPayments, canDeleteAppointment } from "../../lib/admin-access";
 
@@ -399,6 +412,21 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   const apptTherapistSelect = document.getElementById("appt-therapist") as HTMLSelectElement;
   const blockTherapistSelect = document.getElementById("block-therapist") as HTMLSelectElement;
   const apptServiceSelect = document.getElementById("appt-service") as HTMLSelectElement;
+  const apptPriceInput = document.getElementById("appt-price") as HTMLInputElement;
+  const apptDiscountInput = document.getElementById("appt-discount") as HTMLInputElement;
+
+  function applyServiceDefaultPrice() {
+    const price = defaultPriceForAdminService(apptServiceSelect.value);
+    apptPriceInput.value = price != null ? String(price) : "";
+    // Keep discount field; only reset when opening a fresh form / changing service defaults
+    if (apptDiscountInput.value.trim() === "") apptDiscountInput.value = "0";
+  }
+
+  apptServiceSelect.addEventListener("change", () => {
+    applyServiceDefaultPrice();
+    const suggested = suggestTherapistIdForService(apptServiceSelect.value);
+    if (suggested && !therapistFilter) apptTherapistSelect.value = suggested;
+  });
 
   const isNarrow = () => window.matchMedia("(max-width: 767px)").matches;
 
@@ -933,6 +961,8 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     if (!error) patients = (data ?? []) as Patient[];
     resetPatientPicker();
     setDefaultTherapistSelects();
+    apptDiscountInput.value = "0";
+    applyServiceDefaultPrice();
     if (opts?.therapistId) {
       apptTherapistSelect.value = opts.therapistId;
     } else {
@@ -1004,12 +1034,29 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     const start = new Date(currentDay); start.setHours(h, m, 0, 0);
     const end = new Date(start.getTime() + Number(fd.get("duration")) * 60_000);
 
+    const priceRaw = String(fd.get("price") ?? "").trim();
+    const discountRaw = String(fd.get("discount") ?? "").trim();
+    const price = priceRaw === "" ? null : Number(priceRaw);
+    const discount = discountRaw === "" ? 0 : Number(discountRaw);
+    if (priceRaw !== "" && (price == null || Number.isNaN(price) || price < 0)) {
+      err.textContent = "Μη έγκυρη τιμή.";
+      err.classList.remove("hidden");
+      return;
+    }
+    if (Number.isNaN(discount) || discount < 0) {
+      err.textContent = "Μη έγκυρη έκπτωση.";
+      err.classList.remove("hidden");
+      return;
+    }
+
     const { error } = await supabase.from("appointments").insert({
       patient_id: patientId,
       therapist_id: String(fd.get("therapist_id")),
       service: String(fd.get("service")),
       start_time: start.toISOString(),
       end_time: end.toISOString(),
+      price,
+      discount,
     });
 
     if (error) {
@@ -1019,6 +1066,8 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     }
     form.reset();
     resetPatientPicker();
+    apptDiscountInput.value = "0";
+    applyServiceDefaultPrice();
     setDefaultTherapistSelects();
     closeModal(apptModal);
     refresh();

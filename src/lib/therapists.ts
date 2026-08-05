@@ -129,6 +129,24 @@ export function slotCapacityForService(service: BookableService | string): numbe
   return service === "physiotherapy" ? 2 : 1;
 }
 
+/** Admin “new appointment” service list with default prices (EUR). Discount stays editable. */
+export const ADMIN_SERVICES: {
+  label: string;
+  defaultPrice: number | null;
+}[] = [
+  { label: "Φυσιοθεραπεία με ΓΕΣΥ", defaultPrice: 10 },
+  { label: "Φυσιοθεραπεία χωρίς ΓΕΣΥ", defaultPrice: 35 },
+  { label: "Φυσιοθεραπεία χωρίς συμπλήρωμα", defaultPrice: 0 },
+  { label: "Οστεοπαθητική", defaultPrice: null },
+  { label: "Κλινική Πιλάτες", defaultPrice: null },
+  { label: "Άλλο", defaultPrice: null },
+];
+
+export function defaultPriceForAdminService(label: string): number | null {
+  const hit = ADMIN_SERVICES.find((s) => s.label === label);
+  return hit ? hit.defaultPrice : null;
+}
+
 /** Suggest therapist when admin picks a Greek service name. */
 export function suggestTherapistIdForService(service: string): string | null {
   const s = service.trim().toLowerCase();
