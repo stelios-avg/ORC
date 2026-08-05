@@ -12,13 +12,18 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   <div class="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
     <div class="flex items-center gap-4">
       <span id="cl-avatar" class="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-spine-50 font-display text-lg font-bold text-spine"></span>
-      <div class="min-w-0">
+      <div class="min-w-0 flex-1">
         <h1 id="cl-name" class="truncate font-display text-xl font-bold text-charcoal">…</h1>
         <div class="mt-0.5 flex flex-wrap gap-x-4 gap-y-0.5 text-sm">
           <a id="cl-phone" href="#" class="hidden font-medium text-spine underline"></a>
           <a id="cl-email" href="#" class="hidden truncate text-charcoal-muted underline"></a>
         </div>
       </div>
+    </div>
+    <div id="cl-balance-wrap" class="mt-4 hidden rounded-xl bg-sand px-4 py-3">
+      <p class="text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Οφειλή</p>
+      <p id="cl-balance" class="mt-0.5 font-display text-2xl font-bold text-amber-700">—</p>
+      <p id="cl-balance-hint" class="mt-0.5 text-xs text-charcoal-muted">Άθροισμα απλήρωτων ραντεβού</p>
     </div>
   </div>
 
@@ -68,9 +73,33 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     new Date(iso).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
   const fmtTime = (iso: string) =>
     new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+  const fmtEuro = (n: number) =>
+    new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR" }).format(n);
+
+  function payableAmount(a: Pick<Appointment, "price" | "discount">): number | null {
+    if (a.price == null || Number.isNaN(Number(a.price))) return null;
+    return Math.max(0, Number(a.price) - Number(a.discount ?? 0));
+  }
+
+  /** Unpaid total the current admin is allowed to see for this client. */
+  function clientDebt(appts: Appointment[]): number {
+    let total = 0;
+    for (const a of appts) {
+      if (a.is_blocked_time || a.is_paid) continue;
+      if (!canViewTherapistPayments(adminEmail, a.therapist_id)) continue;
+      const amount = payableAmount(a);
+      if (amount != null) total += amount;
+    }
+    return total;
+  }
 
   function apptItem(a: Appointment): string {
     const showPay = canViewTherapistPayments(adminEmail, a.therapist_id);
+    const amount = showPay ? payableAmount(a) : null;
+    const amountLabel =
+      amount != null
+        ? `<span class="flex-none text-xs font-semibold ${a.is_paid ? "text-emerald-600" : "text-amber-700"}">${fmtEuro(amount)}</span>`
+        : "";
     const payBadge = !showPay
       ? ""
       : a.is_paid
@@ -82,7 +111,10 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
           <p class="truncate font-display text-sm font-semibold text-charcoal">${a.service ?? "Ραντεβού"}</p>
           <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)} · ${fmtTime(a.start_time)}–${fmtTime(a.end_time)}</p>
         </div>
-        ${payBadge}
+        <div class="flex flex-none flex-col items-end gap-1">
+          ${amountLabel}
+          ${payBadge}
+        </div>
       </li>`;
   }
 
@@ -124,11 +156,23 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
     (document.getElementById("cl-notes") as HTMLTextAreaElement).value = p.notes ?? "";
 
-    // History split into upcoming / past
+    // History split into upcoming / past + outstanding balance
     if (!aErr && appts) {
+      const list = appts as Appointment[];
+      const debt = clientDebt(list);
+      const balanceWrap = document.getElementById("cl-balance-wrap")!;
+      const balanceEl = document.getElementById("cl-balance")!;
+      balanceWrap.classList.remove("hidden");
+      balanceEl.textContent = fmtEuro(debt);
+      balanceEl.className =
+        "mt-0.5 font-display text-2xl font-bold " +
+        (debt > 0 ? "text-amber-700" : "text-emerald-600");
+      document.getElementById("cl-balance-hint")!.textContent =
+        debt > 0 ? "Άθροισμα απλήρωτων ραντεβού" : "Καμία ανοιχτή οφειλή";
+
       const now = Date.now();
-      const upcoming = (appts as Appointment[]).filter((a) => new Date(a.start_time).getTime() >= now).reverse();
-      const past = (appts as Appointment[]).filter((a) => new Date(a.start_time).getTime() < now);
+      const upcoming = list.filter((a) => new Date(a.start_time).getTime() >= now).reverse();
+      const past = list.filter((a) => new Date(a.start_time).getTime() < now);
 
       if (upcoming.length) {
         document.getElementById("upcoming-wrap")!.classList.remove("hidden");
@@ -138,7 +182,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         document.getElementById("past-wrap")!.classList.remove("hidden");
         document.getElementById("past-list")!.innerHTML = past.map(apptItem).join("");
       }
-      document.getElementById("history-empty")!.classList.toggle("hidden", appts.length > 0);
+      document.getElementById("history-empty")!.classList.toggle("hidden", list.length > 0);
     }
   }
 

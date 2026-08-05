@@ -60,7 +60,8 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 </AdminLayout>
 
 <script>
-  import { getSupabase, type Patient } from "../../lib/supabase";
+  import { getSupabase, type Appointment, type Patient } from "../../lib/supabase";
+  import { canViewTherapistPayments } from "../../lib/admin-access";
 
   const supabase = getSupabase();
   const list = document.getElementById("client-list")!;
@@ -69,14 +70,24 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   const search = document.getElementById("client-search") as HTMLInputElement;
 
   let allPatients: Patient[] = [];
+  let debtByPatient = new Map<string, number>();
+  let adminEmail = "";
 
   const initials = (name: string) =>
     name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+
+  const fmtEuro = (n: number) =>
+    new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR" }).format(n);
 
   function render(patients: Patient[]) {
     list.innerHTML = "";
     emptyMsg.classList.toggle("hidden", patients.length > 0);
     patients.forEach((p) => {
+      const debt = debtByPatient.get(p.id) ?? 0;
+      const debtLabel =
+        debt > 0
+          ? `<span class="flex-none rounded-full bg-amber-100 px-2.5 py-1 font-display text-[11px] font-bold text-amber-800">${fmtEuro(debt)}</span>`
+          : `<span class="flex-none text-[11px] font-medium text-emerald-600">0 €</span>`;
       const li = document.createElement("li");
       li.innerHTML = `
         <a href="/admin/client?id=${p.id}"
@@ -86,19 +97,40 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
             <span class="block truncate font-display text-sm font-semibold text-charcoal">${p.name}</span>
             <span class="block truncate text-xs text-charcoal-muted">${p.phone ?? "χωρίς τηλέφωνο"}</span>
           </span>
-          <svg class="h-4 w-4 flex-none text-charcoal-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg>
+          ${debtLabel}
         </a>`;
       list.appendChild(li);
     });
   }
 
   async function load() {
-    const { data, error } = await supabase.from("patients").select("*").order("name");
+    const [{ data: { session } }, { data, error }, unpaid] = await Promise.all([
+      supabase.auth.getSession(),
+      supabase.from("patients").select("*").order("name"),
+      supabase
+        .from("appointments")
+        .select("patient_id, therapist_id, price, discount, is_paid, is_blocked_time, status")
+        .neq("status", "cancelled")
+        .eq("is_paid", false)
+        .eq("is_blocked_time", false),
+    ]);
+    adminEmail = session?.user?.email ?? "";
+
     if (error) {
       errorMsg.textContent = `Σφάλμα φόρτωσης: ${error.message}`;
       errorMsg.classList.remove("hidden");
       return;
     }
+
+    debtByPatient = new Map();
+    for (const a of (unpaid.data ?? []) as Appointment[]) {
+      if (!a.patient_id) continue;
+      if (!canViewTherapistPayments(adminEmail, a.therapist_id)) continue;
+      if (a.price == null || Number.isNaN(Number(a.price))) continue;
+      const amount = Math.max(0, Number(a.price) - Number(a.discount ?? 0));
+      debtByPatient.set(a.patient_id, (debtByPatient.get(a.patient_id) ?? 0) + amount);
+    }
+
     allPatients = (data ?? []) as Patient[];
     render(allPatients);
   }
