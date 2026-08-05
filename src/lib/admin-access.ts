@@ -46,8 +46,8 @@ export function therapistIdForEmail(
   return slug ? (getTherapist(slug)?.id ?? null) : null;
 }
 
-/** Masters: all. Therapist accounts: only their own calendar. Others: none. */
-export function canViewTherapistPayments(
+/** Own therapist calendar (or master). Used for payments + deletes. */
+export function canManageTherapistCalendar(
   email: string | null | undefined,
   therapistId: string | null | undefined,
 ): boolean {
@@ -55,6 +55,22 @@ export function canViewTherapistPayments(
   if (!therapistId) return false;
   const ownId = therapistIdForEmail(email);
   return !!ownId && ownId === therapistId;
+}
+
+/** Masters: all. Therapist accounts: only their own calendar. Others: none. */
+export function canViewTherapistPayments(
+  email: string | null | undefined,
+  therapistId: string | null | undefined,
+): boolean {
+  return canManageTherapistCalendar(email, therapistId);
+}
+
+/** Non-masters may only delete appointments on their own calendar. */
+export function canDeleteAppointment(
+  email: string | null | undefined,
+  therapistId: string | null | undefined,
+): boolean {
+  return canManageTherapistCalendar(email, therapistId);
 }
 
 /** Therapist IDs whose payment fields this account may read/aggregate. */

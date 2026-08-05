@@ -326,7 +326,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     suggestTherapistIdForService,
     therapistAccentClasses,
   } from "../../lib/therapists";
-  import { canViewTherapistPayments } from "../../lib/admin-access";
+  import { canViewTherapistPayments, canDeleteAppointment } from "../../lib/admin-access";
 
   const supabase = getSupabase();
   let adminEmail: string | null = null;
@@ -340,6 +340,10 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
   function canSeePayments(a: Pick<Appointment, "therapist_id">) {
     return canViewTherapistPayments(adminEmail, a.therapist_id);
+  }
+
+  function canDelete(a: Pick<Appointment, "therapist_id">) {
+    return canDeleteAppointment(adminEmail, a.therapist_id);
   }
 
   const grid = document.getElementById("cal-grid")!;
@@ -869,6 +873,10 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
     paidToggle.dataset.on = String(a.is_paid);
     paidToggle.setAttribute("aria-checked", String(a.is_paid));
+
+    const deleteBtn = document.getElementById("detail-delete") as HTMLButtonElement;
+    deleteBtn.classList.toggle("hidden", !canDelete(a));
+
     openModal(detailSheet);
   }
 
@@ -952,6 +960,10 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
   document.getElementById("detail-delete")!.addEventListener("click", async () => {
     if (!selectedAppt) return;
+    if (!canDelete(selectedAppt)) {
+      alert("Μπορείτε να διαγράψετε μόνο τα δικά σας ραντεβού.");
+      return;
+    }
     if (!confirm("Σίγουρα θέλετε να διαγράψετε αυτή την καταχώρηση;")) return;
     const deleteBtn = document.getElementById("detail-delete") as HTMLButtonElement;
     deleteBtn.disabled = true;

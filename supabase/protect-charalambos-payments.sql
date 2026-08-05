@@ -73,3 +73,24 @@ create trigger trg_protect_appointment_payments
   before update on public.appointments
   for each row
   execute function public.protect_appointment_payments();
+
+-- Non-masters may only delete appointments on their own therapist calendar.
+create or replace function public.protect_appointment_delete()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+begin
+  if not public.can_edit_therapist_payments(OLD.therapist_id) then
+    raise exception 'not_allowed_to_delete';
+  end if;
+  return OLD;
+end;
+$$;
+
+drop trigger if exists trg_protect_appointment_delete on public.appointments;
+create trigger trg_protect_appointment_delete
+  before delete on public.appointments
+  for each row
+  execute function public.protect_appointment_delete();
