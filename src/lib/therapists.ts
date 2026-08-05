@@ -4,7 +4,7 @@
  * Online booking routing:
  *   Osteopathy        → Charalambos
  *   Physiotherapy     → Rafaellos
- *   Clinical Pilates  → Rafaellos
+ *   Clinical Pilates  → Pilates calendar (no person name)
  *
  * Antreas & Constantina are on the admin schedule (physiotherapy) but are not
  * the default online-booking targets — staff can transfer appointments to them.
@@ -12,18 +12,23 @@
  * Secretary (Egly) is a master admin account only — never add her here as a therapist.
  */
 
-export type TherapistSlug = "charalambos" | "rafaellos" | "antreas" | "constantina";
+export type TherapistSlug = "charalambos" | "rafaellos" | "antreas" | "constantina" | "pilates";
 export type BookableService = "osteopathy" | "physiotherapy" | "pilates";
-export type TherapistAccent = "spine" | "sky" | "teal" | "rose";
+export type TherapistAccent = "spine" | "sky" | "teal" | "rose" | "amber";
 
 export interface Therapist {
   id: string;
   slug: TherapistSlug;
   nameEl: string;
   nameEn: string;
-  specialty: "osteopathy" | "physiotherapy";
+  specialty: "osteopathy" | "physiotherapy" | "pilates";
   /** Tailwind-ish accent used in admin calendar */
   accent: TherapistAccent;
+  /**
+   * Schedule column that is not a named person (e.g. Pilates).
+   * Online booking hides “με …” for these.
+   */
+  anonymous?: boolean;
 }
 
 export const THERAPISTS: Therapist[] = [
@@ -59,6 +64,15 @@ export const THERAPISTS: Therapist[] = [
     specialty: "physiotherapy",
     accent: "rose",
   },
+  {
+    id: "55555555-5555-4555-8555-555555555555",
+    slug: "pilates",
+    nameEl: "Πιλάτες",
+    nameEn: "Pilates",
+    specialty: "pilates",
+    accent: "amber",
+    anonymous: true,
+  },
 ];
 
 /** First item is the online-booking default when the visitor doesn't change anything. */
@@ -84,7 +98,7 @@ export const BOOKABLE_SERVICES: {
     key: "pilates",
     labelEl: "Κλινική Πιλάτες",
     labelEn: "Clinical Pilates",
-    therapistSlug: "rafaellos",
+    therapistSlug: "pilates",
   },
 ];
 
@@ -112,7 +126,10 @@ export function suggestTherapistIdForService(service: string): string | null {
   if (s.includes("οστεο") || s.includes("osteo")) {
     return getTherapist("charalambos")!.id;
   }
-  if (s.includes("φυσιο") || s.includes("physio") || s.includes("πιλάτ") || s.includes("pilates")) {
+  if (s.includes("πιλάτ") || s.includes("pilates")) {
+    return getTherapist("pilates")!.id;
+  }
+  if (s.includes("φυσιο") || s.includes("physio")) {
     return getTherapist("rafaellos")!.id;
   }
   return null;
@@ -140,6 +157,12 @@ export function therapistAccentClasses(accent: TherapistAccent): {
         text: "text-rose-700",
         block:
           "z-20 mx-0.5 my-px overflow-hidden rounded-lg border-l-4 border-rose-500 bg-rose-50 px-2 py-1 text-left transition hover:bg-rose-100",
+      };
+    case "amber":
+      return {
+        text: "text-amber-800",
+        block:
+          "z-20 mx-0.5 my-px overflow-hidden rounded-lg border-l-4 border-amber-500 bg-amber-50 px-2 py-1 text-left transition hover:bg-amber-100",
       };
     default:
       return {

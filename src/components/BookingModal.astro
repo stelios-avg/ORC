@@ -6,14 +6,20 @@ import { BOOKABLE_SERVICES, THERAPISTS } from "../lib/therapists";
 interface Props { lang?: Lang; }
 const { lang = "el" } = Astro.props;
 const t = useTranslations(lang).booking;
-const services = BOOKABLE_SERVICES.map((s) => ({
-  key: s.key,
-  label: lang === "en" ? s.labelEn : s.labelEl,
-  therapistId: THERAPISTS.find((th) => th.slug === s.therapistSlug)!.id,
-  therapistName: lang === "en"
-    ? THERAPISTS.find((th) => th.slug === s.therapistSlug)!.nameEn
-    : THERAPISTS.find((th) => th.slug === s.therapistSlug)!.nameEl,
-}));
+const services = BOOKABLE_SERVICES.map((s) => {
+  const th = THERAPISTS.find((x) => x.slug === s.therapistSlug)!;
+  return {
+    key: s.key,
+    label: lang === "en" ? s.labelEn : s.labelEl,
+    therapistId: th.id,
+    /** Empty for anonymous calendars (Pilates) — no “με …” line */
+    therapistName: th.anonymous
+      ? ""
+      : lang === "en"
+        ? th.nameEn
+        : th.nameEl,
+  };
+});
 ---
 
 <div
@@ -89,7 +95,9 @@ const services = BOOKABLE_SERVICES.map((s) => ({
                   />
                   <span>
                     <span class="block font-display text-sm font-semibold text-charcoal">{s.label}</span>
-                    <span class="mt-0.5 block text-xs text-charcoal-muted">{t.withTherapist} {s.therapistName}</span>
+                    {s.therapistName ? (
+                      <span class="mt-0.5 block text-xs text-charcoal-muted">{t.withTherapist} {s.therapistName}</span>
+                    ) : null}
                   </span>
                 </label>
               ))}
@@ -551,8 +559,9 @@ const services = BOOKABLE_SERVICES.map((s) => ({
     function fillConfirm() {
       if (!selectedStart) return;
       document.getElementById("confirm-name")!.textContent = payload.fullName;
-      document.getElementById("confirm-service")!.textContent =
-        `${payload.serviceLabel} · ${withTherapist} ${payload.therapistName}`;
+      document.getElementById("confirm-service")!.textContent = payload.therapistName
+        ? `${payload.serviceLabel} · ${withTherapist} ${payload.therapistName}`
+        : payload.serviceLabel;
       document.getElementById("confirm-when")!.textContent =
         `${selectedStart.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" })} · ` +
         `${selectedStart.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}`;
