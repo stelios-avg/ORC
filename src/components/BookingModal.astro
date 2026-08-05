@@ -1,7 +1,7 @@
 ---
 import { FRESHA_BOOKING_URL, LEAD_ENDPOINT, LEAD_ACCESS_KEY } from "../config/site";
 import { useTranslations, type Lang } from "../i18n";
-import { BOOKABLE_SERVICES, THERAPISTS, slotCapacityForService } from "../lib/therapists";
+import { BOOKABLE_SERVICES, THERAPISTS } from "../lib/therapists";
 
 interface Props { lang?: Lang; }
 const { lang = "el" } = Astro.props;
@@ -256,6 +256,7 @@ const services = BOOKABLE_SERVICES.map((s) => {
 
 <script>
   import { getSupabase } from "../lib/supabase";
+  import { slotCapacityForService } from "../lib/therapists";
 
   type FieldName = "fullName" | "email" | "phone" | "concern" | "service";
 
