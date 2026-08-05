@@ -484,11 +484,6 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     });
   });
 
-  apptServiceSelect.addEventListener("change", () => {
-    const suggested = suggestTherapistIdForService(apptServiceSelect.value);
-    if (suggested) apptTherapistSelect.value = suggested;
-  });
-
   const fmtTime = (iso: string) =>
     new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
 
