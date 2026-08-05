@@ -1,5 +1,6 @@
--- Restrict updates to Charalambos appointment payment fields to master emails.
--- UI also hides these fields; this blocks API updates from other admin sessions.
+-- Payment field updates: masters can edit any therapist;
+-- other admins can only edit their own therapist calendar.
+-- Pilates (anonymous) payments are master-only.
 
 create or replace function public.is_master_admin()
 returns boolean
@@ -14,24 +15,49 @@ as $$
   );
 $$;
 
-create or replace function public.protect_charalambos_payments()
+create or replace function public.admin_own_therapist_id()
+returns uuid
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select case lower(coalesce(auth.jwt() ->> 'email', ''))
+    when 'x.neocleous@hotmail.com' then '11111111-1111-4111-8111-111111111111'::uuid
+    when 'onisiforourafaellos@gmail.com' then '22222222-2222-4222-8222-222222222222'::uuid
+    when 'antreaslouis@gmail.com' then '33333333-3333-4333-8333-333333333333'::uuid
+    when 'constantinakitromilide@gmail.com' then '44444444-4444-4444-8444-444444444444'::uuid
+    else null
+  end;
+$$;
+
+create or replace function public.can_edit_therapist_payments(p_therapist_id uuid)
+returns boolean
+language sql
+stable
+security definer
+set search_path = public
+as $$
+  select public.is_master_admin()
+    or (
+      p_therapist_id is not null
+      and p_therapist_id = public.admin_own_therapist_id()
+    );
+$$;
+
+create or replace function public.protect_appointment_payments()
 returns trigger
 language plpgsql
 security definer
 set search_path = public
 as $$
 declare
-  charalambos_id uuid := '11111111-1111-4111-8111-111111111111';
+  target_id uuid := coalesce(NEW.therapist_id, OLD.therapist_id);
 begin
-  if (
-    coalesce(NEW.therapist_id, OLD.therapist_id) = charalambos_id
-    or OLD.therapist_id = charalambos_id
-  ) and not public.is_master_admin() then
-    -- Non-masters cannot change payment fields on Charalambos appointments
-    -- (including when transferring away / onto Charalambos).
-    if NEW.price is distinct from OLD.price
-      or NEW.discount is distinct from OLD.discount
-      or NEW.is_paid is distinct from OLD.is_paid then
+  if NEW.price is distinct from OLD.price
+    or NEW.discount is distinct from OLD.discount
+    or NEW.is_paid is distinct from OLD.is_paid then
+    if not public.can_edit_therapist_payments(target_id) then
       NEW.price := OLD.price;
       NEW.discount := OLD.discount;
       NEW.is_paid := OLD.is_paid;
@@ -42,7 +68,8 @@ end;
 $$;
 
 drop trigger if exists trg_protect_charalambos_payments on public.appointments;
-create trigger trg_protect_charalambos_payments
+drop trigger if exists trg_protect_appointment_payments on public.appointments;
+create trigger trg_protect_appointment_payments
   before update on public.appointments
   for each row
-  execute function public.protect_charalambos_payments();
+  execute function public.protect_appointment_payments();

@@ -1,13 +1,25 @@
-import { getTherapist } from "./therapists";
+import { getTherapist, type TherapistSlug } from "./therapists";
 
 /**
- * Master / secretary accounts — full admin including Charalambos payments.
+ * Master / secretary accounts — see and edit everyone’s payments.
  * Egly is secretary only: do NOT add her as a therapist on the schedule.
  */
 export const MASTER_EMAILS = [
   "egly_mua@hotmail.com",
   "x.neocleous@hotmail.com",
 ] as const;
+
+/**
+ * Login email → therapist calendar for payment scoping.
+ * Non-masters only see/edit payments on their own therapist_id.
+ * Pilates (anonymous calendar) is master-only.
+ */
+export const THERAPIST_ACCOUNT_EMAILS: Record<string, TherapistSlug> = {
+  "x.neocleous@hotmail.com": "charalambos",
+  "onisiforourafaellos@gmail.com": "rafaellos",
+  "antreaslouis@gmail.com": "antreas",
+  "constantinakitromilide@gmail.com": "constantina",
+};
 
 export function normalizeEmail(email: string | null | undefined): string {
   return String(email ?? "")
@@ -20,12 +32,36 @@ export function isMasterAccount(email: string | null | undefined): boolean {
   return (MASTER_EMAILS as readonly string[]).includes(e);
 }
 
-/** Charalambos payment fields are visible only to master accounts. */
+export function therapistSlugForEmail(
+  email: string | null | undefined,
+): TherapistSlug | null {
+  const e = normalizeEmail(email);
+  return THERAPIST_ACCOUNT_EMAILS[e] ?? null;
+}
+
+export function therapistIdForEmail(
+  email: string | null | undefined,
+): string | null {
+  const slug = therapistSlugForEmail(email);
+  return slug ? (getTherapist(slug)?.id ?? null) : null;
+}
+
+/** Masters: all. Therapist accounts: only their own calendar. Others: none. */
 export function canViewTherapistPayments(
   email: string | null | undefined,
   therapistId: string | null | undefined,
 ): boolean {
-  const th = getTherapist(therapistId);
-  if (th?.slug === "charalambos") return isMasterAccount(email);
-  return true;
+  if (isMasterAccount(email)) return true;
+  if (!therapistId) return false;
+  const ownId = therapistIdForEmail(email);
+  return !!ownId && ownId === therapistId;
+}
+
+/** Therapist IDs whose payment fields this account may read/aggregate. */
+export function paymentTherapistFilter(
+  email: string | null | undefined,
+): "all" | string[] {
+  if (isMasterAccount(email)) return "all";
+  const ownId = therapistIdForEmail(email);
+  return ownId ? [ownId] : [];
 }

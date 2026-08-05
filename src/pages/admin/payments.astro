@@ -1,0 +1,213 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout title="Πληρωμές" active="payments">
+  <div class="mb-4 flex items-center justify-between gap-2">
+    <button id="pay-prev" type="button"
+      class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine"
+      aria-label="Προηγούμενος μήνας">
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
+    </button>
+    <div class="flex-1 rounded-full bg-white px-4 py-2 text-center ring-1 ring-slate-200">
+      <span id="pay-month-label" class="font-display text-sm font-bold text-charcoal"></span>
+    </div>
+    <button id="pay-next" type="button"
+      class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine"
+      aria-label="Επόμενος μήνας">
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg>
+    </button>
+  </div>
+
+  <p id="pay-scope" class="mb-4 text-sm text-charcoal-muted"></p>
+
+  <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+    <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+      <p class="text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Σύνολο πληρωτέου</p>
+      <p id="sum-payable" class="mt-1 font-display text-2xl font-bold text-charcoal">—</p>
+    </div>
+    <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+      <p class="text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Εισπραγμένα</p>
+      <p id="sum-paid" class="mt-1 font-display text-2xl font-bold text-emerald-600">—</p>
+    </div>
+    <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+      <p class="text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Απλήρωτα</p>
+      <p id="sum-unpaid" class="mt-1 font-display text-2xl font-bold text-amber-600">—</p>
+    </div>
+  </div>
+
+  <p id="pay-count" class="mt-3 text-xs text-charcoal-muted"></p>
+
+  <div id="by-therapist-wrap" class="mt-6 hidden">
+    <h2 class="mb-3 font-display text-sm font-bold uppercase tracking-wide text-charcoal">Ανά θεραπευτή</h2>
+    <ul id="by-therapist" class="space-y-2"></ul>
+  </div>
+
+  <p id="pay-error" class="mt-8 hidden text-center text-sm text-red-600"></p>
+  <p id="pay-empty" class="mt-8 hidden text-center text-sm text-charcoal-muted">Καμία καταχώρηση με τιμή αυτόν τον μήνα.</p>
+</AdminLayout>
+
+<script>
+  import { getSupabase, type Appointment } from "../../lib/supabase";
+  import { THERAPISTS, getTherapist } from "../../lib/therapists";
+  import {
+    isMasterAccount,
+    paymentTherapistFilter,
+    therapistSlugForEmail,
+  } from "../../lib/admin-access";
+
+  const supabase = getSupabase();
+  const monthLabel = document.getElementById("pay-month-label")!;
+  const scopeEl = document.getElementById("pay-scope")!;
+  const errorEl = document.getElementById("pay-error")!;
+  const emptyEl = document.getElementById("pay-empty")!;
+  const byWrap = document.getElementById("by-therapist-wrap")!;
+  const byList = document.getElementById("by-therapist")!;
+
+  let adminEmail = "";
+  let viewMonth = new Date();
+  viewMonth.setDate(1);
+  viewMonth.setHours(0, 0, 0, 0);
+
+  const fmtEuro = (n: number) =>
+    new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR" }).format(n);
+
+  function payableAmount(a: Pick<Appointment, "price" | "discount">): number | null {
+    if (a.price == null || Number.isNaN(Number(a.price))) return null;
+    return Math.max(0, Number(a.price) - Number(a.discount ?? 0));
+  }
+
+  function monthBounds(d: Date) {
+    const start = new Date(d.getFullYear(), d.getMonth(), 1);
+    const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
+    return { start, end };
+  }
+
+  async function load() {
+    errorEl.classList.add("hidden");
+    emptyEl.classList.add("hidden");
+    monthLabel.textContent = viewMonth.toLocaleDateString("el-GR", {
+      month: "long",
+      year: "numeric",
+    });
+
+    const { data: { session } } = await supabase.auth.getSession();
+    adminEmail = session?.user?.email ?? "";
+    const filter = paymentTherapistFilter(adminEmail);
+    const master = isMasterAccount(adminEmail);
+    const ownSlug = therapistSlugForEmail(adminEmail);
+
+    if (master) {
+      scopeEl.textContent = "Βλέπετε τις πληρωμές όλων.";
+    } else if (ownSlug) {
+      const th = getTherapist(ownSlug);
+      scopeEl.textContent = `Βλέπετε μόνο τις πληρωμές σας (${th?.nameEl ?? ""}).`;
+    } else {
+      scopeEl.textContent = "Δεν υπάρχει αντιστοιχία λογαριασμού με θεραπευτή — καμία πληρωμή.";
+    }
+
+    if (filter !== "all" && filter.length === 0) {
+      document.getElementById("sum-payable")!.textContent = fmtEuro(0);
+      document.getElementById("sum-paid")!.textContent = fmtEuro(0);
+      document.getElementById("sum-unpaid")!.textContent = fmtEuro(0);
+      document.getElementById("pay-count")!.textContent = "";
+      byWrap.classList.add("hidden");
+      return;
+    }
+
+    const { start, end } = monthBounds(viewMonth);
+    let q = supabase
+      .from("appointments")
+      .select("id, therapist_id, price, discount, is_paid, is_blocked_time, status, start_time")
+      .neq("status", "cancelled")
+      .eq("is_blocked_time", false)
+      .gte("start_time", start.toISOString())
+      .lt("start_time", end.toISOString());
+
+    if (filter !== "all") {
+      q = q.in("therapist_id", filter);
+    }
+
+    const { data, error } = await q;
+    if (error) {
+      errorEl.textContent = `Σφάλμα: ${error.message}`;
+      errorEl.classList.remove("hidden");
+      return;
+    }
+
+    const rows = (data ?? []) as Appointment[];
+    let payable = 0;
+    let paid = 0;
+    let unpaid = 0;
+    let withPrice = 0;
+
+    type Bucket = { name: string; payable: number; paid: number; unpaid: number; count: number };
+    const buckets = new Map<string, Bucket>();
+
+    for (const a of rows) {
+      const amount = payableAmount(a);
+      if (amount == null) continue;
+      withPrice += 1;
+      payable += amount;
+      if (a.is_paid) paid += amount;
+      else unpaid += amount;
+
+      if (master) {
+        const tid = a.therapist_id ?? "none";
+        const name = getTherapist(a.therapist_id)?.nameEl ?? "—";
+        const b = buckets.get(tid) ?? { name, payable: 0, paid: 0, unpaid: 0, count: 0 };
+        b.payable += amount;
+        if (a.is_paid) b.paid += amount;
+        else b.unpaid += amount;
+        b.count += 1;
+        buckets.set(tid, b);
+      }
+    }
+
+    document.getElementById("sum-payable")!.textContent = fmtEuro(payable);
+    document.getElementById("sum-paid")!.textContent = fmtEuro(paid);
+    document.getElementById("sum-unpaid")!.textContent = fmtEuro(unpaid);
+    document.getElementById("pay-count")!.textContent =
+      withPrice ? `${withPrice} ραντεβού με τιμή` : "";
+
+    emptyEl.classList.toggle("hidden", withPrice > 0);
+
+    if (master) {
+      byWrap.classList.remove("hidden");
+      const order = THERAPISTS.map((t) => t.id);
+      const sorted = [...buckets.entries()].sort((a, b) => {
+        const ia = order.indexOf(a[0]);
+        const ib = order.indexOf(b[0]);
+        return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+      });
+      byList.innerHTML = sorted
+        .map(
+          ([, b]) => `
+        <li class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+          <div class="flex items-baseline justify-between gap-3">
+            <p class="font-display text-sm font-bold text-charcoal">${b.name}</p>
+            <p class="font-display text-sm font-semibold text-charcoal">${fmtEuro(b.payable)}</p>
+          </div>
+          <p class="mt-1 text-xs text-charcoal-muted">
+            Εισπραγμένα ${fmtEuro(b.paid)} · Απλήρωτα ${fmtEuro(b.unpaid)} · ${b.count} ραντεβού
+          </p>
+        </li>`,
+        )
+        .join("");
+      if (!sorted.length) byWrap.classList.add("hidden");
+    } else {
+      byWrap.classList.add("hidden");
+    }
+  }
+
+  document.getElementById("pay-prev")!.addEventListener("click", () => {
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+    load();
+  });
+  document.getElementById("pay-next")!.addEventListener("click", () => {
+    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+    load();
+  });
+
+  load();
+</script>
