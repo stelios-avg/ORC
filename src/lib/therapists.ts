@@ -137,6 +137,7 @@ export const ADMIN_SERVICES: {
   { label: "Φυσιοθεραπεία με ΓΕΣΥ", defaultPrice: 10 },
   { label: "Φυσιοθεραπεία χωρίς ΓΕΣΥ", defaultPrice: 35 },
   { label: "Φυσιοθεραπεία χωρίς συνπληρωμή", defaultPrice: 0 },
+  { label: "Μασάζ", defaultPrice: 50 },
   { label: "Οστεοπαθητική", defaultPrice: null },
   { label: "Κλινική Πιλάτες", defaultPrice: null },
   { label: "Άλλο", defaultPrice: null },
@@ -156,7 +157,7 @@ export function suggestTherapistIdForService(service: string): string | null {
   if (s.includes("πιλάτ") || s.includes("pilates")) {
     return getTherapist("pilates")!.id;
   }
-  if (s.includes("φυσιο") || s.includes("physio")) {
+  if (s.includes("φυσιο") || s.includes("physio") || s.includes("μασάζ") || s.includes("massage")) {
     return getTherapist("rafaellos")!.id;
   }
   return null;

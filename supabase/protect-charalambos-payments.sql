@@ -63,6 +63,16 @@ begin
       NEW.is_paid := OLD.is_paid;
     end if;
   end if;
+
+  -- Unpaid appointments cannot stay hidden from totals
+  if NEW.is_paid = false then
+    NEW.payments_hidden := false;
+  elsif NEW.payments_hidden is distinct from OLD.payments_hidden then
+    if not public.is_master_admin() then
+      NEW.payments_hidden := OLD.payments_hidden;
+    end if;
+  end if;
+
   return NEW;
 end;
 $$;

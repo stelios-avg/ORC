@@ -235,6 +235,7 @@ const el = {
           "Αξιολόγηση κάκωσης",
           "Δύναμη & κατάσταση",
           "Δοκιμή επιστροφής στον αθλητισμό",
+          "Μασάζ",
         ],
       },
       {
@@ -554,6 +555,7 @@ const en = {
           "Injury assessment",
           "Strength & conditioning",
           "Return-to-sport testing",
+          "Massage",
         ],
       },
       {

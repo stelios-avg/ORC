@@ -76,6 +76,8 @@ export interface Appointment {
   /** Fixed-amount discount in EUR (not a percentage). */
   discount: number;
   is_paid: boolean;
+  /** When true, excluded from payment totals (master-only toggle). */
+  payments_hidden: boolean;
   is_blocked_time: boolean;
   created_at: string;
   /** joined relation (when selected with `patients(...)`) */
