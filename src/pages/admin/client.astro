@@ -62,7 +62,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
 <script>
   import { getSupabase, type Appointment, type Patient } from "../../lib/supabase";
-  import { canViewTherapistPayments } from "../../lib/admin-access";
+  import { canViewTherapistPayments, isMasterAccount } from "../../lib/admin-access";
 
   const supabase = getSupabase();
   const id = new URLSearchParams(window.location.search).get("id");
@@ -94,7 +94,9 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   }
 
   function apptItem(a: Appointment): string {
-    const showPay = canViewTherapistPayments(adminEmail, a.therapist_id) && !a.payments_hidden;
+    const showPay =
+      canViewTherapistPayments(adminEmail, a.therapist_id) &&
+      (!a.payments_hidden || isMasterAccount(adminEmail));
     const amount = showPay ? payableAmount(a) : null;
     const amountLabel =
       amount != null

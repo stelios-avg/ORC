@@ -760,12 +760,21 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       } else {
         block.className = accent.block.replace(/\bmx-0\.5\b/g, "").trim();
         const nameColor = accent.text;
-        const showPay = canSeePayments(a) && !a.payments_hidden;
+        // Non-masters: hide € when payment is hidden from totals.
+        // Masters: keep € visible (muted) so they can find & restore it.
+        const master = isMasterAccount(adminEmail);
+        const showPay = canSeePayments(a) && (!a.payments_hidden || master);
         const payable = showPay ? payableAmount(a) : null;
         const amountLabel = payable != null
-          ? `<span class="flex-none text-[10px] font-semibold ${a.is_paid ? "text-emerald-600" : "text-charcoal-muted"}">${fmtEuro(payable)}</span>`
+          ? `<span class="flex-none text-[10px] font-semibold ${
+              a.payments_hidden
+                ? "text-slate-400 line-through"
+                : a.is_paid
+                  ? "text-emerald-600"
+                  : "text-charcoal-muted"
+            }">${fmtEuro(payable)}</span>`
           : "";
-        const paidMark = showPay && a.is_paid
+        const paidMark = showPay && a.is_paid && !a.payments_hidden
           ? '<span class="flex h-4 w-4 flex-none items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">✓</span>'
           : "";
         const showTherapist = !therapistFilter;

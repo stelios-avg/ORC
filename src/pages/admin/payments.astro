@@ -146,6 +146,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     const buckets = new Map<string, Bucket>();
 
     for (const a of rows) {
+      if (a.payments_hidden) continue;
       const amount = payableAmount(a);
       if (amount == null) continue;
       withPrice += 1;
