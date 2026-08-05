@@ -120,6 +120,11 @@ export function serviceLabel(service: BookableService, lang: "el" | "en"): strin
   return lang === "en" ? s.labelEn : s.labelEl;
 }
 
+/** Concurrent online bookings allowed for a bookable service at the same time. */
+export function slotCapacityForService(service: BookableService | string): number {
+  return service === "physiotherapy" ? 2 : 1;
+}
+
 /** Suggest therapist when admin picks a Greek service name. */
 export function suggestTherapistIdForService(service: string): string | null {
   const s = service.trim().toLowerCase();

@@ -1,7 +1,7 @@
 ---
 import { FRESHA_BOOKING_URL, LEAD_ENDPOINT, LEAD_ACCESS_KEY } from "../config/site";
 import { useTranslations, type Lang } from "../i18n";
-import { BOOKABLE_SERVICES, THERAPISTS } from "../lib/therapists";
+import { BOOKABLE_SERVICES, THERAPISTS, slotCapacityForService } from "../lib/therapists";
 
 interface Props { lang?: Lang; }
 const { lang = "el" } = Astro.props;
@@ -518,6 +518,7 @@ const services = BOOKABLE_SERVICES.map((s) => {
         start: new Date(b.busy_start).getTime(),
         end: new Date(b.busy_end).getTime(),
       }));
+      const capacity = slotCapacityForService(payload.serviceKey);
 
       const now = Date.now();
       const slots: Date[] = [];
@@ -526,7 +527,10 @@ const services = BOOKABLE_SERVICES.map((s) => {
           const s = new Date(day); s.setHours(Math.floor(m / 60), m % 60, 0, 0);
           const e = s.getTime() + SLOT_MIN * 60_000;
           if (s.getTime() < now + MIN_LEAD_MS) continue;
-          if (busy.some((b: {start:number; end:number}) => b.start < e && b.end > s.getTime())) continue;
+          const overlaps = busy.filter(
+            (b: { start: number; end: number }) => b.start < e && b.end > s.getTime(),
+          ).length;
+          if (overlaps >= capacity) continue;
           slots.push(s);
         }
       }

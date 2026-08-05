@@ -68,12 +68,25 @@ security definer
 set search_path = public
 stable
 as $$
+  -- Physiotherapy: include all physio calendars so online capacity can be 2 clinic-wide.
+  -- Other specialties: only that therapist's calendar.
   select a.start_time, a.end_time
   from public.appointments a
   where a.status <> 'cancelled'
-    and a.therapist_id = p_therapist_id
     and a.start_time >= p_day::timestamptz
-    and a.start_time <  (p_day + 1)::timestamptz;
+    and a.start_time <  (p_day + 1)::timestamptz
+    and (
+      a.therapist_id = p_therapist_id
+      or (
+        exists (
+          select 1 from public.therapists t
+          where t.id = p_therapist_id and t.specialty = 'physiotherapy'
+        )
+        and a.therapist_id in (
+          select t2.id from public.therapists t2 where t2.specialty = 'physiotherapy'
+        )
+      )
+    );
 $$;
 
 create or replace function public.book_appointment(
@@ -95,6 +108,9 @@ declare
   v_patient_id uuid;
   v_appt_id    uuid;
   v_service    text;
+  v_specialty  text;
+  v_capacity   int;
+  v_overlaps   int;
 begin
   if p_name is null or length(trim(p_name)) < 2 then
     raise exception 'invalid_name';
@@ -114,14 +130,31 @@ begin
     raise exception 'too_long';
   end if;
 
-  -- Overlap only against this therapist's calendar
-  if exists (
-    select 1 from public.appointments a
+  select t.specialty into v_specialty
+  from public.therapists t
+  where t.id = p_therapist_id;
+
+  -- Physiotherapy: up to 2 concurrent clinic-wide; others: 1 per therapist calendar.
+  v_capacity := case when v_specialty = 'physiotherapy' then 2 else 1 end;
+
+  if v_specialty = 'physiotherapy' then
+    select count(*)::int into v_overlaps
+    from public.appointments a
+    join public.therapists t on t.id = a.therapist_id
+    where a.status <> 'cancelled'
+      and t.specialty = 'physiotherapy'
+      and a.start_time < p_end
+      and a.end_time   > p_start;
+  else
+    select count(*)::int into v_overlaps
+    from public.appointments a
     where a.status <> 'cancelled'
       and a.therapist_id = p_therapist_id
       and a.start_time < p_end
-      and a.end_time   > p_start
-  ) then
+      and a.end_time   > p_start;
+  end if;
+
+  if v_overlaps >= v_capacity then
     raise exception 'slot_taken';
   end if;
 

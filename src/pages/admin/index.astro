@@ -86,7 +86,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       {/* Events area: CSS grid, 4 rows per hour (15-minute slots) × N therapist cols */}
       <div
         id="cal-grid"
-        class="relative flex-1"
+        class="relative flex-1 cursor-pointer"
         style={`display:grid; grid-template-rows: repeat(${(DAY_END - DAY_START) * 4 + 4}, 1rem);`}
         data-day-start={DAY_START}
         data-day-end={DAY_END}
@@ -707,7 +707,11 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   );
 
   // ── New appointment ──
-  document.getElementById("add-appt-btn")!.addEventListener("click", async () => {
+  async function openNewAppointment(opts?: {
+    therapistId?: string | null;
+    hours?: number;
+    minutes?: number;
+  }) {
     // Always refetch so clients added on /admin/clients show up without a reload.
     const select = document.getElementById("appt-patient") as HTMLSelectElement;
     const previous = select.value;
@@ -719,9 +723,51 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       if (previous && patients.some((p) => p.id === previous)) select.value = previous;
     }
     setDefaultTherapistSelects();
-    const suggested = suggestTherapistIdForService(apptServiceSelect.value);
-    if (suggested && !therapistFilter) apptTherapistSelect.value = suggested;
+    if (opts?.therapistId) {
+      apptTherapistSelect.value = opts.therapistId;
+    } else {
+      const suggested = suggestTherapistIdForService(apptServiceSelect.value);
+      if (suggested && !therapistFilter) apptTherapistSelect.value = suggested;
+    }
+    const startInput = document.getElementById("appt-start") as HTMLInputElement;
+    if (opts?.hours != null) {
+      const hh = String(opts.hours).padStart(2, "0");
+      const mm = String(opts.minutes ?? 0).padStart(2, "0");
+      startInput.value = `${hh}:${mm}`;
+    }
     openModal(apptModal);
+  }
+
+  document.getElementById("add-appt-btn")!.addEventListener("click", () => {
+    void openNewAppointment();
+  });
+
+  /** Tap empty calendar cell → new appointment at that time (and column therapist). */
+  grid.addEventListener("click", (e) => {
+    if (viewMode !== "day") return;
+    const target = e.target as HTMLElement;
+    if (target.closest("[data-appt]")) return;
+
+    const rect = grid.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return;
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    if (x < 0 || y < 0 || x > rect.width || y > rect.height) return;
+
+    const cols = visibleTherapists();
+    if (!cols.length) return;
+    const colIdx = Math.min(cols.length - 1, Math.max(0, Math.floor((x / rect.width) * cols.length)));
+    const row = Math.min(TOTAL_ROWS - 1, Math.max(0, Math.floor((y / rect.height) * TOTAL_ROWS)));
+    const minsFromStart = row * 15;
+    const hours = DAY_START + Math.floor(minsFromStart / 60);
+    const minutes = minsFromStart % 60;
+    if (hours < DAY_START || hours > DAY_END) return;
+
+    void openNewAppointment({
+      therapistId: cols[colIdx]?.id,
+      hours,
+      minutes,
+    });
   });
 
   document.getElementById("appt-form")!.addEventListener("submit", async (e) => {
