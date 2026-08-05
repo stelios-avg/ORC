@@ -124,14 +124,25 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
         </button>
       </div>
       <form id="appt-form" class="space-y-4">
-        <div>
-          <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-patient">Πελάτης</label>
-          <select id="appt-patient" name="patient_id" required
-            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
-            <option value="">— Επιλέξτε πελάτη —</option>
-          </select>
+        <div class="relative">
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-patient-search">Πελάτης</label>
+          <input type="hidden" id="appt-patient" name="patient_id" value="" required />
+          <input
+            id="appt-patient-search"
+            type="search"
+            autocomplete="off"
+            placeholder="Όνομα ή τηλέφωνο…"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
+          />
+          <div
+            id="appt-patient-results"
+            class="absolute left-0 right-0 top-full z-20 mt-1 hidden max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
+            role="listbox"
+          ></div>
+          <p id="appt-patient-selected" class="mt-1.5 hidden text-sm font-medium text-spine"></p>
           <p class="mt-1 text-xs text-charcoal-muted">
-            Νέος πελάτης; Προσθέστε τον πρώτα στη σελίδα <a href="/admin/clients" class="text-spine underline">Πελάτες</a>.
+            Γράψτε όνομα ή τηλέφωνο για αναζήτηση. Νέος πελάτης;
+            <a href="/admin/clients" class="text-spine underline">Πελάτες</a>.
           </p>
         </div>
         <div>
@@ -755,22 +766,110 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     el.addEventListener("click", () => [apptModal, blockModal, detailSheet].forEach(closeModal)),
   );
 
-  // ── New appointment ──
+  // ── New appointment (patient search by name / phone) ──
+  const patientIdInput = document.getElementById("appt-patient") as HTMLInputElement;
+  const patientSearch = document.getElementById("appt-patient-search") as HTMLInputElement;
+  const patientResults = document.getElementById("appt-patient-results")!;
+  const patientSelected = document.getElementById("appt-patient-selected")!;
+
+  function digitsOnly(s: string) {
+    return s.replace(/\D/g, "");
+  }
+
+  function resetPatientPicker() {
+    patientIdInput.value = "";
+    patientSearch.value = "";
+    patientSelected.textContent = "";
+    patientSelected.classList.add("hidden");
+    patientResults.classList.add("hidden");
+    patientResults.innerHTML = "";
+  }
+
+  function selectPatient(p: Patient) {
+    patientIdInput.value = p.id;
+    patientSearch.value = p.name;
+    patientSelected.textContent = p.phone ? `${p.name} · ${p.phone}` : p.name;
+    patientSelected.classList.remove("hidden");
+    patientResults.classList.add("hidden");
+    patientResults.innerHTML = "";
+  }
+
+  function renderPatientResults(matches: Patient[]) {
+    if (!matches.length) {
+      patientResults.innerHTML =
+        '<p class="px-3 py-2 text-sm text-charcoal-muted">Κανένα αποτέλεσμα</p>';
+      patientResults.classList.remove("hidden");
+      return;
+    }
+    patientResults.innerHTML = matches
+      .slice(0, 12)
+      .map(
+        (p) => `
+      <button type="button" data-patient-id="${p.id}"
+        class="flex w-full flex-col items-start gap-0.5 px-3 py-2.5 text-left transition hover:bg-spine-50">
+        <span class="font-display text-sm font-semibold text-charcoal">${p.name}</span>
+        <span class="text-xs text-charcoal-muted">${p.phone || "χωρίς τηλέφωνο"}${p.email ? ` · ${p.email}` : ""}</span>
+      </button>`,
+      )
+      .join("");
+    patientResults.classList.remove("hidden");
+  }
+
+  function filterPatients(q: string): Patient[] {
+    const raw = q.trim().toLowerCase();
+    if (!raw) return [];
+    const dig = digitsOnly(raw);
+    return patients.filter((p) => {
+      if (p.name.toLowerCase().includes(raw)) return true;
+      if (p.email?.toLowerCase().includes(raw)) return true;
+      if (dig.length >= 3 && digitsOnly(p.phone ?? "").includes(dig)) return true;
+      if ((p.phone ?? "").toLowerCase().includes(raw)) return true;
+      return false;
+    });
+  }
+
+  patientSearch.addEventListener("input", () => {
+    // Typing clears a previous selection until they pick again.
+    patientIdInput.value = "";
+    patientSelected.classList.add("hidden");
+    const matches = filterPatients(patientSearch.value);
+    if (!patientSearch.value.trim()) {
+      patientResults.classList.add("hidden");
+      patientResults.innerHTML = "";
+      return;
+    }
+    renderPatientResults(matches);
+  });
+
+  patientSearch.addEventListener("focus", () => {
+    if (patientSearch.value.trim() && !patientIdInput.value) {
+      renderPatientResults(filterPatients(patientSearch.value));
+    }
+  });
+
+  patientResults.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-patient-id]");
+    if (!btn) return;
+    const p = patients.find((x) => x.id === btn.dataset.patientId);
+    if (p) selectPatient(p);
+  });
+
+  document.addEventListener("click", (e) => {
+    const t = e.target as HTMLElement;
+    if (!t.closest("#appt-patient-search") && !t.closest("#appt-patient-results")) {
+      patientResults.classList.add("hidden");
+    }
+  });
+
   async function openNewAppointment(opts?: {
     therapistId?: string | null;
     hours?: number;
     minutes?: number;
   }) {
     // Always refetch so clients added on /admin/clients show up without a reload.
-    const select = document.getElementById("appt-patient") as HTMLSelectElement;
-    const previous = select.value;
     const { data, error } = await supabase.from("patients").select("*").order("name");
-    if (!error) {
-      patients = (data ?? []) as Patient[];
-      select.length = 1;
-      patients.forEach((p) => select.add(new Option(p.name, p.id)));
-      if (previous && patients.some((p) => p.id === previous)) select.value = previous;
-    }
+    if (!error) patients = (data ?? []) as Patient[];
+    resetPatientPicker();
     setDefaultTherapistSelects();
     if (opts?.therapistId) {
       apptTherapistSelect.value = opts.therapistId;
@@ -785,6 +884,8 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       startInput.value = `${hh}:${mm}`;
     }
     openModal(apptModal);
+    // Focus search for quick typing on mobile
+    window.setTimeout(() => patientSearch.focus(), 50);
   }
 
   document.getElementById("add-appt-btn")!.addEventListener("click", () => {
@@ -826,12 +927,20 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     const err = document.getElementById("appt-form-error")!;
     err.classList.add("hidden");
 
+    const patientId = String(fd.get("patient_id") || "").trim();
+    if (!patientId) {
+      err.textContent = "Επιλέξτε πελάτη από τη λίστα αναζήτησης.";
+      err.classList.remove("hidden");
+      patientSearch.focus();
+      return;
+    }
+
     const [h, m] = String(fd.get("start")).split(":").map(Number);
     const start = new Date(currentDay); start.setHours(h, m, 0, 0);
     const end = new Date(start.getTime() + Number(fd.get("duration")) * 60_000);
 
     const { error } = await supabase.from("appointments").insert({
-      patient_id: String(fd.get("patient_id")),
+      patient_id: patientId,
       therapist_id: String(fd.get("therapist_id")),
       service: String(fd.get("service")),
       start_time: start.toISOString(),
@@ -844,6 +953,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       return;
     }
     form.reset();
+    resetPatientPicker();
     setDefaultTherapistSelects();
     closeModal(apptModal);
     refresh();
