@@ -136,7 +136,7 @@ export const ADMIN_SERVICES: {
 }[] = [
   { label: "Φυσιοθεραπεία με ΓΕΣΥ", defaultPrice: 10 },
   { label: "Φυσιοθεραπεία χωρίς ΓΕΣΥ", defaultPrice: 35 },
-  { label: "Φυσιοθεραπεία χωρίς συμπλήρωμα", defaultPrice: 0 },
+  { label: "Φυσιοθεραπεία χωρίς συμπλήρωση", defaultPrice: 0 },
   { label: "Οστεοπαθητική", defaultPrice: null },
   { label: "Κλινική Πιλάτες", defaultPrice: null },
   { label: "Άλλο", defaultPrice: null },
