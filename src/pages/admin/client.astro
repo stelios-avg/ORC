@@ -57,10 +57,12 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
 <script>
   import { getSupabase, type Appointment, type Patient } from "../../lib/supabase";
+  import { canViewTherapistPayments } from "../../lib/admin-access";
 
   const supabase = getSupabase();
   const id = new URLSearchParams(window.location.search).get("id");
   const errorMsg = document.getElementById("client-error")!;
+  let adminEmail = "";
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -68,17 +70,19 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
 
   function apptItem(a: Appointment): string {
+    const showPay = canViewTherapistPayments(adminEmail, a.therapist_id);
+    const payBadge = !showPay
+      ? ""
+      : a.is_paid
+        ? '<span class="flex-none rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Πληρωμένο</span>'
+        : '<span class="flex-none rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">Απλήρωτο</span>';
     return `
       <li class="flex items-center justify-between gap-3 rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-slate-100">
         <div class="min-w-0">
           <p class="truncate font-display text-sm font-semibold text-charcoal">${a.service ?? "Ραντεβού"}</p>
           <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)} · ${fmtTime(a.start_time)}–${fmtTime(a.end_time)}</p>
         </div>
-        ${
-          a.is_paid
-            ? '<span class="flex-none rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Πληρωμένο</span>'
-            : '<span class="flex-none rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">Απλήρωτο</span>'
-        }
+        ${payBadge}
       </li>`;
   }
 
@@ -89,7 +93,8 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       return;
     }
 
-    const [{ data: patient, error: pErr }, { data: appts, error: aErr }] = await Promise.all([
+    const [{ data: { session } }, { data: patient, error: pErr }, { data: appts, error: aErr }] = await Promise.all([
+      supabase.auth.getSession(),
       supabase.from("patients").select("*").eq("id", id).single(),
       supabase
         .from("appointments")
@@ -98,6 +103,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         .neq("status", "cancelled")
         .order("start_time", { ascending: false }),
     ]);
+    adminEmail = session?.user?.email ?? "";
 
     if (pErr || !patient) {
       errorMsg.textContent = `Σφάλμα: ${pErr?.message ?? "δεν βρέθηκε πελάτης"}`;

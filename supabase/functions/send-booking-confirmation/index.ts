@@ -12,6 +12,9 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
  *
  * Only sends if a matching confirmed appointment exists for that email
  * + start time in the last 15 minutes (anti-spam).
+ *
+ * verify_jwt is disabled: the public site uses a publishable key (not a JWT),
+ * and this function already gates on a real recent booking.
  */
 
 const corsHeaders = {
@@ -59,33 +62,63 @@ Deno.serve(async (req: Request) => {
     );
 
     const start = new Date(startIso);
-    const windowStart = new Date(Date.now() - 15 * 60_000).toISOString();
+    if (Number.isNaN(start.getTime())) {
+      return json({ error: "invalid_start" }, 400);
+    }
+
+    // Slightly wider window so a slow client still matches.
+    const windowStart = new Date(Date.now() - 30 * 60_000).toISOString();
 
     const { data: appts, error: lookupErr } = await supabase
       .from("appointments")
-      .select("id, start_time, end_time, patients(email)")
+      .select("id, start_time, end_time, patient_id")
       .eq("status", "confirmed")
       .gte("created_at", windowStart)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(40);
 
     if (lookupErr) {
       console.error("lookup failed", lookupErr);
-      return json({ error: "lookup_failed" }, 500);
+      return json({ error: "lookup_failed", detail: lookupErr.message }, 500);
+    }
+
+    const patientIds = [
+      ...new Set(
+        (appts ?? [])
+          .map((a) => a.patient_id as string | null)
+          .filter((id): id is string => !!id),
+      ),
+    ];
+
+    const emailByPatientId = new Map<string, string>();
+    if (patientIds.length) {
+      const { data: patients, error: patientsErr } = await supabase
+        .from("patients")
+        .select("id, email")
+        .in("id", patientIds);
+      if (patientsErr) {
+        console.error("patients lookup failed", patientsErr);
+        return json({ error: "lookup_failed", detail: patientsErr.message }, 500);
+      }
+      for (const p of patients ?? []) {
+        emailByPatientId.set(
+          p.id as string,
+          String(p.email || "")
+            .trim()
+            .toLowerCase(),
+        );
+      }
     }
 
     const match = (appts ?? []).find((a) => {
-      const patientEmail = String(
-        (a as { patients?: { email?: string } | null }).patients?.email || "",
-      )
-        .trim()
-        .toLowerCase();
+      const patientEmail = emailByPatientId.get(a.patient_id as string) || "";
       if (patientEmail !== email) return false;
       const diff = Math.abs(new Date(a.start_time).getTime() - start.getTime());
-      return diff < 60_000;
+      return diff < 120_000;
     });
 
     if (!match) {
+      console.warn("appointment_not_found", { email, startIso, recent: (appts ?? []).length });
       return json({ error: "appointment_not_found" }, 404);
     }
 
@@ -138,6 +171,7 @@ Deno.serve(async (req: Request) => {
       return json({ error: "send_failed", detail }, 502);
     }
 
+    console.log("email_sent", { email, appointmentId: match.id });
     return json({ ok: true });
   } catch (err) {
     console.error(err);

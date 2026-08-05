@@ -5,10 +5,16 @@
  *   Osteopathy        → Charalambos
  *   Physiotherapy     → Rafaellos
  *   Clinical Pilates  → Rafaellos
+ *
+ * Antreas & Constantina are on the admin schedule (physiotherapy) but are not
+ * the default online-booking targets — staff can transfer appointments to them.
+ *
+ * Secretary (Egly) is a master admin account only — never add her here as a therapist.
  */
 
-export type TherapistSlug = "charalambos" | "rafaellos";
+export type TherapistSlug = "charalambos" | "rafaellos" | "antreas" | "constantina";
 export type BookableService = "osteopathy" | "physiotherapy" | "pilates";
+export type TherapistAccent = "spine" | "sky" | "teal" | "rose";
 
 export interface Therapist {
   id: string;
@@ -17,7 +23,7 @@ export interface Therapist {
   nameEn: string;
   specialty: "osteopathy" | "physiotherapy";
   /** Tailwind-ish accent used in admin calendar */
-  accent: "spine" | "sky";
+  accent: TherapistAccent;
 }
 
 export const THERAPISTS: Therapist[] = [
@@ -36,6 +42,22 @@ export const THERAPISTS: Therapist[] = [
     nameEn: "Rafaellos",
     specialty: "physiotherapy",
     accent: "sky",
+  },
+  {
+    id: "33333333-3333-4333-8333-333333333333",
+    slug: "antreas",
+    nameEl: "Αντρέας",
+    nameEn: "Antreas",
+    specialty: "physiotherapy",
+    accent: "teal",
+  },
+  {
+    id: "44444444-4444-4444-8444-444444444444",
+    slug: "constantina",
+    nameEl: "Κωνσταντίνα",
+    nameEn: "Constantina",
+    specialty: "physiotherapy",
+    accent: "rose",
   },
 ];
 
@@ -94,4 +116,36 @@ export function suggestTherapistIdForService(service: string): string | null {
     return getTherapist("rafaellos")!.id;
   }
   return null;
+}
+
+export function therapistAccentClasses(accent: TherapistAccent): {
+  text: string;
+  block: string;
+} {
+  switch (accent) {
+    case "sky":
+      return {
+        text: "text-sky-700",
+        block:
+          "z-20 mx-0.5 my-px overflow-hidden rounded-lg border-l-4 border-sky-500 bg-sky-50 px-2 py-1 text-left transition hover:bg-sky-100",
+      };
+    case "teal":
+      return {
+        text: "text-teal-700",
+        block:
+          "z-20 mx-0.5 my-px overflow-hidden rounded-lg border-l-4 border-teal-500 bg-teal-50 px-2 py-1 text-left transition hover:bg-teal-100",
+      };
+    case "rose":
+      return {
+        text: "text-rose-700",
+        block:
+          "z-20 mx-0.5 my-px overflow-hidden rounded-lg border-l-4 border-rose-500 bg-rose-50 px-2 py-1 text-left transition hover:bg-rose-100",
+      };
+    default:
+      return {
+        text: "text-spine",
+        block:
+          "z-20 mx-0.5 my-px overflow-hidden rounded-lg border-l-4 border-spine bg-spine-50 px-2 py-1 text-left transition hover:bg-spine-100",
+      };
+  }
 }

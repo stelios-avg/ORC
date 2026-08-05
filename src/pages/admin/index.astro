@@ -324,9 +324,23 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     DEFAULT_THERAPIST_ID,
     getTherapist,
     suggestTherapistIdForService,
+    therapistAccentClasses,
   } from "../../lib/therapists";
+  import { canViewTherapistPayments } from "../../lib/admin-access";
 
   const supabase = getSupabase();
+  let adminEmail: string | null = null;
+
+  async function ensureAdminEmail() {
+    if (adminEmail !== null) return adminEmail;
+    const { data: { session } } = await supabase.auth.getSession();
+    adminEmail = session?.user?.email ?? "";
+    return adminEmail;
+  }
+
+  function canSeePayments(a: Pick<Appointment, "therapist_id">) {
+    return canViewTherapistPayments(adminEmail, a.therapist_id);
+  }
 
   const grid = document.getElementById("cal-grid")!;
   const colHeadersInner = document.getElementById("cal-col-headers-inner")!;
@@ -526,7 +540,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   function setupDayColumns(cols: typeof THERAPISTS) {
     colHeadersInner.style.gridTemplateColumns = `repeat(${cols.length}, minmax(0, 1fr))`;
     colHeadersInner.innerHTML = cols.map((th) => {
-      const accent = th.accent === "sky" ? "text-sky-700" : "text-spine";
+      const accent = therapistAccentClasses(th.accent).text;
       return `<div class="border-l border-slate-100 px-2 py-2 text-center font-display text-xs font-bold ${accent}">${th.nameEl}</div>`;
     }).join("");
 
@@ -596,7 +610,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       block.style.gridColumn = String(colIdx + 1);
 
       const th = getTherapist(a.therapist_id);
-      const isSky = th?.accent === "sky";
+      const accent = therapistAccentClasses(th?.accent ?? "spine");
 
       if (a.is_blocked_time) {
         block.className =
@@ -606,13 +620,15 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
           <p class="truncate text-xs font-semibold text-charcoal-muted">${a.service || "Κλειστό"}</p>
           <p class="text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)}</p>`;
       } else {
-        block.className = isSky
-          ? "z-20 mx-0.5 my-px overflow-hidden rounded-lg border-l-4 border-sky-500 bg-sky-50 px-2 py-1 text-left transition hover:bg-sky-100"
-          : "z-20 mx-0.5 my-px overflow-hidden rounded-lg border-l-4 border-spine bg-spine-50 px-2 py-1 text-left transition hover:bg-spine-100";
-        const nameColor = isSky ? "text-sky-700" : "text-spine";
-        const payable = payableAmount(a);
+        block.className = accent.block;
+        const nameColor = accent.text;
+        const showPay = canSeePayments(a);
+        const payable = showPay ? payableAmount(a) : null;
         const amountLabel = payable != null
           ? `<span class="flex-none text-[10px] font-semibold ${a.is_paid ? "text-emerald-600" : "text-charcoal-muted"}">${fmtEuro(payable)}</span>`
+          : "";
+        const paidMark = showPay && a.is_paid
+          ? '<span class="flex h-4 w-4 flex-none items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">✓</span>'
           : "";
         const showTherapist = !therapistFilter;
         block.innerHTML = `
@@ -620,7 +636,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
             <p class="truncate font-display text-xs font-bold ${nameColor}">${a.patients?.name ?? "—"}</p>
             <span class="flex flex-none items-center gap-1">
               ${amountLabel}
-              ${a.is_paid ? '<span class="flex h-4 w-4 flex-none items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">✓</span>' : ""}
+              ${paidMark}
             </span>
           </div>
           <p class="truncate text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
@@ -842,7 +858,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     notesRow.classList.toggle("hidden", !hasNotes);
     if (hasNotes) document.getElementById("detail-notes")!.textContent = a.notes!.trim();
 
-    const hideMoney = a.is_blocked_time;
+    const hideMoney = a.is_blocked_time || !canSeePayments(a);
     document.getElementById("detail-price-row")!.classList.toggle("hidden", hideMoney);
     document.getElementById("detail-paid-row")!.classList.toggle("hidden", hideMoney);
     if (!hideMoney) {
@@ -885,6 +901,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
   priceSaveBtn.addEventListener("click", async () => {
     if (!selectedAppt) return;
+    if (!canSeePayments(selectedAppt)) return;
     const price = parseMoneyInput(priceInput);
     const discount = parseMoneyInput(discountInput) ?? 0;
     if (priceInput.value.trim() !== "" && price == null) {
@@ -917,6 +934,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
   paidToggle.addEventListener("click", async () => {
     if (!selectedAppt) return;
+    if (!canSeePayments(selectedAppt)) return;
     const next = !(paidToggle.dataset.on === "true");
     // optimistic UI, revert on failure
     paidToggle.dataset.on = String(next);
@@ -947,5 +965,5 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     refresh();
   });
 
-  setViewMode("day");
+  ensureAdminEmail().then(() => setViewMode("day"));
 </script>
