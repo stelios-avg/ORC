@@ -399,6 +399,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   .view-btn[data-active="false"]:hover {
     color: var(--color-charcoal);
   }
+  #cal-grid [data-appt] {
+    touch-action: manipulation;
+    -webkit-user-select: none;
+    user-select: none;
+  }
 </style>
 
 <script>
@@ -835,12 +840,258 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
       block.addEventListener("click", (ev) => {
         ev.stopPropagation();
+        if (skipNextApptClick) {
+          skipNextApptClick = false;
+          return;
+        }
         openDetail(a);
       });
+      bindApptLongPressMove(block, a, rowEnd - rowStart);
       grid.appendChild(block);
     });
 
     positionNowLine();
+  }
+
+  // ── Long-press drag to move appointment (mobile + desktop) ──
+  const LONG_PRESS_MS = 420;
+  const PRESS_MOVE_CANCEL_PX = 14;
+  let skipNextApptClick = false;
+  let pressTimer: number | null = null;
+  let pressPending: {
+    appt: Appointment;
+    el: HTMLButtonElement;
+    pointerId: number;
+    startX: number;
+    startY: number;
+    x: number;
+    y: number;
+    rowSpan: number;
+  } | null = null;
+  let activeDrag: {
+    appt: Appointment;
+    el: HTMLButtonElement;
+    pointerId: number;
+    rowSpan: number;
+    durationMs: number;
+    colIdx: number;
+    row: number;
+  } | null = null;
+
+  function clearPressTimer() {
+    if (pressTimer != null) {
+      window.clearTimeout(pressTimer);
+      pressTimer = null;
+    }
+  }
+
+  function clientToGridCell(clientX: number, clientY: number) {
+    const rect = grid.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    const cols = visibleTherapists();
+    if (!cols.length || rect.width <= 0 || rect.height <= 0) {
+      return null;
+    }
+    const colIdx = Math.min(
+      cols.length - 1,
+      Math.max(0, Math.floor((x / rect.width) * cols.length)),
+    );
+    const row = Math.min(
+      TOTAL_ROWS - 1,
+      Math.max(0, Math.floor((y / rect.height) * TOTAL_ROWS)),
+    );
+    return { colIdx, row, cols };
+  }
+
+  function applyDragPreview(
+    el: HTMLElement,
+    row0: number,
+    rowSpan: number,
+    colIdx: number,
+  ) {
+    const maxStart = Math.max(1, TOTAL_ROWS - rowSpan + 1);
+    const rowStart = Math.min(maxStart, Math.max(1, row0 + 1));
+    const rowEnd = rowStart + rowSpan;
+    el.style.gridRow = `${rowStart} / ${rowEnd}`;
+    el.style.gridColumn = String(colIdx + 1);
+    el.style.justifySelf = "start";
+    el.style.width = "calc(100% - 4px)";
+    el.style.marginLeft = "2px";
+  }
+
+  function beginApptDrag(
+    appt: Appointment,
+    el: HTMLButtonElement,
+    pointerId: number,
+    rowSpan: number,
+    clientX: number,
+    clientY: number,
+  ) {
+    const cell = clientToGridCell(clientX, clientY);
+    if (!cell) return;
+    const start = new Date(appt.start_time);
+    const end = new Date(appt.end_time);
+    activeDrag = {
+      appt,
+      el,
+      pointerId,
+      rowSpan,
+      durationMs: Math.max(SLOT_MINUTES * 60_000, end.getTime() - start.getTime()),
+      colIdx: cell.colIdx,
+      row: cell.row,
+    };
+    el.dataset.dragging = "true";
+    grid.dataset.dragging = "true";
+    applyDragPreview(el, cell.row, rowSpan, cell.colIdx);
+    try {
+      el.setPointerCapture(pointerId);
+    } catch {
+      /* ignore */
+    }
+    if (typeof navigator !== "undefined" && "vibrate" in navigator) {
+      try {
+        navigator.vibrate(18);
+      } catch {
+        /* ignore */
+      }
+    }
+  }
+
+  async function finishApptDrag(clientX: number, clientY: number) {
+    const drag = activeDrag;
+    if (!drag) return;
+    activeDrag = null;
+    drag.el.dataset.dragging = "";
+    delete grid.dataset.dragging;
+    try {
+      drag.el.releasePointerCapture(drag.pointerId);
+    } catch {
+      /* ignore */
+    }
+
+    const cell = clientToGridCell(clientX, clientY) ?? {
+      colIdx: drag.colIdx,
+      row: drag.row,
+      cols: visibleTherapists(),
+    };
+    const maxStartRow0 = Math.max(0, TOTAL_ROWS - drag.rowSpan);
+    const row0 = Math.min(maxStartRow0, Math.max(0, cell.row));
+    const therapistId = cell.cols[cell.colIdx]?.id ?? drag.appt.therapist_id;
+
+    const newStart = new Date(currentDay);
+    newStart.setHours(DAY_START, 0, 0, 0);
+    newStart.setMinutes(newStart.getMinutes() + row0 * SLOT_MINUTES);
+    const newEnd = new Date(newStart.getTime() + drag.durationMs);
+
+    const sameTime =
+      newStart.toISOString() === drag.appt.start_time &&
+      newEnd.toISOString() === drag.appt.end_time;
+    const sameTherapist = therapistId === drag.appt.therapist_id;
+    if (sameTime && sameTherapist) {
+      refresh();
+      return;
+    }
+
+    skipNextApptClick = true;
+    const { error } = await supabase
+      .from("appointments")
+      .update({
+        start_time: newStart.toISOString(),
+        end_time: newEnd.toISOString(),
+        therapist_id: therapistId,
+      })
+      .eq("id", drag.appt.id);
+
+    if (error) {
+      alert(`Αποτυχία μετακίνησης: ${error.message}`);
+    }
+    refresh();
+  }
+
+  function cancelApptDrag() {
+    if (!activeDrag) return;
+    const el = activeDrag.el;
+    activeDrag = null;
+    el.dataset.dragging = "";
+    delete grid.dataset.dragging;
+    skipNextApptClick = true;
+    refresh();
+  }
+
+  function bindApptLongPressMove(
+    el: HTMLButtonElement,
+    appt: Appointment,
+    rowSpan: number,
+  ) {
+    el.addEventListener("pointerdown", (e) => {
+      if (e.pointerType === "mouse" && e.button !== 0) return;
+      clearPressTimer();
+      pressPending = {
+        appt,
+        el,
+        pointerId: e.pointerId,
+        startX: e.clientX,
+        startY: e.clientY,
+        x: e.clientX,
+        y: e.clientY,
+        rowSpan: Math.max(1, rowSpan),
+      };
+      pressTimer = window.setTimeout(() => {
+        const p = pressPending;
+        pressPending = null;
+        pressTimer = null;
+        if (!p) return;
+        beginApptDrag(p.appt, p.el, p.pointerId, p.rowSpan, p.x, p.y);
+      }, LONG_PRESS_MS);
+    });
+
+    el.addEventListener("pointermove", (e) => {
+      if (pressPending && pressPending.pointerId === e.pointerId) {
+        pressPending.x = e.clientX;
+        pressPending.y = e.clientY;
+        const dx = e.clientX - pressPending.startX;
+        const dy = e.clientY - pressPending.startY;
+        if (Math.hypot(dx, dy) > PRESS_MOVE_CANCEL_PX) {
+          clearPressTimer();
+          pressPending = null;
+        }
+      }
+      if (activeDrag && activeDrag.pointerId === e.pointerId) {
+        e.preventDefault();
+        const cell = clientToGridCell(e.clientX, e.clientY);
+        if (!cell) return;
+        activeDrag.colIdx = cell.colIdx;
+        activeDrag.row = cell.row;
+        applyDragPreview(activeDrag.el, cell.row, activeDrag.rowSpan, cell.colIdx);
+      }
+    });
+
+    el.addEventListener("pointerup", (e) => {
+      if (pressPending && pressPending.pointerId === e.pointerId) {
+        clearPressTimer();
+        pressPending = null;
+      }
+      if (activeDrag && activeDrag.pointerId === e.pointerId) {
+        e.preventDefault();
+        void finishApptDrag(e.clientX, e.clientY);
+      }
+    });
+
+    el.addEventListener("pointercancel", (e) => {
+      if (pressPending && pressPending.pointerId === e.pointerId) {
+        clearPressTimer();
+        pressPending = null;
+      }
+      if (activeDrag && activeDrag.pointerId === e.pointerId) {
+        cancelApptDrag();
+      }
+    });
+
+    el.addEventListener("contextmenu", (e) => {
+      // Avoid iOS/Android callout while long-pressing to drag
+      if (activeDrag || pressPending) e.preventDefault();
+    });
   }
 
   function positionNowLine() {
@@ -1044,6 +1295,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   /** Tap empty calendar cell → new appointment at that time (and column therapist). */
   grid.addEventListener("click", (e) => {
     if (viewMode !== "day") return;
+    if (grid.dataset.dragging === "true" || activeDrag) return;
     const target = e.target as HTMLElement;
     if (target.closest("[data-appt]")) return;
 
