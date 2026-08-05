@@ -5,15 +5,15 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 <AdminLayout title="Πληρωμές" active="payments">
   <div class="mb-4 flex items-center justify-between gap-2">
     <button id="pay-prev" type="button"
-      class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine"
+      class="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition active:bg-sand hover:border-spine hover:text-spine"
       aria-label="Προηγούμενος μήνας">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
     </button>
-    <div class="flex-1 rounded-full bg-white px-4 py-2 text-center ring-1 ring-slate-200">
+    <div class="flex min-h-11 flex-1 items-center justify-center rounded-full bg-white px-4 py-2 text-center ring-1 ring-slate-200">
       <span id="pay-month-label" class="font-display text-sm font-bold text-charcoal"></span>
     </div>
     <button id="pay-next" type="button"
-      class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine"
+      class="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition active:bg-sand hover:border-spine hover:text-spine"
       aria-label="Επόμενος μήνας">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg>
     </button>

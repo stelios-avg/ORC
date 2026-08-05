@@ -1,0 +1,48 @@
+/* Admin mobile-first polish — imported only in AdminLayout / login */
+
+.admin-body {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  overscroll-behavior-y: none;
+}
+
+/* iOS: avoid zoom-on-focus (needs ≥16px) */
+.admin-body input,
+.admin-body select,
+.admin-body textarea {
+  font-size: 16px;
+}
+
+.admin-body input[type="time"],
+.admin-body input[type="number"],
+.admin-body input[type="search"] {
+  font-size: 16px;
+}
+
+/* Hide scrollbars on chip rows but keep scroll */
+.admin-h-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+}
+.admin-h-scroll::-webkit-scrollbar {
+  display: none;
+}
+
+/* Bottom sheets: room for home indicator */
+.admin-sheet {
+  max-height: min(92dvh, 100%);
+  padding-bottom: max(1.25rem, env(safe-area-inset-bottom));
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+/* Calendar appointment chips: denser copy on narrow screens */
+@media (max-width: 767px) {
+  #cal-grid [data-appt] {
+    min-height: 2.75rem;
+  }
+
+  #cal-grid [data-appt] p {
+    line-height: 1.2;
+  }
+}

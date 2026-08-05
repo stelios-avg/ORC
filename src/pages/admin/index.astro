@@ -10,97 +10,115 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
 <AdminLayout title="Πρόγραμμα" active="calendar">
   {/* ── Date navigation + view toggle ── */}
-  <div class="mb-4 flex items-center justify-between gap-2">
-    <button id="cal-prev" class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine" aria-label="Προηγούμενο">
+  <div class="mb-3 flex items-center justify-between gap-2">
+    <button id="cal-prev" class="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition active:bg-sand hover:border-spine hover:text-spine" aria-label="Προηγούμενο">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
     </button>
-    <button id="today-btn" class="flex-1 rounded-full bg-white px-4 py-2 text-center ring-1 ring-slate-200 transition hover:ring-spine">
-      <span id="date-label" class="font-display text-sm font-bold text-charcoal"></span>
+    <button id="today-btn" class="flex min-h-11 flex-1 items-center justify-center rounded-full bg-white px-3 py-2 text-center ring-1 ring-slate-200 transition active:bg-sand hover:ring-spine">
+      <span id="date-label" class="font-display text-sm font-bold leading-tight text-charcoal"></span>
     </button>
-    <button id="cal-next" class="flex h-10 w-10 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition hover:border-spine hover:text-spine" aria-label="Επόμενο">
+    <button id="cal-next" class="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition active:bg-sand hover:border-spine hover:text-spine" aria-label="Επόμενο">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg>
     </button>
   </div>
 
   {/* Day / month zoom toggle */}
-  <div class="mb-3 flex rounded-full bg-white p-1 ring-1 ring-slate-200">
+  <div class="mb-2 flex rounded-full bg-white p-1 ring-1 ring-slate-200">
     <button id="view-day-btn" type="button"
-      class="view-btn flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 font-display text-xs font-semibold transition">
+      class="view-btn flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 font-display text-xs font-semibold transition">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6h12M5 1v3M11 1v3"/></svg>
       Ημέρα
     </button>
     <button id="view-month-btn" type="button"
-      class="view-btn flex flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 font-display text-xs font-semibold transition">
+      class="view-btn flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 font-display text-xs font-semibold transition">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="1" y="1" width="6" height="6" rx="1"/><rect x="9" y="1" width="6" height="6" rx="1"/><rect x="1" y="9" width="6" height="6" rx="1"/><rect x="9" y="9" width="6" height="6" rx="1"/></svg>
       Μήνας
     </button>
   </div>
 
-  {/* Therapist filter — everyone with admin access can see all calendars */}
-  <div id="therapist-tabs" class="mb-4 flex gap-1 overflow-x-auto rounded-full bg-white p-1 ring-1 ring-slate-200">
+  {/* Therapist filter — sticky chips, scrollable on phone */}
+  <div
+    id="therapist-tabs"
+    class="admin-h-scroll sticky z-30 -mx-3 mb-3 flex gap-1.5 overflow-x-auto bg-sand/95 px-3 py-2 backdrop-blur sm:-mx-0 sm:rounded-full sm:bg-white sm:px-1 sm:ring-1 sm:ring-slate-200"
+    style="top: calc(3rem + env(safe-area-inset-top))"
+  >
     <button type="button" data-therapist-filter="all"
-      class="therapist-tab flex-none rounded-full px-3 py-2 font-display text-xs font-semibold transition data-[active=true]:bg-charcoal data-[active=true]:text-white data-[active=false]:text-charcoal-muted"
+      class="therapist-tab snap-start flex-none rounded-full px-3.5 py-2.5 font-display text-xs font-semibold ring-1 ring-slate-200 transition data-[active=true]:bg-charcoal data-[active=true]:text-white data-[active=true]:ring-charcoal data-[active=false]:bg-white data-[active=false]:text-charcoal-muted"
       data-active="true">
       Όλοι
     </button>
     {THERAPISTS.map((th) => (
       <button type="button" data-therapist-filter={th.id}
-        class="therapist-tab flex-none rounded-full px-3 py-2 font-display text-xs font-semibold transition data-[active=true]:bg-charcoal data-[active=true]:text-white data-[active=false]:text-charcoal-muted"
+        class="therapist-tab snap-start flex-none rounded-full px-3.5 py-2.5 font-display text-xs font-semibold ring-1 ring-slate-200 transition data-[active=true]:bg-charcoal data-[active=true]:text-white data-[active=true]:ring-charcoal data-[active=false]:bg-white data-[active=false]:text-charcoal-muted"
         data-active="false">
         {th.nameEl}
       </button>
     ))}
   </div>
+  <p id="cal-scroll-hint" class="mb-2 hidden text-center text-[11px] text-charcoal-muted">
+    Σύρετε οριζόντια για να δείτε όλους τους θεραπευτές
+  </p>
 
-  {/* ── Actions (day view only) ── */}
-  <div id="day-actions" class="mb-4 grid grid-cols-2 gap-2">
-    <button id="add-appt-btn" class="flex items-center justify-center gap-2 rounded-full bg-spine px-4 py-2.5 font-display text-sm font-semibold text-white transition hover:bg-spine-600">
+  {/* ── Actions (day view only; FAB covers primary on phone) ── */}
+  <div id="day-actions" class="mb-3 grid grid-cols-2 gap-2">
+    <button id="add-appt-btn" class="hidden min-h-12 items-center justify-center gap-2 rounded-full bg-spine px-4 py-3 font-display text-sm font-semibold text-white transition hover:bg-spine-600 sm:flex">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
       Ραντεβού
     </button>
-    <button id="block-time-btn" class="flex items-center justify-center gap-2 rounded-full border border-charcoal/30 bg-white px-4 py-2.5 font-display text-sm font-semibold text-charcoal transition hover:border-charcoal">
+    <button id="block-time-btn" class="flex min-h-12 items-center justify-center gap-2 rounded-full border border-charcoal/30 bg-white px-4 py-3 font-display text-sm font-semibold text-charcoal transition active:bg-sand sm:col-span-1 col-span-2 hover:border-charcoal">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="8" cy="8" r="6"/><path d="M4 4l8 8"/></svg>
-      Αποκλεισμός
+      Αποκλεισμός ώρας
     </button>
   </div>
 
-  {/* ── Day view: hourly calendar (1+ therapist columns) ── */}
+  {/* ── Day view: sticky hours + horizontally scrollable therapist columns ── */}
   <div id="day-view">
-  <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-    <div id="cal-col-headers" class="flex border-b border-slate-100">
-      <div class="w-14 flex-none"></div>
-      <div id="cal-col-headers-inner" class="grid flex-1"></div>
-    </div>
-    <div class="relative flex">
-      {/* Hour labels */}
-      <div class="w-14 flex-none border-r border-slate-100">
-        {hours.map((h) => (
-          <div class="relative h-16">
-            <span class="absolute -top-2 right-2 text-[11px] font-medium text-charcoal-muted">
-              {String(h).padStart(2, "0")}:00
-            </span>
-          </div>
-        ))}
-      </div>
+    <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+      <div class="flex">
+        {/* Sticky time gutter */}
+        <div id="cal-hours" class="w-11 flex-none border-r border-slate-100 bg-white sm:w-14">
+          <div class="h-10 border-b border-slate-100"></div>
+          {hours.map((h) => (
+            <div class="cal-hour-slot relative" style={`height: calc(var(--cal-row, 18px) * 4)`}>
+              <span class="absolute -top-2 right-1.5 text-[10px] font-medium text-charcoal-muted sm:right-2 sm:text-[11px]">
+                {String(h).padStart(2, "0")}:00
+              </span>
+            </div>
+          ))}
+        </div>
 
-      {/* Events area: CSS grid, 4 rows per hour (15-minute slots) × N therapist cols */}
-      <div
-        id="cal-grid"
-        class="relative flex-1 cursor-pointer"
-        style={`display:grid; grid-template-rows: repeat(${(DAY_END - DAY_START) * 4 + 4}, 1rem);`}
-        data-day-start={DAY_START}
-        data-day-end={DAY_END}
-      >
-        {/* Hour lines + appointment blocks injected by JS */}
-        <div id="now-line" class="pointer-events-none absolute inset-x-0 z-10 hidden">
-          <div class="relative border-t-2 border-red-400">
-            <span class="absolute -left-1 -top-[5px] h-2 w-2 rounded-full bg-red-400"></span>
+        <div id="cal-h-scroll" class="admin-h-scroll min-w-0 flex-1 overflow-x-auto">
+          <div id="cal-cols-wrap" class="min-w-full">
+            <div id="cal-col-headers-inner" class="grid h-10 border-b border-slate-100"></div>
+            <div
+              id="cal-grid"
+              class="relative cursor-pointer"
+              style={`display:grid; grid-template-rows: repeat(${(DAY_END - DAY_START) * 4 + 4}, var(--cal-row, 18px));`}
+              data-day-start={DAY_START}
+              data-day-end={DAY_END}
+            >
+              <div id="now-line" class="pointer-events-none absolute inset-x-0 z-10 hidden">
+                <div class="relative border-t-2 border-red-400">
+                  <span class="absolute -left-1 -top-[5px] h-2 w-2 rounded-full bg-red-400"></span>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
     </div>
   </div>
-  </div>
+
+  {/* Mobile FAB — primary “new appointment” in thumb reach */}
+  <button
+    id="fab-appt"
+    type="button"
+    class="fixed z-50 flex h-14 w-14 items-center justify-center rounded-full bg-spine text-white shadow-lg shadow-spine/30 transition active:scale-95 sm:hidden"
+    style="right: max(1rem, env(safe-area-inset-right)); bottom: calc(5.25rem + env(safe-area-inset-bottom))"
+    aria-label="Νέο ραντεβού"
+  >
+    <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
+  </button>
 
   {/* ── Month view: zoomed-out day grid ── */}
   <div id="month-view" class="hidden overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
@@ -116,7 +134,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   {/* ══ Modal: new appointment ══ */}
   <div id="appt-modal" class="fixed inset-0 z-[100] hidden items-end justify-center sm:items-center">
     <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-modal></div>
-    <div class="relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+    <div class="admin-sheet relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="font-display text-lg font-bold text-charcoal">Νέο ραντεβού</h2>
         <button data-close-modal class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
@@ -194,7 +212,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   {/* ══ Modal: block time ══ */}
   <div id="block-modal" class="fixed inset-0 z-[100] hidden items-end justify-center sm:items-center">
     <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-modal></div>
-    <div class="relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+    <div class="admin-sheet relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="font-display text-lg font-bold text-charcoal">Αποκλεισμός ώρας</h2>
         <button data-close-modal class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
@@ -240,10 +258,11 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   {/* ══ Bottom sheet: appointment details ══ */}
   <div id="detail-sheet" class="fixed inset-0 z-[100] hidden items-end justify-center sm:items-center">
     <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-modal></div>
-    <div class="relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
-      <div class="mb-1 flex items-start justify-between">
-        <h2 id="detail-title" class="font-display text-lg font-bold text-charcoal"></h2>
-        <button data-close-modal class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
+    <div class="admin-sheet relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+      <div class="mx-auto mb-3 h-1 w-10 rounded-full bg-slate-200 sm:hidden" aria-hidden="true"></div>
+      <div class="mb-1 flex items-start justify-between gap-3">
+        <h2 id="detail-title" class="min-w-0 font-display text-lg font-bold text-charcoal"></h2>
+        <button data-close-modal class="flex h-11 w-11 flex-none items-center justify-center rounded-full text-charcoal-muted transition active:bg-slate-100" aria-label="Κλείσιμο">
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
@@ -295,16 +314,16 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       </div>
 
       {/* Paid toggle */}
-      <div id="detail-paid-row" class="mt-3 flex items-center justify-between rounded-xl bg-sand px-4 py-3">
+      <div id="detail-paid-row" class="mt-3 flex min-h-14 items-center justify-between rounded-xl bg-sand px-4 py-3">
         <span class="font-display text-sm font-semibold text-charcoal">Πληρωμένο</span>
         <button id="paid-toggle" role="switch" aria-checked="false"
-          class="relative h-7 w-12 rounded-full bg-slate-300 transition-colors data-[on=true]:bg-emerald-500">
-          <span class="absolute left-0.5 top-0.5 h-6 w-6 rounded-full bg-white shadow transition-transform duration-200"></span>
+          class="relative h-8 w-14 rounded-full bg-slate-300 transition-colors data-[on=true]:bg-emerald-500">
+          <span class="absolute left-0.5 top-0.5 h-7 w-7 rounded-full bg-white shadow transition-transform duration-200"></span>
         </button>
       </div>
 
       <button id="detail-delete"
-        class="mt-4 w-full rounded-full border border-red-200 px-6 py-2.5 font-display text-sm font-semibold text-red-600 transition hover:bg-red-50">
+        class="mt-4 min-h-12 w-full rounded-full border border-red-200 px-6 py-3 font-display text-sm font-semibold text-red-600 transition active:bg-red-50 hover:bg-red-50">
         Διαγραφή
       </button>
     </div>
@@ -314,7 +333,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 <style>
   /* Paid switch knob position */
   #paid-toggle[data-on="true"] span {
-    transform: translateX(1.25rem);
+    transform: translateX(1.5rem);
   }
   .view-btn[data-active="true"] {
     background-color: var(--color-spine);
@@ -359,6 +378,8 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
 
   const grid = document.getElementById("cal-grid")!;
   const colHeadersInner = document.getElementById("cal-col-headers-inner")!;
+  const colsWrap = document.getElementById("cal-cols-wrap")!;
+  const scrollHint = document.getElementById("cal-scroll-hint")!;
   const DAY_START = Number(grid.dataset.dayStart);
   const DAY_END = Number(grid.dataset.dayEnd);
   /** total 15' rows in the grid (matches grid-template-rows in the markup) */
@@ -379,12 +400,14 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   const blockTherapistSelect = document.getElementById("block-therapist") as HTMLSelectElement;
   const apptServiceSelect = document.getElementById("appt-service") as HTMLSelectElement;
 
+  const isNarrow = () => window.matchMedia("(max-width: 767px)").matches;
+
   let currentDay = new Date();
   currentDay.setHours(0, 0, 0, 0);
   let viewMonth = new Date(currentDay.getFullYear(), currentDay.getMonth(), 1);
   let viewMode: "day" | "month" = "day";
-  /** null = show all therapists side by side */
-  let therapistFilter: string | null = null;
+  /** null = show all therapists side by side; on phone default to one column */
+  let therapistFilter: string | null = isNarrow() ? DEFAULT_THERAPIST_ID : null;
   let patients: Patient[] = [];
   let selectedAppt: Appointment | null = null;
   let monthAppts: Appointment[] = [];
@@ -411,6 +434,15 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       blockTherapistSelect.value = preferred;
     }
   }
+
+  function syncTherapistTabs() {
+    document.querySelectorAll<HTMLButtonElement>("[data-therapist-filter]").forEach((b) => {
+      const v = b.dataset.therapistFilter || "all";
+      const active = therapistFilter == null ? v === "all" : v === therapistFilter;
+      b.dataset.active = String(active);
+    });
+  }
+  syncTherapistTabs();
 
   document.querySelectorAll<HTMLButtonElement>("[data-therapist-filter]").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -460,6 +492,8 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     }
   })();
 
+  const fabAppt = document.getElementById("fab-appt")!;
+
   function setViewMode(mode: "day" | "month") {
     viewMode = mode;
     viewDayBtn.dataset.active = String(mode === "day");
@@ -467,6 +501,7 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     dayView.classList.toggle("hidden", mode !== "day");
     monthView.classList.toggle("hidden", mode !== "month");
     dayActions.classList.toggle("hidden", mode !== "day");
+    fabAppt.classList.toggle("hidden", mode !== "day");
     emptyMsg.classList.add("hidden");
     refresh();
   }
@@ -553,13 +588,27 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   }
 
   function setupDayColumns(cols: typeof THERAPISTS) {
-    colHeadersInner.style.gridTemplateColumns = `repeat(${cols.length}, minmax(0, 1fr))`;
+    const multi = cols.length > 1;
+    const colMin = isNarrow() ? 152 : 168;
+    const template = multi
+      ? `repeat(${cols.length}, minmax(${colMin}px, 1fr))`
+      : "minmax(0, 1fr)";
+
+    // Taller rows on phone for easier tap targets
+    document.documentElement.style.setProperty("--cal-row", isNarrow() ? "18px" : "16px");
+
+    colsWrap.style.width = multi ? `${cols.length * colMin}px` : "";
+    colsWrap.style.minWidth = multi ? `${cols.length * colMin}px` : "100%";
+    scrollHint.classList.toggle("hidden", !(multi && isNarrow()));
+
+    colHeadersInner.style.gridTemplateColumns = template;
     colHeadersInner.innerHTML = cols.map((th) => {
       const accent = therapistAccentClasses(th.accent).text;
-      return `<div class="border-l border-slate-100 px-2 py-2 text-center font-display text-xs font-bold ${accent}">${th.nameEl}</div>`;
+      return `<div class="flex items-center justify-center border-l border-slate-100 px-2 font-display text-[11px] font-bold leading-tight ${accent} sm:text-xs">${th.nameEl}</div>`;
     }).join("");
 
-    grid.style.gridTemplateColumns = `repeat(${cols.length}, minmax(0, 1fr))`;
+    grid.style.gridTemplateColumns = template;
+    grid.style.gridTemplateRows = `repeat(${TOTAL_ROWS}, var(--cal-row, 18px))`;
     grid.querySelectorAll("[data-appt], [data-hour-line], [data-col-rule]").forEach((el) => el.remove());
 
     hours.forEach((_, i) => {
@@ -571,7 +620,6 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
       grid.appendChild(line);
     });
 
-    // Vertical dividers between therapist columns
     for (let c = 2; c <= cols.length; c++) {
       const rule = document.createElement("div");
       rule.setAttribute("data-col-rule", "");
@@ -760,8 +808,22 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   const apptModal = document.getElementById("appt-modal")!;
   const blockModal = document.getElementById("block-modal")!;
   const detailSheet = document.getElementById("detail-sheet")!;
-  const openModal = (m: HTMLElement) => { m.classList.remove("hidden"); m.classList.add("flex"); };
-  const closeModal = (m: HTMLElement) => { m.classList.add("hidden"); m.classList.remove("flex"); };
+  const openModal = (m: HTMLElement) => {
+    m.classList.remove("hidden");
+    m.classList.add("flex");
+    document.body.classList.add("no-scroll");
+  };
+  const closeModal = (m: HTMLElement) => {
+    m.classList.add("hidden");
+    m.classList.remove("flex");
+    if (
+      apptModal.classList.contains("hidden") &&
+      blockModal.classList.contains("hidden") &&
+      detailSheet.classList.contains("hidden")
+    ) {
+      document.body.classList.remove("no-scroll");
+    }
+  };
   document.querySelectorAll("[data-close-modal]").forEach((el) =>
     el.addEventListener("click", () => [apptModal, blockModal, detailSheet].forEach(closeModal)),
   );
@@ -889,6 +951,9 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
   }
 
   document.getElementById("add-appt-btn")!.addEventListener("click", () => {
+    void openNewAppointment();
+  });
+  document.getElementById("fab-appt")!.addEventListener("click", () => {
     void openNewAppointment();
   });
 

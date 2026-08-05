@@ -9,11 +9,12 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         <circle cx="7" cy="7" r="5"/><path d="M11 11l3 3"/>
       </svg>
       <input
-        id="client-search" type="search" placeholder="Αναζήτηση πελάτη…"
-        class="w-full rounded-full border border-slate-300 bg-white py-2.5 pl-10 pr-4 text-sm text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
+        id="client-search" type="search" placeholder="Όνομα ή τηλέφωνο…"
+        enterkeyhint="search"
+        class="w-full rounded-full border border-slate-300 bg-white py-3 pl-10 pr-4 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
       />
     </div>
-    <button id="add-client-btn" class="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-spine text-white transition hover:bg-spine-600" aria-label="Νέος πελάτης">
+    <button id="add-client-btn" class="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-spine text-white transition active:scale-95 hover:bg-spine-600" aria-label="Νέος πελάτης">
       <svg class="h-5 w-5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
     </button>
   </div>
@@ -25,7 +26,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   {/* ══ Modal: new client ══ */}
   <div id="client-modal" class="fixed inset-0 z-[100] hidden items-end justify-center sm:items-center">
     <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-modal></div>
-    <div class="relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+    <div class="admin-sheet relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
       <div class="mb-4 flex items-center justify-between">
         <h2 class="font-display text-lg font-bold text-charcoal">Νέος πελάτης</h2>
         <button data-close-modal class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
@@ -79,11 +80,11 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       const li = document.createElement("li");
       li.innerHTML = `
         <a href="/admin/client?id=${p.id}"
-           class="flex items-center gap-3 rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-slate-100 transition hover:ring-spine/40">
-          <span class="flex h-10 w-10 flex-none items-center justify-center rounded-full bg-spine-50 font-display text-sm font-bold text-spine">${initials(p.name)}</span>
+           class="flex min-h-[3.75rem] items-center gap-3 rounded-xl bg-white px-3.5 py-3 shadow-sm ring-1 ring-slate-100 transition active:bg-sand hover:ring-spine/40">
+          <span class="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-spine-50 font-display text-sm font-bold text-spine">${initials(p.name)}</span>
           <span class="min-w-0 flex-1">
             <span class="block truncate font-display text-sm font-semibold text-charcoal">${p.name}</span>
-            <span class="block truncate text-xs text-charcoal-muted">${p.phone ?? ""}</span>
+            <span class="block truncate text-xs text-charcoal-muted">${p.phone ?? "χωρίς τηλέφωνο"}</span>
           </span>
           <svg class="h-4 w-4 flex-none text-charcoal-muted" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 3l5 5-5 5"/></svg>
         </a>`;

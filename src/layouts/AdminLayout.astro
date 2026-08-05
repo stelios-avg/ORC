@@ -1,5 +1,6 @@
 ---
 import "../styles/global.css";
+import "../styles/admin.css";
 
 interface Props {
   title?: string;
@@ -15,6 +16,9 @@ const { title = "Admin", active } = Astro.props;
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <meta name="theme-color" content="#1d3e62" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
     <link rel="icon" type="image/png" href="/orc-logo.png" />
     <meta name="robots" content="noindex, nofollow" />
     <title>{title} | ORC Admin</title>
@@ -25,7 +29,7 @@ const { title = "Admin", active } = Astro.props;
       rel="stylesheet"
     />
   </head>
-  <body class="bg-sand">
+  <body class="admin-body bg-sand">
     {/* Auth guard: redirects to /admin/login if there is no session */}
     <div id="admin-guard" class="fixed inset-0 z-[300] flex items-center justify-center bg-sand">
       <div class="flex flex-col items-center gap-3">
@@ -37,37 +41,40 @@ const { title = "Admin", active } = Astro.props;
     </div>
 
     {/* Top bar */}
-    <header class="sticky top-0 z-40 border-b border-slate-200 bg-white/90 backdrop-blur">
-      <div class="mx-auto flex h-14 max-w-5xl items-center justify-between px-4">
-        <a href="/admin" class="flex items-center gap-2.5">
-          <img src="/orc-logo.png" alt="ORC" class="h-8 w-auto" />
+    <header
+      class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur"
+      style="padding-top: env(safe-area-inset-top)"
+    >
+      <div class="mx-auto flex h-12 max-w-5xl items-center justify-between px-3 sm:h-14 sm:px-4">
+        <a href="/admin" class="flex min-h-11 items-center gap-2">
+          <img src="/orc-logo.png" alt="ORC" class="h-7 w-auto sm:h-8" />
           <span class="font-display text-sm font-bold text-charcoal">Admin</span>
         </a>
         <button
           id="logout-btn"
-          class="rounded-full border border-slate-300 px-4 py-1.5 font-display text-xs font-semibold text-charcoal-muted transition hover:border-spine hover:text-spine"
+          class="min-h-11 rounded-full border border-slate-300 px-4 py-2 font-display text-xs font-semibold text-charcoal-muted transition active:bg-slate-50 hover:border-spine hover:text-spine"
         >
-          Αποσύνδεση
+          Έξοδος
         </button>
       </div>
     </header>
 
-    {/* Page content — bottom padding clears the fixed bottom nav */}
-    <main class="mx-auto max-w-5xl px-4 pb-28 pt-5">
+    {/* Page content — bottom padding clears the fixed bottom nav + FAB */}
+    <main class="mx-auto max-w-5xl px-3 pb-32 pt-3 sm:px-4 sm:pb-28 sm:pt-5">
       <slot />
     </main>
 
-    {/* Bottom navigation (mobile-first) */}
+    {/* Bottom navigation (thumb zone) */}
     <nav
       class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur"
       style="padding-bottom: env(safe-area-inset-bottom)"
     >
-      <div class="mx-auto grid h-16 max-w-5xl grid-cols-3">
+      <div class="mx-auto grid h-[4.25rem] max-w-5xl grid-cols-3">
         <a
           href="/admin"
           class:list={[
-            "flex flex-col items-center justify-center gap-1 font-display text-[11px] font-semibold transition",
-            active === "calendar" ? "text-spine" : "text-charcoal-muted hover:text-charcoal",
+            "flex flex-col items-center justify-center gap-0.5 font-display text-[11px] font-semibold transition active:bg-sand/80",
+            active === "calendar" ? "text-spine" : "text-charcoal-muted",
           ]}
         >
           <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -79,8 +86,8 @@ const { title = "Admin", active } = Astro.props;
         <a
           href="/admin/clients"
           class:list={[
-            "flex flex-col items-center justify-center gap-1 font-display text-[11px] font-semibold transition",
-            active === "clients" ? "text-spine" : "text-charcoal-muted hover:text-charcoal",
+            "flex flex-col items-center justify-center gap-0.5 font-display text-[11px] font-semibold transition active:bg-sand/80",
+            active === "clients" ? "text-spine" : "text-charcoal-muted",
           ]}
         >
           <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -93,8 +100,8 @@ const { title = "Admin", active } = Astro.props;
         <a
           href="/admin/payments"
           class:list={[
-            "flex flex-col items-center justify-center gap-1 font-display text-[11px] font-semibold transition",
-            active === "payments" ? "text-spine" : "text-charcoal-muted hover:text-charcoal",
+            "flex flex-col items-center justify-center gap-0.5 font-display text-[11px] font-semibold transition active:bg-sand/80",
+            active === "payments" ? "text-spine" : "text-charcoal-muted",
           ]}
         >
           <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
@@ -111,7 +118,6 @@ const { title = "Admin", active } = Astro.props;
       const supabase = getSupabase();
       const guard = document.getElementById("admin-guard");
 
-      // Redirect to login when there is no active session.
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session) {
           window.location.replace("/admin/login");
