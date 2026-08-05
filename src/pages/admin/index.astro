@@ -599,32 +599,78 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
     const appts = (data ?? []) as Appointment[];
     emptyMsg.classList.toggle("hidden", appts.length > 0);
 
-    appts.forEach((a) => {
+    type LaidOut = {
+      a: Appointment;
+      startMs: number;
+      endMs: number;
+      rowStart: number;
+      rowEnd: number;
+      colIdx: number;
+      lane: number;
+      laneCount: number;
+    };
+
+    const laid: LaidOut[] = appts.map((a) => {
       const start = new Date(a.start_time);
       const end = new Date(a.end_time);
-      const rowStart = Math.min(toRow(start), TOTAL_ROWS);
-      const rowEnd = Math.max(rowStart + 1, toRow(end));
-
       let colIdx = cols.findIndex((t) => t.id === a.therapist_id);
-      if (colIdx < 0) colIdx = 0; // unassigned → first visible column
+      if (colIdx < 0) colIdx = 0;
+      return {
+        a,
+        startMs: start.getTime(),
+        endMs: end.getTime(),
+        rowStart: Math.min(toRow(start), TOTAL_ROWS),
+        rowEnd: Math.max(Math.min(toRow(start), TOTAL_ROWS) + 1, toRow(end)),
+        colIdx,
+        lane: 0,
+        laneCount: 1,
+      };
+    });
 
+    // Side-by-side lanes when two+ appointments overlap in the same therapist column
+    // (so concurrent physio bookings both stay visible, Fresha-style).
+    for (let c = 0; c < cols.length; c++) {
+      const group = laid
+        .filter((x) => x.colIdx === c)
+        .sort((x, y) => x.startMs - y.startMs || x.endMs - y.endMs);
+      const laneEnds: number[] = [];
+      for (const item of group) {
+        let lane = laneEnds.findIndex((end) => end <= item.startMs);
+        if (lane < 0) {
+          lane = laneEnds.length;
+          laneEnds.push(item.endMs);
+        } else {
+          laneEnds[lane] = item.endMs;
+        }
+        item.lane = lane;
+      }
+      for (const item of group) {
+        const peers = group.filter((o) => o.startMs < item.endMs && o.endMs > item.startMs);
+        item.laneCount = Math.max(1, ...peers.map((p) => p.lane + 1));
+      }
+    }
+
+    laid.forEach(({ a, rowStart, rowEnd, colIdx, lane, laneCount }) => {
       const block = document.createElement("button");
       block.setAttribute("data-appt", a.id);
       block.style.gridRow = `${rowStart} / ${rowEnd}`;
       block.style.gridColumn = String(colIdx + 1);
+      block.style.justifySelf = "start";
+      block.style.width = `calc(${100 / laneCount}% - 4px)`;
+      block.style.marginLeft = `calc(${(lane * 100) / laneCount}% + 2px)`;
 
       const th = getTherapist(a.therapist_id);
       const accent = therapistAccentClasses(th?.accent ?? "spine");
 
       if (a.is_blocked_time) {
         block.className =
-          "z-20 mx-0.5 my-px overflow-hidden rounded-lg border border-slate-300 bg-slate-100 px-2 py-1 text-left " +
+          "z-20 my-px overflow-hidden rounded-lg border border-slate-300 bg-slate-100 px-1.5 py-1 text-left " +
           "bg-[repeating-linear-gradient(45deg,transparent,transparent_6px,rgba(0,0,0,0.04)_6px,rgba(0,0,0,0.04)_12px)]";
         block.innerHTML = `
           <p class="truncate text-xs font-semibold text-charcoal-muted">${a.service || "Κλειστό"}</p>
           <p class="text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)}</p>`;
       } else {
-        block.className = accent.block;
+        block.className = accent.block.replace(/\bmx-0\.5\b/g, "").trim();
         const nameColor = accent.text;
         const showPay = canSeePayments(a);
         const payable = showPay ? payableAmount(a) : null;
@@ -646,7 +692,10 @@ const hours = Array.from({ length: DAY_END - DAY_START + 1 }, (_, i) => DAY_STAR
           <p class="truncate text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
       }
 
-      block.addEventListener("click", () => openDetail(a));
+      block.addEventListener("click", (ev) => {
+        ev.stopPropagation();
+        openDetail(a);
+      });
       grid.appendChild(block);
     });
 

@@ -111,6 +111,8 @@ declare
   v_specialty  text;
   v_capacity   int;
   v_overlaps   int;
+  v_preferred  uuid;
+  v_assigned   uuid;
 begin
   if p_name is null or length(trim(p_name)) < 2 then
     raise exception 'invalid_name';
@@ -130,11 +132,15 @@ begin
     raise exception 'too_long';
   end if;
 
+  v_preferred := p_therapist_id;
+
   select t.specialty into v_specialty
   from public.therapists t
-  where t.id = p_therapist_id;
+  where t.id = v_preferred;
 
-  -- Physiotherapy: up to 2 concurrent clinic-wide; others: 1 per therapist calendar.
+  -- Physiotherapy: up to 2 concurrent clinic-wide; assign to a free physio
+  -- (prefer requested therapist) so both show in separate admin columns.
+  -- Other specialties: 1 per therapist calendar.
   v_capacity := case when v_specialty = 'physiotherapy' then 2 else 1 end;
 
   if v_specialty = 'physiotherapy' then
@@ -145,6 +151,32 @@ begin
       and t.specialty = 'physiotherapy'
       and a.start_time < p_end
       and a.end_time   > p_start;
+
+    if v_overlaps >= v_capacity then
+      raise exception 'slot_taken';
+    end if;
+
+    select t.id into v_assigned
+    from public.therapists t
+    where t.active
+      and t.specialty = 'physiotherapy'
+      and not exists (
+        select 1
+        from public.appointments a
+        where a.status <> 'cancelled'
+          and a.therapist_id = t.id
+          and a.start_time < p_end
+          and a.end_time   > p_start
+      )
+    order by
+      case when t.id = v_preferred then 0 else 1 end,
+      t.sort_order
+    limit 1;
+
+    if v_assigned is null then
+      raise exception 'slot_taken';
+    end if;
+    p_therapist_id := v_assigned;
   else
     select count(*)::int into v_overlaps
     from public.appointments a
@@ -152,10 +184,10 @@ begin
       and a.therapist_id = p_therapist_id
       and a.start_time < p_end
       and a.end_time   > p_start;
-  end if;
 
-  if v_overlaps >= v_capacity then
-    raise exception 'slot_taken';
+    if v_overlaps >= v_capacity then
+      raise exception 'slot_taken';
+    end if;
   end if;
 
   select id into v_patient_id

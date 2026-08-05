@@ -8,16 +8,13 @@ const { lang = "el" } = Astro.props;
 const t = useTranslations(lang).booking;
 const services = BOOKABLE_SERVICES.map((s) => {
   const th = THERAPISTS.find((x) => x.slug === s.therapistSlug)!;
+  const hideName = s.hideTherapistName || th.anonymous;
   return {
     key: s.key,
     label: lang === "en" ? s.labelEn : s.labelEl,
     therapistId: th.id,
-    /** Empty for anonymous calendars (Pilates) — no “με …” line */
-    therapistName: th.anonymous
-      ? ""
-      : lang === "en"
-        ? th.nameEn
-        : th.nameEl,
+    /** Empty when auto-assigned / anonymous — no “με …” line */
+    therapistName: hideName ? "" : lang === "en" ? th.nameEn : th.nameEl,
   };
 });
 ---

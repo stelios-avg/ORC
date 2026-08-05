@@ -81,12 +81,15 @@ export const BOOKABLE_SERVICES: {
   labelEl: string;
   labelEn: string;
   therapistSlug: TherapistSlug;
+  /** Hide “με …” — therapist is auto-assigned or calendar is anonymous */
+  hideTherapistName?: boolean;
 }[] = [
   {
     key: "physiotherapy",
     labelEl: "Φυσιοθεραπεία",
     labelEn: "Physiotherapy",
     therapistSlug: "rafaellos",
+    hideTherapistName: true, // assigned to a free physio at booking time
   },
   {
     key: "osteopathy",
@@ -99,6 +102,7 @@ export const BOOKABLE_SERVICES: {
     labelEl: "Κλινική Πιλάτες",
     labelEn: "Clinical Pilates",
     therapistSlug: "pilates",
+    hideTherapistName: true,
   },
 ];
 
