@@ -147,6 +147,17 @@ body {
   filter: grayscale(0);
 }
 
+/* Portrait photos: less zoom so faces and bodies stay in frame */
+.img-reveal[data-portrait="true"] img {
+  transform: scale(1.04);
+}
+.img-reveal[data-portrait="true"].revealed img {
+  transform: scale(1);
+}
+.img-reveal[data-portrait="true"]:hover img {
+  transform: scale(1.03);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .reveal {
     opacity: 1;

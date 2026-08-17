@@ -108,6 +108,7 @@ const el = {
       link: "Οι υπηρεσίες μας",
       href: "/services/",
       img: "/images/home/physio.png",
+      portrait: true,
     },
     {
       eyebrow: "Ο χώρος μας",
@@ -425,6 +426,7 @@ const en = {
       link: "Our services",
       href: "/services/",
       img: "/images/home/physio.png",
+      portrait: true,
     },
     {
       eyebrow: "Our space",

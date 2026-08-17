@@ -125,9 +125,11 @@ const base = "";
 
           <figure
             class:list={[
-              "reveal img-reveal relative aspect-[4/3] w-full bg-sand",
+              "reveal img-reveal relative w-full bg-sand",
+              "portrait" in s && s.portrait ? "aspect-[3/4]" : "aspect-[4/3]",
               i % 2 === 1 ? "max-lg:rounded-r-none!" : "max-lg:rounded-l-none!",
             ]}
+            data-portrait={"portrait" in s && s.portrait ? "true" : undefined}
           >
             <img
               src={SITE.logo}
@@ -138,7 +140,10 @@ const base = "";
             <img
               src={s.img}
               alt={s.eyebrow}
-              class="relative h-full w-full object-cover"
+              class:list={[
+                "relative h-full w-full object-cover",
+                "portrait" in s && s.portrait && "object-[center_18%]",
+              ]}
               loading="lazy"
               onerror="this.remove();"
             />
