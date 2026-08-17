@@ -107,7 +107,7 @@ const el = {
       title: "Υγεία με πρόγραμμα, εξατομικευμένη για εσάς.",
       link: "Οι υπηρεσίες μας",
       href: "/services/",
-      img: "/images/home/physio.svg",
+      img: "/images/home/physio.png",
     },
     {
       eyebrow: "Ο χώρος μας",
@@ -424,7 +424,7 @@ const en = {
       title: "Health by design, tailored to you.",
       link: "Our services",
       href: "/services/",
-      img: "/images/home/physio.svg",
+      img: "/images/home/physio.png",
     },
     {
       eyebrow: "Our space",
