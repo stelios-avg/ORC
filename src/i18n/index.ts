@@ -115,7 +115,7 @@ const el = {
       title: "Η ολιστική θεραπεία ξεκινά εδώ.",
       link: "Δείτε τον χώρο",
       href: "/gallery/",
-      img: "/images/home/clinic.jpg",
+      img: "/images/home/clinic.png",
     },
     {
       eyebrow: "Η ομάδα",
@@ -433,7 +433,7 @@ const en = {
       title: "Holistic healing starts here.",
       link: "See the clinic",
       href: "/gallery/",
-      img: "/images/home/clinic.jpg",
+      img: "/images/home/clinic.png",
     },
     {
       eyebrow: "The team",
