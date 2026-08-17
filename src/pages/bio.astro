@@ -13,9 +13,9 @@ const b = t.bioPage;
 
   <section class="bg-white py-20">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="grid gap-10 sm:grid-cols-2 lg:grid-cols-3">
+      <div class="-mx-4 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-4 no-scrollbar sm:mx-0 sm:grid sm:snap-none sm:grid-cols-2 sm:gap-10 sm:overflow-visible sm:px-0 sm:pb-0 lg:grid-cols-3">
         {b.team.map((m) => (
-          <article class="flex flex-col overflow-hidden rounded-2xl bg-sand shadow-sm ring-1 ring-slate-100">
+          <article class="flex w-[80%] max-w-xs flex-none snap-center flex-col overflow-hidden rounded-2xl bg-sand shadow-sm ring-1 ring-slate-100 sm:w-auto sm:max-w-none">
             <div class="aspect-[3/4] overflow-hidden">
               <img src={m.img} alt={m.name} width="640" height="854"
                 class="h-full w-full object-cover transition duration-500 hover:scale-[1.03]" loading="lazy" />

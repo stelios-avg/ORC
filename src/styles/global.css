@@ -35,6 +35,15 @@
     sans-serif;
 }
 
+/* Hide scrollbar on horizontal swipe carousels */
+@utility no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}
+
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
