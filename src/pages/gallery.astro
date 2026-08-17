@@ -9,61 +9,20 @@ const g = t.galleryPage;
 ---
 
 <Layout lang={lang} title={t.seo.galleryTitle} description={t.seo.galleryDesc}>
-  <PageHeader eyebrow={g.eyebrow} title={g.title} subtitle={g.subtitle} />
+  <PageHeader eyebrow={g.eyebrow} title={g.title} subtitle={g.subtitle} image="/images/gallery/pilates-room.png" />
 
-  {/* ── Album covers ── */}
-  <section id="albums-view" class="bg-white py-16 sm:py-20">
+  {/* ── Flat photo grid ── */}
+  <section class="bg-white py-16 sm:py-20">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-        {g.albums.map((album, i) => (
-          <button
-            class="album-cover group relative overflow-hidden rounded-2xl bg-sand text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-spine"
-            data-album={album.id}
-            style={`--ai:${i}`}
-            aria-label={`Άνοιγμα album: ${album.label}`}
-          >
-            {/* Cover image */}
-            <div class="aspect-[4/3] w-full overflow-hidden">
-              <img
-                src={album.cover}
-                alt={album.label}
-                loading="lazy"
-                class="h-full w-full object-cover transition-transform duration-700 ease-out group-hover:scale-110"
-                onerror="this.closest('.album-cover').classList.add('no-cover');"
-              />
-            </div>
-            {/* Gradient + label */}
-            <div class="absolute inset-0 bg-gradient-to-t from-spine-900/80 via-spine-900/20 to-transparent transition-opacity duration-300 group-hover:opacity-90"></div>
-            <div class="absolute bottom-0 left-0 right-0 p-6 sm:p-7">
-              <p class="font-display text-xl font-bold text-white sm:text-2xl">{album.label}</p>
-              <p class="mt-1 text-sm font-medium text-white/60">{album.images.length} φωτογραφίες</p>
-              {/* Arrow indicator */}
-              <span class="mt-4 flex h-9 w-9 items-center justify-center rounded-full border border-white/40 text-white transition-all duration-300 group-hover:border-white group-hover:bg-white/10">
-                <svg class="h-4 w-4 translate-x-0 transition-transform duration-300 group-hover:translate-x-0.5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
-                  <path d="M3 8h10M9 4l4 4-4 4"/>
-                </svg>
-              </span>
-            </div>
-          </button>
+      <div id="photo-grid" class="columns-1 gap-4 sm:columns-2 lg:columns-3 [&>*]:mb-4">
+        {g.images.map((src, j) => (
+          <figure class="photo-item group relative cursor-pointer overflow-hidden rounded-xl bg-sand" style={`--pi:${j}`} data-src={src}>
+            <img src={src} alt={`${g.imgAlt} ${j + 1}`} loading="lazy"
+              class="w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105" />
+            <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-spine-900/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
+          </figure>
         ))}
       </div>
-    </div>
-  </section>
-
-  {/* ── Album detail view (hidden by default) ── */}
-  <section id="album-view" class="hidden bg-white pb-20">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      {/* Back button + title */}
-      <div class="flex items-center gap-4 py-10 sm:py-12">
-        <button id="back-btn" class="flex h-10 w-10 flex-none items-center justify-center rounded-full border border-slate-300 text-charcoal transition hover:border-spine hover:text-spine" aria-label="Πίσω στα albums">
-          <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M13 8H3M7 4L3 8l4 4"/>
-          </svg>
-        </button>
-        <h2 id="album-title" class="font-display text-2xl font-bold text-charcoal sm:text-3xl"></h2>
-      </div>
-      {/* Photo grid */}
-      <div id="photo-grid" class="columns-1 gap-4 sm:columns-2 lg:columns-3 [&>*]:mb-4"></div>
     </div>
   </section>
 
@@ -95,21 +54,6 @@ const g = t.galleryPage;
 </Layout>
 
 <style>
-  /* Album cover entrance animation */
-  .album-cover {
-    opacity: 0;
-    transform: translateY(28px);
-    transition:
-      opacity 0.6s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-    transition-delay: calc(var(--ai) * 120ms);
-  }
-  .album-cover.visible { opacity: 1; transform: none; }
-  .album-cover.no-cover .aspect-\[4\/3\] {
-    background: linear-gradient(135deg, var(--color-spine-100), var(--color-sand));
-  }
-
-  /* Photo grid item entrance */
   .photo-item {
     opacity: 0;
     transform: translateY(20px);
@@ -120,100 +64,33 @@ const g = t.galleryPage;
   }
   .photo-item.visible { opacity: 1; transform: none; }
 
-  /* Album view slide-in */
-  #album-view.entering {
-    animation: slideIn 0.4s cubic-bezier(0.22, 1, 0.36, 1) forwards;
-  }
-  @keyframes slideIn {
-    from { opacity: 0; transform: translateX(16px); }
-    to   { opacity: 1; transform: none; }
-  }
   @media (prefers-reduced-motion: reduce) {
-    .album-cover, .photo-item { opacity: 1; transform: none; transition: none; }
-    #album-view.entering { animation: none; }
+    .photo-item { opacity: 1; transform: none; transition: none; }
   }
 </style>
 
-<script define:vars={{ albums: g.albums, imgAlt: g.imgAlt }}>
-  const albumsView = document.getElementById("albums-view");
-  const albumView  = document.getElementById("album-view");
-  const albumTitle = document.getElementById("album-title");
-  const photoGrid  = document.getElementById("photo-grid");
-  const backBtn    = document.getElementById("back-btn");
-  const lightbox   = document.getElementById("lightbox");
-  const lbImg      = document.getElementById("lb-img");
-  const lbClose    = document.getElementById("lb-close");
-  const lbPrev     = document.getElementById("lb-prev");
-  const lbNext     = document.getElementById("lb-next");
-  const lbCounter  = document.getElementById("lb-counter");
+<script>
+  const photoGrid = document.getElementById("photo-grid")!;
+  const lightbox  = document.getElementById("lightbox")!;
+  const lbImg     = document.getElementById("lb-img") as HTMLImageElement;
+  const lbClose   = document.getElementById("lb-close")!;
+  const lbPrev    = document.getElementById("lb-prev")!;
+  const lbNext    = document.getElementById("lb-next")!;
+  const lbCounter = document.getElementById("lb-counter")!;
 
-  let lbImages = [];
+  const items = Array.from(photoGrid.querySelectorAll<HTMLElement>(".photo-item"));
+  const images = items.map((el) => el.dataset.src!);
   let lbCurrent = 0;
 
-  // ── Reveal album covers on scroll ──
   const io = new IntersectionObserver((entries) => {
     entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); } });
-  }, { threshold: 0.08 });
-  document.querySelectorAll(".album-cover").forEach((c) => io.observe(c));
+  }, { threshold: 0.05 });
+  items.forEach((item) => io.observe(item));
 
-  // ── Open album ──
-  document.querySelectorAll(".album-cover").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const albumId = btn.dataset.album;
-      const album = albums.find((a) => a.id === albumId);
-      if (!album) return;
-
-      albumTitle.textContent = album.label;
-      photoGrid.innerHTML = "";
-
-      album.images.forEach((img, j) => {
-        const src = `/images/gallery/${albumId}/${img}`;
-        const figure = document.createElement("figure");
-        figure.className = "photo-item group relative cursor-pointer overflow-hidden rounded-xl bg-sand";
-        figure.style = `--pi:${j}`;
-        figure.innerHTML = `
-          <img src="${src}" alt="${imgAlt} ${j + 1}" loading="lazy"
-            class="w-full object-cover transition-transform duration-700 ease-out group-hover:scale-105"
-            onerror="this.closest('figure').classList.add('aspect-[4/3]','min-h-[180px]'); this.style.display='none';" />
-          <div class="pointer-events-none absolute inset-0 bg-gradient-to-t from-spine-900/40 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100"></div>
-        `;
-        figure.addEventListener("click", () => {
-          const srcs = Array.from(photoGrid.querySelectorAll("img")).map((i) => i.src);
-          openLb(src, srcs);
-        });
-        photoGrid.appendChild(figure);
-      });
-
-      // Show album view
-      albumsView.classList.add("hidden");
-      albumView.classList.remove("hidden");
-      albumView.classList.add("entering");
-      albumView.addEventListener("animationend", () => albumView.classList.remove("entering"), { once: true });
-      window.scrollTo({ top: albumView.offsetTop - 80, behavior: "smooth" });
-
-      // Staggered reveal
-      requestAnimationFrame(() => {
-        const items = photoGrid.querySelectorAll(".photo-item");
-        const pio = new IntersectionObserver((entries) => {
-          entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("visible"); pio.unobserve(e.target); } });
-        }, { threshold: 0.05 });
-        items.forEach((item) => pio.observe(item));
-      });
-    });
-  });
-
-  // ── Back ──
-  backBtn.addEventListener("click", () => {
-    albumView.classList.add("hidden");
-    albumsView.classList.remove("hidden");
-    window.scrollTo({ top: albumsView.offsetTop - 80, behavior: "smooth" });
-  });
-
-  // ── Lightbox ──
-  const openLb = (src, imgs) => {
-    lbImages = imgs;
-    lbCurrent = imgs.indexOf(src);
-    lbImg.src = src;
+  const updateCounter = () => { lbCounter.textContent = `${lbCurrent + 1} / ${images.length}`; };
+  const openLb = (idx: number) => {
+    lbCurrent = idx;
+    lbImg.src = images[idx];
     updateCounter();
     lightbox.classList.remove("hidden");
     lightbox.classList.add("flex");
@@ -224,13 +101,13 @@ const g = t.galleryPage;
     lightbox.classList.remove("flex");
     document.body.classList.remove("no-scroll");
   };
-  const navLb = (dir) => {
-    lbCurrent = (lbCurrent + dir + lbImages.length) % lbImages.length;
+  const navLb = (dir: number) => {
+    lbCurrent = (lbCurrent + dir + images.length) % images.length;
     lbImg.style.opacity = "0";
-    setTimeout(() => { lbImg.src = lbImages[lbCurrent]; lbImg.style.opacity = "1"; updateCounter(); }, 220);
+    setTimeout(() => { lbImg.src = images[lbCurrent]; lbImg.style.opacity = "1"; updateCounter(); }, 220);
   };
-  const updateCounter = () => { lbCounter.textContent = `${lbCurrent + 1} / ${lbImages.length}`; };
 
+  items.forEach((el, idx) => el.addEventListener("click", () => openLb(idx)));
   lbClose.addEventListener("click", closeLb);
   lbPrev.addEventListener("click", () => navLb(-1));
   lbNext.addEventListener("click", () => navLb(1));

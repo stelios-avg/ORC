@@ -170,26 +170,33 @@ const el = {
 
   bioPage: {
     eyebrow: "Σχετικά",
-    title: "Γνωρίστε τον θεραπευτή σας",
+    title: "Η ομάδα μας",
     subtitle:
-      "Αφοσιωμένη, αποδεδειγμένη φροντίδα από έναν κλινικό που θεραπεύει τον άνθρωπο — όχι μόνο το πρόβλημα.",
-    credentials: [
-      "MSc Οστεοπαθητικής",
-      "BSc (Hons) Φυσιοθεραπείας",
-      "Πιστοποιημένος Θεραπευτής Αθλητικής Αποκατάστασης",
-      "Εγγεγραμμένος και ασφαλισμένος επαγγελματίας",
+      "Αφοσιωμένη, αποδεδειγμένη φροντίδα από θεραπευτές που θεραπεύουν τον άνθρωπο — όχι μόνο το πρόβλημα.",
+    team: [
+      {
+        name: "Χαράλαμπος Νεοκλέους",
+        role: "Οστεοπαθητικός",
+        img: "/images/team/charalambos.png",
+        bio: "Ιδρυτής του ORC, ο Χαράλαμπος συνδυάζει την ολιστική, χειροπρακτική προσέγγιση της οστεοπαθητικής με σύγχρονες μεθόδους αποκατάστασης. Ακούει προσεκτικά, αξιολογεί διεξοδικά και θεραπεύει ολόκληρο τον άνθρωπο — όχι μόνο το σύμπτωμα.",
+      },
+      {
+        name: "Ραφαέλλος Ονησιφόρου",
+        role: "Φυσιοθεραπευτής",
+        img: "/images/team/rafaellos.png",
+        bio: "Ο Ραφαέλλος ειδικεύεται στην αξιολόγηση και αποκατάσταση μυοσκελετικών προβλημάτων. Με στοχευμένη θεραπευτική άσκηση και χειροπρακτικές τεχνικές, βοηθά τους ασθενείς να επιστρέψουν με ασφάλεια στην καθημερινότητα και τον αθλητισμό.",
+      },
+      {
+        name: "Κωνσταντίνα Κιτρομηλίδη",
+        role: "Φυσιοθεραπεύτρια & Pilates Instructor",
+        img: "/images/team/konstantina.png",
+        bio: "Η Κωνσταντίνα συνδυάζει τη φυσιοθεραπεία με το κλινικό πιλάτες, σχεδιάζοντας εξατομικευμένα προγράμματα ενδυνάμωσης, βελτίωσης στάσης και πρόληψης τραυματισμών για κάθε ασθενή.",
+      },
     ],
-    credTitle: "Πιστοποιήσεις",
-    h2: "Πάθος για να βοηθάμε τους ανθρώπους να κινούνται",
-    p1: "Με πάνω από μια δεκαετία κλινικής εμπειρίας, ο κύριος θεραπευτής μας έχει βοηθήσει χιλιάδες ασθενείς να ξεπεράσουν τον πόνο, να αναρρώσουν από κακώσεις και να ανακτήσουν την εμπιστοσύνη στο σώμα τους. Η φιλοσοφία στο ORC είναι απλή: ακούστε προσεκτικά, αξιολογήστε διεξοδικά και θεραπεύστε ολόκληρο τον άνθρωπο.",
-    p2: "Συνδυάζοντας την ολιστική, χειροπρακτική προσέγγιση της οστεοπαθητικής με τις δομημένες, προοδευτικές μεθόδους της σύγχρονης φυσιοθεραπείας, κάθε θεραπευτικό πρόγραμμα είναι προσαρμοσμένο στους στόχους σας — είτε αυτό είναι το να περπατάτε χωρίς πόνο, να επιστρέψετε στον αθλητισμό ή απλά να απολαμβάνετε την καθημερινή ζωή ξανά.",
-    p3: "Πέρα από την κλινική, ο θεραπευτής μας δεσμεύεται για συνεχή επαγγελματική ανάπτυξη, παραμένοντας στην αιχμή της επιστήμης αποκατάστασης ώστε να λαμβάνετε πάντα φροντίδα βασισμένη στα πιο πρόσφατα δεδομένα.",
     promiseTitle: "Η υπόσχεσή μας",
     promiseBody:
       "Δεν θα είστε ποτέ απλώς ένας αριθμός. Αναμένετε άνετες συνεδρίες, σαφείς εξηγήσεις και ένα πρόγραμμα που πραγματικά καταλαβαίνετε.",
     promiseCta: "Κλείστε μια συνεδρία",
-    imgAlt: "Κύριος θεραπευτής ORC",
-    imgPlaceholder: "Προσθέστε /images/practitioner.jpg",
   },
 
   servicesPage: {
@@ -269,25 +276,12 @@ const el = {
     ctaSubtitle: "Κλείστε μια επίσκεψη και δείτε πώς μπορούμε να σας βοηθήσουμε να κινηθείτε καλύτερα.",
     cta: "Κλείστε ραντεβού",
     imgAlt: "Φωτογραφία κλινικής ORC",
-    albums: [
-      {
-        id: "space",
-        label: "Ο χώρος μας",
-        cover: "/images/gallery/space/cover.jpg",
-        images: ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg","6.jpg"],
-      },
-      {
-        id: "physio",
-        label: "Φυσιοθεραπευτήριο",
-        cover: "/images/gallery/physio/cover.jpg",
-        images: ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg"],
-      },
-      {
-        id: "pilates",
-        label: "Pilates",
-        cover: "/images/gallery/pilates/cover.jpg",
-        images: ["1.jpg","2.jpg","3.jpg","4.jpg"],
-      },
+    images: [
+      "/images/gallery/reception.png",
+      "/images/gallery/pilates-room.png",
+      "/images/gallery/gym.png",
+      "/images/gallery/entrance.png",
+      "/images/gallery/floor.png",
     ],
   },
 
@@ -330,8 +324,8 @@ const el = {
     homeTitle: "ORC Osteopathy & Rehabilitation Center",
     homeDesc:
       "Εξειδικευμένη φυσιοθεραπεία και οστεοπαθητική στο ORC. Εξατομικευμένη, αποδεδειγμένη φροντίδα για ανακούφιση πόνου, αποκατάσταση κίνησης και καλύτερη απόδοση.",
-    bioTitle: "Βιογραφικό",
-    bioDesc: "Γνωρίστε τον θεραπευτή πίσω από το ORC Osteopathy & Rehabilitation Center.",
+    bioTitle: "Η ομάδα μας",
+    bioDesc: "Γνωρίστε την ομάδα θεραπευτών του ORC Osteopathy & Rehabilitation Center.",
     servicesTitle: "Υπηρεσίες",
     servicesDesc: "Φυσιοθεραπεία, οστεοπαθητική, κλινική πιλάτες και πολλά άλλα στο ORC.",
     galleryTitle: "Ο Χώρος μας",
@@ -491,26 +485,33 @@ const en = {
 
   bioPage: {
     eyebrow: "About",
-    title: "Meet your practitioner",
+    title: "Our team",
     subtitle:
-      "Dedicated, evidence-based care from a clinician who treats the person — not just the problem.",
-    credentials: [
-      "MSc Osteopathy",
-      "BSc (Hons) Physiotherapy",
-      "Certified Sports Rehabilitation Therapist",
-      "Registered & insured practitioner",
+      "Dedicated, evidence-based care from clinicians who treat the person — not just the problem.",
+    team: [
+      {
+        name: "Charalambos Neokleous",
+        role: "Osteopath",
+        img: "/images/team/charalambos.png",
+        bio: "Founder of ORC, Charalambos blends osteopathy's holistic, hands-on approach with modern rehabilitation methods. He listens carefully, assesses thoroughly and treats the whole person — not just the symptom.",
+      },
+      {
+        name: "Rafaellos Onisiforou",
+        role: "Physiotherapist",
+        img: "/images/team/rafaellos.png",
+        bio: "Rafaellos specialises in assessing and rehabilitating musculoskeletal conditions. Through targeted therapeutic exercise and hands-on techniques, he helps patients return safely to daily life and sport.",
+      },
+      {
+        name: "Konstantina Kitromilidi",
+        role: "Physiotherapist & Pilates Instructor",
+        img: "/images/team/konstantina.png",
+        bio: "Konstantina combines physiotherapy with clinical Pilates, designing individualised programmes for strength, posture and injury prevention tailored to every patient.",
+      },
     ],
-    credTitle: "Credentials",
-    h2: "A passion for helping people move",
-    p1: "With over a decade of clinical experience, our lead practitioner has helped thousands of patients overcome pain, recover from injury and rediscover confidence in their bodies. The philosophy at ORC is simple: listen carefully, assess thoroughly, and treat the whole person.",
-    p2: "Blending osteopathy's holistic, hands-on approach with the structured, progressive methods of modern physiotherapy, every treatment plan is tailored to your goals — whether that's walking pain-free, returning to sport, or simply enjoying daily life again.",
-    p3: "Beyond the clinic, our practitioner is committed to ongoing professional development, staying at the forefront of rehabilitation science so you always receive care grounded in the latest evidence.",
     promiseTitle: "Our promise",
     promiseBody:
       "You'll never be just a number. Expect unhurried appointments, clear explanations, and a plan you actually understand.",
     promiseCta: "Book a consultation",
-    imgAlt: "ORC lead practitioner",
-    imgPlaceholder: "Add /images/practitioner.jpg",
   },
 
   servicesPage: {
@@ -589,25 +590,12 @@ const en = {
     ctaSubtitle: "Book a visit and see how we can help you move better.",
     cta: "Book appointment",
     imgAlt: "ORC clinic photo",
-    albums: [
-      {
-        id: "space",
-        label: "Our space",
-        cover: "/images/gallery/space/cover.jpg",
-        images: ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg","6.jpg"],
-      },
-      {
-        id: "physio",
-        label: "Physiotherapy room",
-        cover: "/images/gallery/physio/cover.jpg",
-        images: ["1.jpg","2.jpg","3.jpg","4.jpg","5.jpg"],
-      },
-      {
-        id: "pilates",
-        label: "Pilates",
-        cover: "/images/gallery/pilates/cover.jpg",
-        images: ["1.jpg","2.jpg","3.jpg","4.jpg"],
-      },
+    images: [
+      "/images/gallery/reception.png",
+      "/images/gallery/pilates-room.png",
+      "/images/gallery/gym.png",
+      "/images/gallery/entrance.png",
+      "/images/gallery/floor.png",
     ],
   },
 
@@ -650,8 +638,8 @@ const en = {
     homeTitle: "ORC Osteopathy & Rehabilitation Center",
     homeDesc:
       "Expert physiotherapy and osteopathy at ORC. Personalised, evidence-based care to relieve pain, restore movement and keep you performing at your best.",
-    bioTitle: "Bio",
-    bioDesc: "Meet the practitioner behind ORC Osteopathy & Rehabilitation Center.",
+    bioTitle: "Our team",
+    bioDesc: "Meet the team of clinicians behind ORC Osteopathy & Rehabilitation Center.",
     servicesTitle: "Services",
     servicesDesc: "Physiotherapy, osteopathy, clinical pilates and more at ORC.",
     galleryTitle: "Gallery",

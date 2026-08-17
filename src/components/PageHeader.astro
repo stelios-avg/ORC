@@ -3,12 +3,36 @@ interface Props {
   eyebrow?: string;
   title: string;
   subtitle?: string;
+  /** Optional photo shown behind the title (all breakpoints). */
+  image?: string;
+  /** Optional looping video shown behind the title (all breakpoints). Wins over image. */
+  video?: string;
 }
-const { eyebrow, title, subtitle } = Astro.props;
+const { eyebrow, title, subtitle, image, video } = Astro.props;
+const hasMedia = Boolean(video || image);
 ---
 
-<section class="bg-spine-900">
-  <div class="mx-auto max-w-7xl px-5 pb-16 pt-32 sm:px-6 sm:pb-20 sm:pt-40 lg:px-8">
+<section class="relative overflow-hidden bg-spine-900">
+  {video ? (
+    <video
+      class="absolute inset-0 h-full w-full object-cover"
+      autoplay muted loop playsinline preload="metadata"
+      aria-hidden="true"
+    >
+      <source src={video} type="video/mp4" />
+    </video>
+  ) : image ? (
+    <img
+      src={image}
+      alt=""
+      class="absolute inset-0 h-full w-full object-cover"
+      loading="eager"
+      aria-hidden="true"
+    />
+  ) : null}
+  {hasMedia && <div class="absolute inset-0 bg-spine-900/70"></div>}
+
+  <div class="relative mx-auto max-w-7xl px-5 pb-16 pt-32 sm:px-6 sm:pb-20 sm:pt-40 lg:px-8">
     {eyebrow && (
       <p class="reveal text-xs font-semibold uppercase tracking-[0.22em] text-spine-300 sm:text-sm">
         {eyebrow}
@@ -21,7 +45,7 @@ const { eyebrow, title, subtitle } = Astro.props;
       {title}
     </h1>
     {subtitle && (
-      <p class="reveal mt-5 max-w-2xl text-base text-slate-300 sm:text-lg" style="--reveal-delay: 200ms">
+      <p class="reveal mt-5 max-w-2xl text-base text-slate-200 sm:text-lg" style="--reveal-delay: 200ms">
         {subtitle}
       </p>
     )}
