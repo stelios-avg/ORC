@@ -76,12 +76,33 @@ export interface Appointment {
   /** Fixed-amount discount in EUR (not a percentage). */
   discount: number;
   is_paid: boolean;
+  /** How it was paid: cash | card | other. Null when unpaid. */
+  payment_method: "cash" | "card" | "other" | null;
   /** When true, excluded from payment totals (master-only toggle). */
   payments_hidden: boolean;
   is_blocked_time: boolean;
+  /** Admin email that created it, or "online" for public bookings. */
+  created_by: string | null;
+  /** Shared id linking appointments created as a recurring series. */
+  recurrence_group: string | null;
   created_at: string;
   /** joined relation (when selected with `patients(...)`) */
   patients?: Pick<Patient, "id" | "name" | "phone"> | null;
   /** joined relation (when selected with `therapists(...)`) */
   therapists?: Pick<TherapistRow, "id" | "slug" | "name_el" | "name_en"> | null;
+}
+
+/** Special booking request for a closed day (visible to master accounts only). */
+export interface BookingRequest {
+  id: string;
+  name: string;
+  email: string | null;
+  phone: string | null;
+  concern: string | null;
+  service: string | null;
+  therapist_id: string | null;
+  preferred_start: string;
+  preferred_end: string;
+  status: "pending" | "approved" | "rejected";
+  created_at: string;
 }

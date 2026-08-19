@@ -44,6 +44,10 @@ const services = BOOKABLE_SERVICES.map((s) => {
   data-msg-book-error={t.bookError}
   data-err-service={t.errService}
   data-with-therapist={t.withTherapist}
+  data-req-submit={t.requestSubmit}
+  data-req-sending={t.requestSending}
+  data-req-error={t.requestError}
+  data-req-open={t.requestOpen}
 >
   <div id="booking-backdrop" class="absolute inset-0 bg-spine-900/70 backdrop-blur-sm" data-book-close></div>
 
@@ -179,6 +183,26 @@ const services = BOOKABLE_SERVICES.map((s) => {
         <p id="slot-day-label" class="mt-5 hidden font-display text-sm font-semibold capitalize text-charcoal"></p>
         <div id="slot-status" class="mt-3 text-center text-sm text-charcoal-muted">{t.pickDayHint}</div>
         <div id="slot-grid" class="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4"></div>
+
+        {/* Special request — closed or fully booked days */}
+        <div id="request-panel" class="mt-5 hidden rounded-xl border border-amber-200 bg-amber-50 p-4">
+          <p class="font-display text-sm font-bold text-charcoal">{t.requestTitle}</p>
+          <p class="mt-1 text-xs leading-relaxed text-charcoal-muted">{t.requestBody}</p>
+          <label class="mt-3 block">
+            <span class="mb-1 block text-xs font-medium text-charcoal">{t.requestTimeLabel}</span>
+            <select id="request-time"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-sm text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"></select>
+          </label>
+          <p id="request-error" class="mt-2 hidden text-xs text-red-600"></p>
+          <button type="button" id="request-submit"
+            class="mt-3 w-full rounded-full bg-spine px-6 py-2.5 font-display text-sm font-semibold text-white transition hover:bg-spine-600 disabled:cursor-not-allowed disabled:opacity-60">
+            {t.requestSubmit}
+          </button>
+        </div>
+        <div id="request-success" class="mt-5 hidden rounded-xl bg-emerald-50 p-4 text-center">
+          <p class="font-display text-sm font-bold text-emerald-700">{t.requestSuccessTitle}</p>
+          <p class="mt-1 text-xs text-charcoal-muted">{t.requestSuccessMsg}</p>
+        </div>
 
         <button type="button" id="back-to-1"
           class="mt-5 w-full rounded-full border border-slate-300 px-6 py-2.5 font-display text-sm font-semibold text-charcoal transition hover:border-spine hover:text-spine">
@@ -424,6 +448,7 @@ const services = BOOKABLE_SERVICES.map((s) => {
       slotDayLabel.classList.add("hidden");
       slotStatus.textContent = ds.msgPickDay || "";
       slotStatus.classList.remove("hidden");
+      hideRequestUI();
       buildCalendar();
       showStep(step2);
     });
@@ -460,28 +485,36 @@ const services = BOOKABLE_SERVICES.map((s) => {
       const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
       for (let day = 1; day <= daysInMonth; day++) {
         const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day);
-        const disabled = d < today || CLOSED_DAYS.includes(d.getDay());
+        const isPast = d < today;
+        // Closed days stay clickable: they open a special request instead of slots.
+        const isClosed = !isPast && CLOSED_DAYS.includes(d.getDay());
         const isSelected = selectedDay?.getTime() === d.getTime();
         const isToday = d.getTime() === today.getTime();
 
         const btn = document.createElement("button");
         btn.type = "button";
-        btn.disabled = disabled;
+        btn.disabled = isPast;
         btn.className =
           "cal-day flex h-10 items-center justify-center rounded-lg font-display text-sm font-semibold transition " +
-          (disabled
+          (isPast
             ? "cursor-not-allowed text-slate-300"
             : isSelected
               ? "bg-spine text-white"
-              : "text-charcoal hover:bg-spine-50 hover:text-spine" +
-                (isToday ? " ring-1 ring-spine/40" : ""));
+              : isClosed
+                ? "text-amber-500/80 hover:bg-amber-50 hover:text-amber-600"
+                : "text-charcoal hover:bg-spine-50 hover:text-spine" +
+                  (isToday ? " ring-1 ring-spine/40" : ""));
         btn.textContent = String(day);
         btn.addEventListener("click", () => {
           selectedDay = d;
           buildCalendar(); // re-render selection highlight
           slotDayLabel.textContent = d.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" });
           slotDayLabel.classList.remove("hidden");
-          loadSlots(d);
+          if (isClosed) {
+            openRequestPanel(d);
+          } else {
+            loadSlots(d);
+          }
         });
         calDays.appendChild(btn);
       }
@@ -496,8 +529,76 @@ const services = BOOKABLE_SERVICES.map((s) => {
       buildCalendar();
     });
 
+    // ── Special request for closed / fully booked days ──
+    const requestPanel = document.getElementById("request-panel")!;
+    const requestSuccess = document.getElementById("request-success")!;
+    const requestTimeSelect = document.getElementById("request-time") as HTMLSelectElement;
+    const requestSubmitBtn = document.getElementById("request-submit") as HTMLButtonElement;
+    const requestError = document.getElementById("request-error")!;
+
+    function hideRequestUI() {
+      requestPanel.classList.add("hidden");
+      requestSuccess.classList.add("hidden");
+      requestError.classList.add("hidden");
+    }
+
+    function openRequestPanel(day: Date) {
+      slotGrid.innerHTML = "";
+      slotStatus.classList.add("hidden");
+      requestSuccess.classList.add("hidden");
+      requestError.classList.add("hidden");
+
+      // Preferred times: clinic hours, 45' cadence, skip past times for today
+      requestTimeSelect.innerHTML = "";
+      const now = Date.now();
+      for (const [winStart, winEnd] of WINDOWS) {
+        for (let m = winStart; m + SLOT_MIN <= winEnd; m += STEP_MIN) {
+          const s = new Date(day); s.setHours(Math.floor(m / 60), m % 60, 0, 0);
+          if (s.getTime() < now + MIN_LEAD_MS) continue;
+          const opt = document.createElement("option");
+          opt.value = String(s.getTime());
+          opt.textContent = s.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+          requestTimeSelect.appendChild(opt);
+        }
+      }
+      requestSubmitBtn.disabled = requestTimeSelect.options.length === 0;
+      requestPanel.classList.remove("hidden");
+    }
+
+    requestSubmitBtn.addEventListener("click", async () => {
+      if (!supabase || !requestTimeSelect.value) return;
+      requestError.classList.add("hidden");
+      requestSubmitBtn.disabled = true;
+      requestSubmitBtn.textContent = ds.reqSending || "…";
+
+      const start = new Date(Number(requestTimeSelect.value));
+      const end = new Date(start.getTime() + SLOT_MIN * 60_000);
+      const { error } = await supabase.rpc("request_closed_day_booking", {
+        p_name: payload.fullName,
+        p_email: payload.email,
+        p_phone: payload.phone,
+        p_concern: payload.concern,
+        p_start: start.toISOString(),
+        p_end: end.toISOString(),
+        p_therapist_id: payload.therapistId || null,
+        p_service: payload.serviceLabel,
+      });
+
+      requestSubmitBtn.disabled = false;
+      requestSubmitBtn.textContent = ds.reqSubmit || "OK";
+
+      if (error) {
+        requestError.textContent = ds.reqError || "Error";
+        requestError.classList.remove("hidden");
+        return;
+      }
+      requestPanel.classList.add("hidden");
+      requestSuccess.classList.remove("hidden");
+    });
+
     async function loadSlots(day: Date) {
       slotGrid.innerHTML = "";
+      hideRequestUI();
       slotStatus.textContent = ds.labelSubmitting || "…";
       slotStatus.classList.remove("hidden");
 
@@ -534,7 +635,16 @@ const services = BOOKABLE_SERVICES.map((s) => {
       }
 
       if (!slots.length) {
+        // Fully booked → offer the special request path (masters review it)
         slotStatus.textContent = ds.msgNoSlots || "No slots";
+        const reqBtn = document.createElement("button");
+        reqBtn.type = "button";
+        reqBtn.className =
+          "mt-3 rounded-full border border-amber-300 bg-amber-50 px-5 py-2 font-display text-sm font-semibold text-amber-700 transition hover:bg-amber-100";
+        reqBtn.textContent = ds.reqOpen || "Send a request";
+        reqBtn.addEventListener("click", () => openRequestPanel(day));
+        slotStatus.appendChild(document.createElement("br"));
+        slotStatus.appendChild(reqBtn);
         return;
       }
 

@@ -155,6 +155,17 @@ const el = {
     loadingSlots: "Φόρτωση διαθεσιμότητας…",
     noSlots: "Δεν υπάρχουν διαθέσιμες ώρες αυτή την ημέρα.",
     closedDay: "Κλειστά",
+    requestTitle: "Ειδικό αίτημα ραντεβού",
+    requestBody:
+      "Η μέρα αυτή είναι κλειστή ή πλήρης. Μπορείτε να στείλετε ειδικό αίτημα και θα επικοινωνήσουμε μαζί σας αν υπάρχει δυνατότητα.",
+    requestTimeLabel: "Προτιμώμενη ώρα",
+    requestSubmit: "Αποστολή αιτήματος",
+    requestSending: "Αποστολή…",
+    requestSuccessTitle: "Το αίτημά σας στάλθηκε!",
+    requestSuccessMsg:
+      "Θα επικοινωνήσουμε μαζί σας το συντομότερο για να σας ενημερώσουμε αν υπάρχει διαθεσιμότητα.",
+    requestError: "Κάτι πήγε στραβά. Δοκιμάστε ξανά ή καλέστε μας.",
+    requestOpen: "Στείλτε ειδικό αίτημα",
     back: "Πίσω",
     // step 3: confirm
     confirmTitle: "Επιβεβαίωση ραντεβού",
@@ -471,6 +482,17 @@ const en = {
     loadingSlots: "Loading availability…",
     noSlots: "No available times on this day.",
     closedDay: "Closed",
+    requestTitle: "Special appointment request",
+    requestBody:
+      "This day is closed or fully booked. You can send a special request and we'll get back to you if it's possible.",
+    requestTimeLabel: "Preferred time",
+    requestSubmit: "Send request",
+    requestSending: "Sending…",
+    requestSuccessTitle: "Your request was sent!",
+    requestSuccessMsg:
+      "We'll contact you as soon as possible to let you know if it can be arranged.",
+    requestError: "Something went wrong. Please try again or call us.",
+    requestOpen: "Send a special request",
     back: "Back",
     // step 3: confirm
     confirmTitle: "Confirm appointment",

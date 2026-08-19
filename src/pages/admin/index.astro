@@ -2,14 +2,17 @@
 import AdminLayout from "../../layouts/AdminLayout.astro";
 import { ADMIN_SERVICES, THERAPISTS } from "../../lib/therapists";
 
-// Working hours shown on the calendar
-const DAY_START = 8;   // 08:00
-const DAY_END = 19;    // last hour label block starts 19:00 (grid until 20:00)
+// Working hours shown on the ADMIN calendar only (06:00 → 23:00).
+// The public booking page keeps its own independent hours.
+const DAY_START = 6;   // 06:00
+const DAY_END = 22;    // last hour block starts 22:00 (grid runs to 23:00)
 const SLOT_MINUTES = 15;
 /** Visual grid “square” size (appointment cadence). */
 const MAJOR_MINUTES = 45;
 const ROWS_PER_MAJOR = MAJOR_MINUTES / SLOT_MINUTES; // 3
-const TOTAL_DAY_MINUTES = (DAY_END - DAY_START + 1) * 60;
+// Round the day span up to a whole number of 45' squares.
+const TOTAL_DAY_MINUTES =
+  Math.ceil(((DAY_END - DAY_START + 1) * 60) / MAJOR_MINUTES) * MAJOR_MINUTES;
 const TOTAL_ROWS = TOTAL_DAY_MINUTES / SLOT_MINUTES;
 const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_, i) => {
   const mins = DAY_START * 60 + i * MAJOR_MINUTES;
@@ -72,6 +75,15 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     Σύρετε οριζόντια για να δείτε όλους τους θεραπευτές
   </p>
 
+  {/* ── Closed-day booking requests (master accounts only) ── */}
+  <div id="requests-banner" class="mb-3 hidden rounded-2xl border border-amber-200 bg-amber-50 p-4">
+    <div class="mb-2 flex items-center gap-2">
+      <span class="flex h-6 w-6 items-center justify-center rounded-full bg-amber-400 text-[11px] font-bold text-white" id="requests-count">0</span>
+      <h2 class="font-display text-sm font-bold text-charcoal">Αιτήματα για κλειστές μέρες</h2>
+    </div>
+    <ul id="requests-list" class="space-y-2"></ul>
+  </div>
+
   {/* ── Actions (day view only; FAB covers primary on phone) ── */}
   <div id="day-actions" class="mb-3 grid grid-cols-2 gap-2">
     <button id="add-appt-btn" class="hidden min-h-12 items-center justify-center gap-2 rounded-full bg-spine px-4 py-3 font-display text-sm font-semibold text-white transition hover:bg-spine-600 sm:flex">
@@ -111,6 +123,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
               data-day-end={DAY_END}
               data-slot-minutes={SLOT_MINUTES}
               data-major-minutes={MAJOR_MINUTES}
+              data-total-rows={TOTAL_ROWS}
             >
               <div id="now-line" class="pointer-events-none absolute inset-x-0 z-10 hidden">
                 <div class="relative border-t-2 border-red-400">
@@ -225,6 +238,28 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
               <option value="90">1,5 ώρα</option>
               <option value="120">2 ώρες</option>
             </select>
+          </div>
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-repeat">Επανάληψη</label>
+          <select id="appt-repeat" name="repeat"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
+            <option value="none" selected>Χωρίς επανάληψη</option>
+            <option value="weekly">Κάθε εβδομάδα</option>
+            <option value="monthly">Κάθε μήνα</option>
+            <option value="custom">Προσαρμοσμένη</option>
+          </select>
+        </div>
+        <div id="appt-repeat-opts" class="hidden grid-cols-2 gap-3">
+          <div id="appt-repeat-interval-wrap" class="hidden">
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-repeat-interval">Κάθε πόσες εβδομάδες</label>
+            <input id="appt-repeat-interval" name="repeat_interval" type="number" min="1" max="12" value="2" inputmode="numeric"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-repeat-count">Σύνολο επαναλήψεων</label>
+            <input id="appt-repeat-count" name="repeat_count" type="number" min="2" max="52" value="4" inputmode="numeric"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
         </div>
         <p id="appt-form-error" class="hidden text-sm text-red-600"></p>
@@ -376,6 +411,28 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           class="absolute inset-y-0 left-0 z-20 w-[55%] cursor-default opacity-0"></button>
       </div>
 
+      {/* Payment method — shown once the appointment is paid */}
+      <div id="detail-method-row" class="mt-2 hidden rounded-xl bg-sand px-4 py-3">
+        <p class="font-display text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Τρόπος πληρωμής</p>
+        <div class="mt-2 grid grid-cols-3 gap-2">
+          <button type="button" data-pay-method="cash"
+            class="pay-method-btn rounded-full px-3 py-2 font-display text-xs font-semibold ring-1 ring-slate-300 transition data-[active=true]:bg-spine data-[active=true]:text-white data-[active=true]:ring-spine data-[active=false]:bg-white data-[active=false]:text-charcoal-muted">
+            Μετρητά
+          </button>
+          <button type="button" data-pay-method="card"
+            class="pay-method-btn rounded-full px-3 py-2 font-display text-xs font-semibold ring-1 ring-slate-300 transition data-[active=true]:bg-spine data-[active=true]:text-white data-[active=true]:ring-spine data-[active=false]:bg-white data-[active=false]:text-charcoal-muted">
+            Κάρτα
+          </button>
+          <button type="button" data-pay-method="other"
+            class="pay-method-btn rounded-full px-3 py-2 font-display text-xs font-semibold ring-1 ring-slate-300 transition data-[active=true]:bg-spine data-[active=true]:text-white data-[active=true]:ring-spine data-[active=false]:bg-white data-[active=false]:text-charcoal-muted">
+            Άλλο
+          </button>
+        </div>
+      </div>
+
+      {/* Who booked / created this appointment */}
+      <p id="detail-created-by" class="mt-3 hidden text-xs text-charcoal-muted"></p>
+
       <button id="detail-delete"
         class="mt-4 min-h-12 w-full rounded-full border border-red-200 px-6 py-3 font-display text-sm font-semibold text-red-600 transition active:bg-red-50 hover:bg-red-50">
         Διαγραφή
@@ -421,7 +478,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     canViewTherapistPayments,
     canDeleteAppointment,
     isMasterAccount,
+    creatorDisplayName,
   } from "../../lib/admin-access";
+  import type { BookingRequest } from "../../lib/supabase";
 
   const supabase = getSupabase();
   let adminEmail: string | null = null;
@@ -451,7 +510,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const MAJOR_MINUTES = Number(grid.dataset.majorMinutes) || 45;
   const ROWS_PER_MAJOR = MAJOR_MINUTES / SLOT_MINUTES;
   /** total fine rows in the grid (matches grid-template-rows in the markup) */
-  const TOTAL_ROWS = ((DAY_END - DAY_START + 1) * 60) / SLOT_MINUTES;
+  const TOTAL_ROWS =
+    Number(grid.dataset.totalRows) ||
+    ((DAY_END - DAY_START + 1) * 60) / SLOT_MINUTES;
   const MAJOR_SLOT_COUNT = TOTAL_ROWS / ROWS_PER_MAJOR;
   const dateLabel = document.getElementById("date-label")!;
   const emptyMsg = document.getElementById("cal-empty")!;
@@ -482,6 +543,61 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const suggested = suggestTherapistIdForService(apptServiceSelect.value);
     if (suggested && !therapistFilter) apptTherapistSelect.value = suggested;
   });
+
+  // ── Recurring appointment controls ──
+  const repeatSelect = document.getElementById("appt-repeat") as HTMLSelectElement;
+  const repeatOpts = document.getElementById("appt-repeat-opts")!;
+  const repeatIntervalWrap = document.getElementById("appt-repeat-interval-wrap")!;
+  const repeatIntervalInput = document.getElementById("appt-repeat-interval") as HTMLInputElement;
+  const repeatCountInput = document.getElementById("appt-repeat-count") as HTMLInputElement;
+
+  function syncRepeatControls() {
+    const mode = repeatSelect.value;
+    const repeats = mode !== "none";
+    repeatOpts.classList.toggle("hidden", !repeats);
+    repeatOpts.classList.toggle("grid", repeats);
+    repeatIntervalWrap.classList.toggle("hidden", mode !== "custom");
+  }
+  repeatSelect.addEventListener("change", syncRepeatControls);
+
+  function resetRepeatControls() {
+    repeatSelect.value = "none";
+    repeatIntervalInput.value = "2";
+    repeatCountInput.value = "4";
+    syncRepeatControls();
+  }
+
+  /** Add months keeping the day-of-month (clamped to the target month's end). */
+  function addMonthsClamped(d: Date, months: number): Date {
+    const result = new Date(d);
+    const day = d.getDate();
+    result.setDate(1);
+    result.setMonth(result.getMonth() + months);
+    const lastDay = new Date(result.getFullYear(), result.getMonth() + 1, 0).getDate();
+    result.setDate(Math.min(day, lastDay));
+    return result;
+  }
+
+  /** Start datetimes for the whole series (first occurrence included). */
+  function buildOccurrences(first: Date): Date[] {
+    const mode = repeatSelect.value;
+    if (mode === "none") return [first];
+    const count = Math.min(52, Math.max(2, Number(repeatCountInput.value) || 2));
+    const stepWeeks = mode === "weekly" ? 1
+      : mode === "custom" ? Math.min(12, Math.max(1, Number(repeatIntervalInput.value) || 1))
+      : 0;
+    const dates: Date[] = [];
+    for (let i = 0; i < count; i++) {
+      if (mode === "monthly") {
+        dates.push(addMonthsClamped(first, i));
+      } else {
+        const d = new Date(first);
+        d.setDate(d.getDate() + i * stepWeeks * 7);
+        dates.push(d);
+      }
+    }
+    return dates;
+  }
 
   const isNarrow = () => window.matchMedia("(max-width: 767px)").matches;
 
@@ -1268,6 +1384,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     setDefaultTherapistSelects();
     apptDiscountInput.value = "0";
     applyServiceDefaultPrice();
+    resetRepeatControls();
     if (opts?.therapistId) {
       apptTherapistSelect.value = opts.therapistId;
     } else {
@@ -1338,7 +1455,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
     const [h, m] = String(fd.get("start")).split(":").map(Number);
     const start = new Date(currentDay); start.setHours(h, m, 0, 0);
-    const end = new Date(start.getTime() + Number(fd.get("duration")) * 60_000);
+    const durationMs = Number(fd.get("duration")) * 60_000;
 
     const priceRaw = String(fd.get("price") ?? "").trim();
     const discountRaw = String(fd.get("discount") ?? "").trim();
@@ -1355,15 +1472,21 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       return;
     }
 
-    const { error } = await supabase.from("appointments").insert({
+    // One row per occurrence; recurring series share a recurrence_group id.
+    const occurrences = buildOccurrences(start);
+    const recurrenceGroup = occurrences.length > 1 ? crypto.randomUUID() : null;
+    const rows = occurrences.map((s) => ({
       patient_id: patientId,
       therapist_id: String(fd.get("therapist_id")),
       service: String(fd.get("service")),
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
+      start_time: s.toISOString(),
+      end_time: new Date(s.getTime() + durationMs).toISOString(),
       price,
       discount,
-    });
+      recurrence_group: recurrenceGroup,
+    }));
+
+    const { error } = await supabase.from("appointments").insert(rows);
 
     if (error) {
       err.textContent = error.message;
@@ -1375,6 +1498,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     apptDiscountInput.value = "0";
     applyServiceDefaultPrice();
     setDefaultTherapistSelects();
+    resetRepeatControls();
     closeModal(apptModal);
     refresh();
   });
@@ -1528,14 +1652,62 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     paidToggle.dataset.on = String(a.is_paid);
     paidToggle.setAttribute("aria-checked", String(a.is_paid));
 
+    // Payment method (cash / card / other) — visible once paid
+    syncMethodRow(a);
+
     // Secret invisible control: masters only, on paid appointments
     hidePaymentBtn.hidden = !(isMasterAccount(adminEmail) && a.is_paid && !a.is_blocked_time);
+
+    // Who created / booked this appointment
+    const createdByEl = document.getElementById("detail-created-by")!;
+    const who = creatorDisplayName(a.created_by);
+    if (who) {
+      const when = new Date(a.created_at).toLocaleDateString("el-GR", {
+        day: "numeric", month: "short", year: "numeric",
+      });
+      createdByEl.textContent = `Καταχωρήθηκε από: ${who} · ${when}`;
+    }
+    createdByEl.classList.toggle("hidden", !who);
 
     const deleteBtn = document.getElementById("detail-delete") as HTMLButtonElement;
     deleteBtn.classList.toggle("hidden", !canDelete(a));
 
     openModal(detailSheet);
   }
+
+  // ── Payment method (Μετρητά / Κάρτα / Άλλο) ──
+  const methodRow = document.getElementById("detail-method-row")!;
+  const methodBtns = Array.from(
+    methodRow.querySelectorAll<HTMLButtonElement>("[data-pay-method]"),
+  );
+
+  function syncMethodRow(a: Appointment) {
+    const show = !a.is_blocked_time && canSeePayments(a) && a.is_paid;
+    methodRow.classList.toggle("hidden", !show);
+    methodBtns.forEach((b) => {
+      b.dataset.active = String(show && b.dataset.payMethod === a.payment_method);
+    });
+  }
+
+  methodBtns.forEach((btn) => {
+    btn.addEventListener("click", async () => {
+      if (!selectedAppt || !canSeePayments(selectedAppt)) return;
+      const method = btn.dataset.payMethod as "cash" | "card" | "other";
+      if (selectedAppt.payment_method === method) return;
+      methodBtns.forEach((b) => (b.disabled = true));
+      const { error } = await supabase
+        .from("appointments")
+        .update({ payment_method: method })
+        .eq("id", selectedAppt.id);
+      methodBtns.forEach((b) => (b.disabled = false));
+      if (error) {
+        alert(`Αποτυχία αποθήκευσης: ${error.message}`);
+        return;
+      }
+      selectedAppt.payment_method = method;
+      syncMethodRow(selectedAppt);
+    });
+  });
 
   hidePaymentBtn.addEventListener("click", async (e) => {
     e.preventDefault();
@@ -1702,9 +1874,19 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     // optimistic UI, revert on failure
     paidToggle.dataset.on = String(next);
     paidToggle.setAttribute("aria-checked", String(next));
-    const patch: { is_paid: boolean; payments_hidden?: boolean } = { is_paid: next };
-    // Clearing paid also clears hide flag
-    if (!next) patch.payments_hidden = false;
+    const patch: {
+      is_paid: boolean;
+      payments_hidden?: boolean;
+      payment_method?: "cash" | "card" | "other" | null;
+    } = { is_paid: next };
+    if (next) {
+      // Paying defaults to cash — the method row below lets them change it
+      patch.payment_method = selectedAppt.payment_method ?? "cash";
+    } else {
+      // Clearing paid also clears hide flag + payment method
+      patch.payments_hidden = false;
+      patch.payment_method = null;
+    }
     const { error } = await supabase
       .from("appointments").update(patch).eq("id", selectedAppt.id);
     if (error) {
@@ -1713,7 +1895,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       return;
     }
     selectedAppt.is_paid = next;
+    selectedAppt.payment_method = patch.payment_method ?? null;
     if (!next) selectedAppt.payments_hidden = false;
+    syncMethodRow(selectedAppt);
     hidePaymentBtn.hidden = !(isMasterAccount(adminEmail) && next && !selectedAppt.is_blocked_time);
     refresh();
   });
@@ -1737,5 +1921,138 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     refresh();
   });
 
-  ensureAdminEmail().then(() => setViewMode("day"));
+  // ── Closed-day booking requests (visible to master accounts only) ──
+  const requestsBanner = document.getElementById("requests-banner")!;
+  const requestsList = document.getElementById("requests-list")!;
+  const requestsCount = document.getElementById("requests-count")!;
+
+  const escHtml = (s: string) =>
+    s.replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+    );
+
+  let pendingRequests: BookingRequest[] = [];
+
+  async function loadBookingRequests() {
+    if (!isMasterAccount(adminEmail)) return;
+    const { data, error } = await supabase
+      .from("booking_requests")
+      .select("*")
+      .eq("status", "pending")
+      .order("preferred_start");
+    if (error) return;
+
+    pendingRequests = (data ?? []) as BookingRequest[];
+    requestsBanner.classList.toggle("hidden", pendingRequests.length === 0);
+    requestsCount.textContent = String(pendingRequests.length);
+    requestsList.innerHTML = pendingRequests
+      .map((r) => {
+        const start = new Date(r.preferred_start);
+        const when =
+          start.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" }) +
+          " · " +
+          start.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+        return `
+        <li class="rounded-xl bg-white p-3.5 ring-1 ring-amber-100" data-request-id="${r.id}">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="truncate font-display text-sm font-bold text-charcoal">${escHtml(r.name)}</p>
+              <p class="mt-0.5 text-xs font-medium text-amber-700">${when}</p>
+              ${r.service ? `<p class="mt-0.5 text-xs text-charcoal-muted">${escHtml(r.service)}</p>` : ""}
+              ${r.phone ? `<a href="tel:${escHtml(r.phone)}" class="mt-0.5 block text-xs font-medium text-spine underline">${escHtml(r.phone)}</a>` : ""}
+              ${r.concern ? `<p class="mt-1 text-xs text-charcoal-muted">${escHtml(r.concern)}</p>` : ""}
+            </div>
+          </div>
+          <div class="mt-2.5 grid grid-cols-2 gap-2">
+            <button type="button" data-request-approve
+              class="min-h-10 rounded-full bg-spine px-3 py-2 font-display text-xs font-semibold text-white transition hover:bg-spine-600 disabled:opacity-60">
+              Έγκριση
+            </button>
+            <button type="button" data-request-reject
+              class="min-h-10 rounded-full border border-red-200 px-3 py-2 font-display text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60">
+              Απόρριψη
+            </button>
+          </div>
+        </li>`;
+      })
+      .join("");
+  }
+
+  /** Approving creates the real appointment (patient found or created first). */
+  async function approveRequest(r: BookingRequest) {
+    let patientId: string | null = null;
+
+    if (r.email) {
+      const { data } = await supabase
+        .from("patients").select("id").ilike("email", r.email).limit(1);
+      if (data?.length) patientId = data[0].id;
+    }
+    if (!patientId && r.phone) {
+      const { data } = await supabase
+        .from("patients").select("id").eq("phone", r.phone).limit(1);
+      if (data?.length) patientId = data[0].id;
+    }
+    if (!patientId) {
+      const { data, error } = await supabase
+        .from("patients")
+        .insert({ name: r.name, email: r.email, phone: r.phone })
+        .select("id")
+        .single();
+      if (error || !data) {
+        alert(`Αποτυχία δημιουργίας πελάτη: ${error?.message ?? ""}`);
+        return;
+      }
+      patientId = data.id;
+    }
+
+    const therapistId =
+      r.therapist_id ??
+      suggestTherapistIdForService(r.service ?? "") ??
+      DEFAULT_THERAPIST_ID;
+
+    const { error: insErr } = await supabase.from("appointments").insert({
+      patient_id: patientId,
+      therapist_id: therapistId,
+      service: r.service ?? "Ειδικό αίτημα",
+      start_time: r.preferred_start,
+      end_time: r.preferred_end,
+      notes: r.concern,
+      price: defaultPriceForAdminService(r.service ?? ""),
+    });
+    if (insErr) {
+      alert(`Αποτυχία δημιουργίας ραντεβού: ${insErr.message}`);
+      return;
+    }
+
+    await supabase.from("booking_requests").update({ status: "approved" }).eq("id", r.id);
+    await loadBookingRequests();
+    refresh();
+  }
+
+  requestsList.addEventListener("click", async (e) => {
+    const target = e.target as HTMLElement;
+    const item = target.closest<HTMLElement>("[data-request-id]");
+    if (!item) return;
+    const request = pendingRequests.find((r) => r.id === item.dataset.requestId);
+    if (!request) return;
+
+    if (target.closest("[data-request-approve]")) {
+      const btn = target.closest<HTMLButtonElement>("[data-request-approve]")!;
+      btn.disabled = true;
+      await approveRequest(request);
+      btn.disabled = false;
+    } else if (target.closest("[data-request-reject]")) {
+      if (!confirm("Απόρριψη αυτού του αιτήματος;")) return;
+      const btn = target.closest<HTMLButtonElement>("[data-request-reject]")!;
+      btn.disabled = true;
+      await supabase.from("booking_requests").update({ status: "rejected" }).eq("id", request.id);
+      btn.disabled = false;
+      await loadBookingRequests();
+    }
+  });
+
+  ensureAdminEmail().then(() => {
+    setViewMode("day");
+    void loadBookingRequests();
+  });
 </script>

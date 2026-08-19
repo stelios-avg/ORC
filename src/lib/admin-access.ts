@@ -73,6 +73,22 @@ export function canDeleteAppointment(
   return canManageTherapistCalendar(email, therapistId);
 }
 
+/** Friendly display name for an appointment creator (task activity log). */
+export function creatorDisplayName(
+  createdBy: string | null | undefined,
+): string | null {
+  const v = normalizeEmail(createdBy);
+  if (!v) return null;
+  if (v === "online") return "Online κράτηση (πελάτης)";
+  if (v === "egly_mua@hotmail.com") return "Egly (γραμματεία)";
+  const slug = THERAPIST_ACCOUNT_EMAILS[v];
+  if (slug) {
+    const name = getTherapist(slug)?.nameEl;
+    if (name) return name;
+  }
+  return v;
+}
+
 /** Therapist IDs whose payment fields this account may read/aggregate. */
 export function paymentTherapistFilter(
   email: string | null | undefined,

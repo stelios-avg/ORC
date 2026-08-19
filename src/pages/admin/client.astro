@@ -58,6 +58,30 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   </div>
 
   <p id="client-error" class="mt-8 hidden text-center text-sm text-red-600"></p>
+
+  {/* ── Bulk payment bar — appears when unpaid appointments are ticked ── */}
+  <div
+    id="bulk-pay-bar"
+    class="fixed inset-x-0 z-40 hidden border-t border-slate-200 bg-white/95 px-3 py-3 shadow-[0_-4px_16px_rgba(0,0,0,0.06)] backdrop-blur"
+    style="bottom: calc(4.25rem + env(safe-area-inset-bottom))"
+  >
+    <div class="mx-auto flex max-w-5xl items-center gap-2.5">
+      <p class="min-w-0 flex-1 font-display text-sm font-semibold text-charcoal">
+        <span id="bulk-count">0</span> ραντεβού ·
+        <span id="bulk-total" class="text-spine">—</span>
+      </p>
+      <select id="bulk-method"
+        class="rounded-lg border border-slate-300 bg-white px-2.5 py-2 text-sm text-charcoal focus:border-spine focus:outline-none">
+        <option value="cash" selected>Μετρητά</option>
+        <option value="card">Κάρτα</option>
+        <option value="other">Άλλο</option>
+      </select>
+      <button id="bulk-pay-btn" type="button"
+        class="min-h-11 rounded-full bg-emerald-600 px-5 py-2 font-display text-sm font-semibold text-white transition hover:bg-emerald-700 disabled:opacity-60">
+        Πληρωμή
+      </button>
+    </div>
+  </div>
 </AdminLayout>
 
 <script>
@@ -93,6 +117,12 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     return total;
   }
 
+  const METHOD_LABELS: Record<string, string> = {
+    cash: "Μετρητά",
+    card: "Κάρτα",
+    other: "Άλλο",
+  };
+
   function apptItem(a: Appointment): string {
     const showPay =
       canViewTherapistPayments(adminEmail, a.therapist_id) &&
@@ -102,14 +132,23 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       amount != null
         ? `<span class="flex-none text-xs font-semibold ${a.is_paid ? "text-emerald-600" : "text-amber-700"}">${fmtEuro(amount)}</span>`
         : "";
+    const methodLabel =
+      a.is_paid && a.payment_method ? ` · ${METHOD_LABELS[a.payment_method] ?? ""}` : "";
     const payBadge = !showPay
       ? ""
       : a.is_paid
-        ? '<span class="flex-none rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Πληρωμένο</span>'
+        ? `<span class="flex-none rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Πληρωμένο${methodLabel}</span>`
         : '<span class="flex-none rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">Απλήρωτο</span>';
+    // Tickable only when unpaid, priced, and this admin manages those payments
+    const canBulk = showPay && !a.is_paid && !a.is_blocked_time && amount != null;
+    const checkbox = canBulk
+      ? `<input type="checkbox" data-bulk-pay value="${a.id}" data-amount="${amount}"
+          class="h-5 w-5 flex-none rounded border-slate-300 text-spine accent-[var(--color-spine)] focus:ring-spine/40" aria-label="Επιλογή για πληρωμή" />`
+      : "";
     return `
       <li class="flex items-center justify-between gap-3 rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-slate-100">
-        <div class="min-w-0">
+        ${checkbox}
+        <div class="min-w-0 flex-1">
           <p class="truncate font-display text-sm font-semibold text-charcoal">${a.service ?? "Ραντεβού"}</p>
           <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)} · ${fmtTime(a.start_time)}–${fmtTime(a.end_time)}</p>
         </div>
@@ -187,6 +226,60 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       document.getElementById("history-empty")!.classList.toggle("hidden", list.length > 0);
     }
   }
+
+  // ── Bulk payment of ticked unpaid appointments ──
+  const bulkBar = document.getElementById("bulk-pay-bar")!;
+  const bulkCountEl = document.getElementById("bulk-count")!;
+  const bulkTotalEl = document.getElementById("bulk-total")!;
+  const bulkMethodSelect = document.getElementById("bulk-method") as HTMLSelectElement;
+  const bulkPayBtn = document.getElementById("bulk-pay-btn") as HTMLButtonElement;
+
+  function selectedBulkBoxes(): HTMLInputElement[] {
+    return Array.from(
+      document.querySelectorAll<HTMLInputElement>("[data-bulk-pay]:checked"),
+    );
+  }
+
+  function updateBulkBar() {
+    const boxes = selectedBulkBoxes();
+    const total = boxes.reduce((sum, b) => sum + Number(b.dataset.amount ?? 0), 0);
+    bulkCountEl.textContent = String(boxes.length);
+    bulkTotalEl.textContent = fmtEuro(total);
+    bulkBar.classList.toggle("hidden", boxes.length === 0);
+  }
+
+  document.addEventListener("change", (e) => {
+    if ((e.target as HTMLElement).matches?.("[data-bulk-pay]")) updateBulkBar();
+  });
+
+  bulkPayBtn.addEventListener("click", async () => {
+    const boxes = selectedBulkBoxes();
+    if (!boxes.length) return;
+    const ids = boxes.map((b) => b.value);
+    const total = boxes.reduce((sum, b) => sum + Number(b.dataset.amount ?? 0), 0);
+    const method = bulkMethodSelect.value as "cash" | "card" | "other";
+    const methodLabel = { cash: "Μετρητά", card: "Κάρτα", other: "Άλλο" }[method];
+    if (
+      !confirm(
+        `Πληρωμή ${ids.length} ραντεβού — σύνολο ${fmtEuro(total)} (${methodLabel});`,
+      )
+    )
+      return;
+
+    bulkPayBtn.disabled = true;
+    const { error } = await supabase
+      .from("appointments")
+      .update({ is_paid: true, payment_method: method })
+      .in("id", ids);
+    bulkPayBtn.disabled = false;
+
+    if (error) {
+      alert(`Αποτυχία πληρωμής: ${error.message}`);
+      return;
+    }
+    bulkBar.classList.add("hidden");
+    load();
+  });
 
   // ── Save notes ──
   const saveBtn = document.getElementById("save-notes") as HTMLButtonElement;
