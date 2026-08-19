@@ -122,7 +122,8 @@ const el = {
       title: "Πίσω από κάθε θεραπεία, ένας άνθρωπος.",
       link: "Γνωρίστε μας",
       href: "/bio/",
-      img: "/images/home/team.svg",
+      img: "/images/home/team.png",
+      portrait: true,
     },
   ],
 
@@ -290,10 +291,14 @@ const el = {
     imgAlt: "Φωτογραφία κλινικής ORC",
     images: [
       "/images/gallery/reception.png",
+      "/images/gallery/waiting.png",
+      "/images/gallery/treatment-room.png",
       "/images/gallery/pilates-room.png",
+      "/images/gallery/pilates-mirrors.png",
       "/images/gallery/gym.png",
-      "/images/gallery/entrance.png",
-      "/images/gallery/floor.png",
+      "/images/gallery/gym-training.png",
+      "/images/gallery/office.png",
+      "/images/gallery/corridor.png",
     ],
   },
 
@@ -451,7 +456,8 @@ const en = {
       title: "Behind every treatment, a person.",
       link: "Meet us",
       href: "/bio/",
-      img: "/images/home/team.svg",
+      img: "/images/home/team.png",
+      portrait: true,
     },
   ],
 
@@ -616,10 +622,14 @@ const en = {
     imgAlt: "ORC clinic photo",
     images: [
       "/images/gallery/reception.png",
+      "/images/gallery/waiting.png",
+      "/images/gallery/treatment-room.png",
       "/images/gallery/pilates-room.png",
+      "/images/gallery/pilates-mirrors.png",
       "/images/gallery/gym.png",
-      "/images/gallery/entrance.png",
-      "/images/gallery/floor.png",
+      "/images/gallery/gym-training.png",
+      "/images/gallery/office.png",
+      "/images/gallery/corridor.png",
     ],
   },
 
