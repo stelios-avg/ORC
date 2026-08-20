@@ -200,6 +200,12 @@ const el = {
         bio: "Ο Ραφαέλλος ειδικεύεται στην αξιολόγηση και αποκατάσταση μυοσκελετικών προβλημάτων. Με στοχευμένη θεραπευτική άσκηση και χειροπρακτικές τεχνικές, βοηθά τους ασθενείς να επιστρέψουν με ασφάλεια στην καθημερινότητα και τον αθλητισμό.",
       },
       {
+        name: "Αντρέας Λούης",
+        role: "Φυσιοθεραπευτής",
+        img: "/images/team/antreas.png",
+        bio: "Ο Αντρέας είναι φυσιοθεραπευτής με έμφαση στην αποκατάσταση μυοσκελετικών προβλημάτων. Δουλεύει στοχευμένα, με σαφές πλάνο, ώστε οι ασθενείς να επιστρέφουν με ασφάλεια στην κίνηση και την καθημερινότητά τους.",
+      },
+      {
         name: "Κωνσταντίνα Κιτρομηλίδη",
         role: "Φυσιοθεραπεύτρια & Pilates Instructor",
         img: "/images/team/konstantina.png",
@@ -530,6 +536,12 @@ const en = {
         role: "Physiotherapist",
         img: "/images/team/rafaellos.png",
         bio: "Rafaellos specialises in assessing and rehabilitating musculoskeletal conditions. Through targeted therapeutic exercise and hands-on techniques, he helps patients return safely to daily life and sport.",
+      },
+      {
+        name: "Antreas Louis",
+        role: "Physiotherapist",
+        img: "/images/team/antreas.png",
+        bio: "Antreas is a physiotherapist focused on musculoskeletal rehabilitation. He works with a clear, targeted plan so patients can return safely to movement and everyday life.",
       },
       {
         name: "Konstantina Kitromilidi",
