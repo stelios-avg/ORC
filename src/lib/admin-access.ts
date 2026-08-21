@@ -9,6 +9,9 @@ export const MASTER_EMAILS = [
   "x.neocleous@hotmail.com",
 ] as const;
 
+/** Clinic owner — the only account that sees everyone’s payments in one place. */
+export const OWNER_EMAIL = "x.neocleous@hotmail.com";
+
 /**
  * Login email → therapist calendar for payment scoping.
  * Non-masters only see/edit payments on their own therapist_id.
@@ -30,6 +33,11 @@ export function normalizeEmail(email: string | null | undefined): string {
 export function isMasterAccount(email: string | null | undefined): boolean {
   const e = normalizeEmail(email);
   return (MASTER_EMAILS as readonly string[]).includes(e);
+}
+
+/** Charalambos only — full clinic payment overview. */
+export function isOwnerAccount(email: string | null | undefined): boolean {
+  return normalizeEmail(email) === OWNER_EMAIL;
 }
 
 export function therapistSlugForEmail(

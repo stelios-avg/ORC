@@ -31,13 +31,17 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       <p id="sum-paid" class="mt-1 font-display text-2xl font-bold text-emerald-600">—</p>
     </div>
     <div class="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-      <p class="text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Απλήρωτα</p>
+      <p class="text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Υπόλοιπο απλήρωτο</p>
       <p id="sum-unpaid" class="mt-1 font-display text-2xl font-bold text-amber-600">—</p>
     </div>
   </div>
 
   <p id="pay-count" class="mt-3 text-xs text-charcoal-muted"></p>
 
+  {/* Owner (Charalambos): per-admin payments + unpaid remainder per appointment */}
+  <div id="owner-wrap" class="mt-6 hidden space-y-4"></div>
+
+  {/* Other masters: compact per-therapist totals only */}
   <div id="by-therapist-wrap" class="mt-6 hidden">
     <h2 class="mb-3 font-display text-sm font-bold uppercase tracking-wide text-charcoal">Ανά θεραπευτή</h2>
     <ul id="by-therapist" class="space-y-2"></ul>
@@ -52,6 +56,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   import { THERAPISTS, getTherapist } from "../../lib/therapists";
   import {
     isMasterAccount,
+    isOwnerAccount,
     paymentTherapistFilter,
     therapistSlugForEmail,
   } from "../../lib/admin-access";
@@ -61,6 +66,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   const scopeEl = document.getElementById("pay-scope")!;
   const errorEl = document.getElementById("pay-error")!;
   const emptyEl = document.getElementById("pay-empty")!;
+  const ownerWrap = document.getElementById("owner-wrap")!;
   const byWrap = document.getElementById("by-therapist-wrap")!;
   const byList = document.getElementById("by-therapist")!;
 
@@ -69,8 +75,26 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   viewMonth.setDate(1);
   viewMonth.setHours(0, 0, 0, 0);
 
+  const METHOD_LABELS: Record<string, string> = {
+    cash: "Μετρητά",
+    card: "Κάρτα",
+    other: "Άλλο",
+  };
+
   const fmtEuro = (n: number) =>
     new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR" }).format(n);
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("el-GR", {
+      weekday: "short",
+      day: "numeric",
+      month: "short",
+    });
+
+  const esc = (s: string) =>
+    s.replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+    );
 
   function payableAmount(a: Pick<Appointment, "price" | "discount">): number | null {
     if (a.price == null || Number.isNaN(Number(a.price))) return null;
@@ -83,9 +107,98 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     return { start, end };
   }
 
+  type Row = Appointment & { amount: number };
+
+  type Bucket = {
+    name: string;
+    payable: number;
+    paid: number;
+    unpaid: number;
+    count: number;
+    unpaidRows: Row[];
+    paidRows: Row[];
+  };
+
+  function renderOwnerDashboard(buckets: Map<string, Bucket>) {
+    const order = THERAPISTS.map((t) => t.id);
+    const sorted = [...buckets.entries()].sort((a, b) => {
+      const ia = order.indexOf(a[0]);
+      const ib = order.indexOf(b[0]);
+      return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+    });
+
+    ownerWrap.innerHTML = `
+      <h2 class="font-display text-sm font-bold uppercase tracking-wide text-charcoal">Ανά θεραπευτή</h2>
+      ${sorted.map(([, b]) => {
+        const unpaidList = b.unpaidRows.length
+          ? b.unpaidRows
+              .sort((x, y) => x.start_time.localeCompare(y.start_time))
+              .map((a) => `
+                <li class="flex items-start justify-between gap-3 border-t border-amber-100/80 py-2.5 first:border-t-0">
+                  <div class="min-w-0">
+                    <p class="truncate font-display text-sm font-semibold text-charcoal">${esc(a.patients?.name ?? "—")}</p>
+                    <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)}${a.service ? ` · ${esc(a.service)}` : ""}</p>
+                  </div>
+                  <p class="flex-none font-display text-sm font-bold text-amber-700">${fmtEuro(a.amount)}</p>
+                </li>`)
+              .join("")
+          : `<li class="py-1 text-sm text-charcoal-muted">Κανένα απλήρωτο ραντεβού</li>`;
+
+        const paidList = b.paidRows.length
+          ? b.paidRows
+              .sort((x, y) => y.start_time.localeCompare(x.start_time))
+              .map((a) => {
+                const method = a.payment_method ? METHOD_LABELS[a.payment_method] ?? "" : "";
+                return `
+                <li class="flex items-start justify-between gap-3 border-t border-slate-100 py-2 first:border-t-0">
+                  <div class="min-w-0">
+                    <p class="truncate text-sm text-charcoal">${esc(a.patients?.name ?? "—")}</p>
+                    <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)}${method ? ` · ${method}` : ""}</p>
+                  </div>
+                  <p class="flex-none text-sm font-semibold text-emerald-600">${fmtEuro(a.amount)}</p>
+                </li>`;
+              })
+              .join("")
+          : `<li class="py-1 text-sm text-charcoal-muted">Καμία είσπραξη αυτόν τον μήνα</li>`;
+
+        return `
+          <section class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
+            <header class="border-b border-slate-100 px-4 py-3">
+              <div class="flex items-baseline justify-between gap-3">
+                <h3 class="font-display text-base font-bold text-charcoal">${esc(b.name)}</h3>
+                <p class="font-display text-sm font-semibold text-charcoal">${fmtEuro(b.payable)}</p>
+              </div>
+              <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+                <p class="rounded-lg bg-emerald-50 px-2.5 py-1.5 font-medium text-emerald-700">
+                  Εισπραγμένα <span class="font-bold">${fmtEuro(b.paid)}</span>
+                </p>
+                <p class="rounded-lg bg-amber-50 px-2.5 py-1.5 font-medium text-amber-800">
+                  Υπόλοιπο <span class="font-bold">${fmtEuro(b.unpaid)}</span>
+                </p>
+              </div>
+            </header>
+            <div class="px-4 py-3">
+              <p class="mb-1 font-display text-[11px] font-bold uppercase tracking-wide text-amber-700">
+                Απλήρωτα ραντεβού · ${b.unpaidRows.length}
+              </p>
+              <ul>${unpaidList}</ul>
+            </div>
+            <details class="border-t border-slate-100 px-4 py-3">
+              <summary class="cursor-pointer font-display text-[11px] font-bold uppercase tracking-wide text-charcoal-muted">
+                Εισπραγμένα ραντεβού · ${b.paidRows.length}
+              </summary>
+              <ul class="mt-2">${paidList}</ul>
+            </details>
+          </section>`;
+      }).join("")}`;
+  }
+
   async function load() {
     errorEl.classList.add("hidden");
     emptyEl.classList.add("hidden");
+    ownerWrap.classList.add("hidden");
+    ownerWrap.innerHTML = "";
+    byWrap.classList.add("hidden");
     monthLabel.textContent = viewMonth.toLocaleDateString("el-GR", {
       month: "long",
       year: "numeric",
@@ -95,9 +208,12 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     adminEmail = session?.user?.email ?? "";
     const filter = paymentTherapistFilter(adminEmail);
     const master = isMasterAccount(adminEmail);
+    const owner = isOwnerAccount(adminEmail);
     const ownSlug = therapistSlugForEmail(adminEmail);
 
-    if (master) {
+    if (owner) {
+      scopeEl.textContent = "Βλέπετε όλες τις πληρωμές και τα υπόλοιπα όλων των θεραπευτών.";
+    } else if (master) {
       scopeEl.textContent = "Βλέπετε τις πληρωμές όλων.";
     } else if (ownSlug) {
       const th = getTherapist(ownSlug);
@@ -111,19 +227,19 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       document.getElementById("sum-paid")!.textContent = fmtEuro(0);
       document.getElementById("sum-unpaid")!.textContent = fmtEuro(0);
       document.getElementById("pay-count")!.textContent = "";
-      byWrap.classList.add("hidden");
       return;
     }
 
     const { start, end } = monthBounds(viewMonth);
     let q = supabase
       .from("appointments")
-      .select("id, therapist_id, price, discount, is_paid, is_blocked_time, payments_hidden, status, start_time")
+      .select("id, therapist_id, price, discount, is_paid, is_blocked_time, payments_hidden, payment_method, status, start_time, service, patients(name)")
       .neq("status", "cancelled")
       .eq("is_blocked_time", false)
       .eq("payments_hidden", false)
       .gte("start_time", start.toISOString())
-      .lt("start_time", end.toISOString());
+      .lt("start_time", end.toISOString())
+      .order("start_time");
 
     if (filter !== "all") {
       q = q.in("therapist_id", filter);
@@ -141,8 +257,6 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     let paid = 0;
     let unpaid = 0;
     let withPrice = 0;
-
-    type Bucket = { name: string; payable: number; paid: number; unpaid: number; count: number };
     const buckets = new Map<string, Bucket>();
 
     for (const a of rows) {
@@ -154,14 +268,22 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       if (a.is_paid) paid += amount;
       else unpaid += amount;
 
-      if (master) {
+      if (master || owner) {
         const tid = a.therapist_id ?? "none";
         const name = getTherapist(a.therapist_id)?.nameEl ?? "—";
-        const b = buckets.get(tid) ?? { name, payable: 0, paid: 0, unpaid: 0, count: 0 };
+        const b = buckets.get(tid) ?? {
+          name, payable: 0, paid: 0, unpaid: 0, count: 0, unpaidRows: [], paidRows: [],
+        };
         b.payable += amount;
-        if (a.is_paid) b.paid += amount;
-        else b.unpaid += amount;
         b.count += 1;
+        const row: Row = { ...a, amount };
+        if (a.is_paid) {
+          b.paid += amount;
+          b.paidRows.push(row);
+        } else {
+          b.unpaid += amount;
+          b.unpaidRows.push(row);
+        }
         buckets.set(tid, b);
       }
     }
@@ -174,7 +296,10 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
     emptyEl.classList.toggle("hidden", withPrice > 0);
 
-    if (master) {
+    if (owner && buckets.size) {
+      ownerWrap.classList.remove("hidden");
+      renderOwnerDashboard(buckets);
+    } else if (master && !owner && buckets.size) {
       byWrap.classList.remove("hidden");
       const order = THERAPISTS.map((t) => t.id);
       const sorted = [...buckets.entries()].sort((a, b) => {
@@ -187,7 +312,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
           ([, b]) => `
         <li class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
           <div class="flex items-baseline justify-between gap-3">
-            <p class="font-display text-sm font-bold text-charcoal">${b.name}</p>
+            <p class="font-display text-sm font-bold text-charcoal">${esc(b.name)}</p>
             <p class="font-display text-sm font-semibold text-charcoal">${fmtEuro(b.payable)}</p>
           </div>
           <p class="mt-1 text-xs text-charcoal-muted">
@@ -196,9 +321,6 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         </li>`,
         )
         .join("");
-      if (!sorted.length) byWrap.classList.add("hidden");
-    } else {
-      byWrap.classList.add("hidden");
     }
   }
 
