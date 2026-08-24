@@ -344,17 +344,22 @@ const el = {
   },
 
   seo: {
-    homeTitle: "ORC Osteopathy & Rehabilitation Center",
+    homeTitle:
+      "ORC — Οστεοπαθητική & Φυσιοθεραπεία στον Στρόβολο, Λευκωσία | Osteopathy & Rehabilitation Center",
     homeDesc:
-      "Εξειδικευμένη φυσιοθεραπεία και οστεοπαθητική στο ORC. Εξατομικευμένη, αποδεδειγμένη φροντίδα για ανακούφιση πόνου, αποκατάσταση κίνησης και καλύτερη απόδοση.",
-    bioTitle: "Η ομάδα μας",
-    bioDesc: "Γνωρίστε την ομάδα θεραπευτών του ORC Osteopathy & Rehabilitation Center.",
-    servicesTitle: "Υπηρεσίες",
-    servicesDesc: "Φυσιοθεραπεία, οστεοπαθητική, κλινική πιλάτες και πολλά άλλα στο ORC.",
-    galleryTitle: "Ο Χώρος μας",
-    galleryDesc: "Ρίξτε μια ματιά στο εσωτερικό του ORC Osteopathy & Rehabilitation Center.",
-    contactTitle: "Επικοινωνία",
-    contactDesc: "Επικοινωνήστε με το ORC Osteopathy & Rehabilitation Center.",
+      "Οστεοπαθητική, φυσιοθεραπεία και κλινικό πιλάτες στον Στρόβολο, Λευκωσία. Εξατομικευμένη, αποδεδειγμένη φροντίδα για ανακούφιση από τον πόνο και αποκατάσταση της κίνησης. Κλείστε ραντεβού online στο ORC.",
+    bioTitle: "Η ομάδα μας — Οστεοπαθητικός & Φυσιοθεραπευτές στη Λευκωσία",
+    bioDesc:
+      "Γνωρίστε την ομάδα του ORC στον Στρόβολο: Χαράλαμπος Νεοκλέους (οστεοπαθητικός) και έμπειροι φυσιοθεραπευτές με εξειδίκευση στην αποκατάσταση και το κλινικό πιλάτες.",
+    servicesTitle: "Υπηρεσίες — Φυσιοθεραπεία, Οστεοπαθητική & Κλινικό Πιλάτες",
+    servicesDesc:
+      "Φυσιοθεραπεία, οστεοπαθητική και κλινικό πιλάτες στη Λευκωσία: αποκατάσταση μετά από τραυματισμό ή χειρουργείο, θεραπεία μυοσκελετικού πόνου, θεραπευτική άσκηση και μασάζ.",
+    galleryTitle: "Ο Χώρος μας — Σύγχρονη κλινική αποκατάστασης στον Στρόβολο",
+    galleryDesc:
+      "Δείτε τον χώρο του ORC στον Στρόβολο: αίθουσες θεραπείας, γυμναστήριο αποκατάστασης και στούντιο πιλάτες, σχεδιασμένα για την άνεση και την ανάρρωσή σας.",
+    contactTitle: "Επικοινωνία & Ραντεβού — Στρόβολος, Λευκωσία",
+    contactDesc:
+      "Επικοινωνήστε με το ORC Osteopathy & Rehabilitation Center: Περικλέους 63, Στρόβολος 2021, Λευκωσία. Τηλ. +357 96 322622. Κλείστε ραντεβού online ή στείλτε μας μήνυμα.",
   },
 };
 
@@ -681,17 +686,22 @@ const en = {
   },
 
   seo: {
-    homeTitle: "ORC Osteopathy & Rehabilitation Center",
+    homeTitle:
+      "ORC — Osteopathy & Physiotherapy in Strovolos, Nicosia | Osteopathy & Rehabilitation Center",
     homeDesc:
-      "Expert physiotherapy and osteopathy at ORC. Personalised, evidence-based care to relieve pain, restore movement and keep you performing at your best.",
-    bioTitle: "Our team",
-    bioDesc: "Meet the team of clinicians behind ORC Osteopathy & Rehabilitation Center.",
-    servicesTitle: "Services",
-    servicesDesc: "Physiotherapy, osteopathy, clinical pilates and more at ORC.",
-    galleryTitle: "Gallery",
-    galleryDesc: "Take a look inside ORC Osteopathy & Rehabilitation Center.",
-    contactTitle: "Contact",
-    contactDesc: "Get in touch with ORC Osteopathy & Rehabilitation Center.",
+      "Osteopathy, physiotherapy and clinical Pilates in Strovolos, Nicosia. Personalised, evidence-based care to relieve pain and restore movement. Book your appointment online at ORC.",
+    bioTitle: "Our Team — Osteopath & Physiotherapists in Nicosia",
+    bioDesc:
+      "Meet the ORC team in Strovolos: Charalambos Neokleous (osteopath) and experienced physiotherapists specialising in rehabilitation and clinical Pilates.",
+    servicesTitle: "Services — Physiotherapy, Osteopathy & Clinical Pilates",
+    servicesDesc:
+      "Physiotherapy, osteopathy and clinical Pilates in Nicosia: post-injury and post-surgery rehabilitation, musculoskeletal pain treatment, therapeutic exercise and massage.",
+    galleryTitle: "Our Space — Modern rehabilitation clinic in Strovolos",
+    galleryDesc:
+      "Take a look inside ORC in Strovolos: treatment rooms, a rehabilitation gym and a Pilates studio designed for your comfort and recovery.",
+    contactTitle: "Contact & Appointments — Strovolos, Nicosia",
+    contactDesc:
+      "Contact ORC Osteopathy & Rehabilitation Center: Perikleous 63, Strovolos 2021, Nicosia. Tel. +357 96 322622. Book online or send us a message.",
   },
 };
 

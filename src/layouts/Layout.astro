@@ -5,13 +5,15 @@ import Footer from "../components/Footer.astro";
 import BookingModal from "../components/BookingModal.astro";
 import Preloader from "../components/Preloader.astro";
 import { SITE } from "../config/site";
-import { useTranslations, type Lang } from "../i18n";
+import { useTranslations, getAlternatePath, type Lang } from "../i18n";
 
 interface Props {
   title?: string;
   description?: string;
   fullBleed?: boolean;
   lang?: Lang;
+  /** Social share image (path under /public). Defaults to the clinic photo. */
+  ogImage?: string;
 }
 
 const {
@@ -19,12 +21,52 @@ const {
   description,
   fullBleed = false,
   lang = "el",
+  ogImage = "/images/home/clinic.png",
 } = Astro.props;
 
 const t = useTranslations(lang);
-const pageTitle = title ? `${title} | ${SITE.shortName}` : SITE.name;
+const pageTitle = title ? `${title} | ${SITE.shortName}` : t.seo.homeTitle;
 const pageDesc = description ?? t.seo.homeDesc;
 const canonical = new URL(Astro.url.pathname, SITE.url).toString();
+const ogImageUrl = new URL(ogImage, SITE.url).toString();
+
+// hreflang alternates — the same page in the other language + x-default (Greek)
+const altPath = getAlternatePath(Astro.url.pathname, lang);
+const elUrl = lang === "el" ? canonical : new URL(altPath, SITE.url).toString();
+const enUrl = lang === "en" ? canonical : new URL(altPath, SITE.url).toString();
+
+// Local-business structured data for Google (clinic profile, hours, socials)
+const structuredData = {
+  "@context": "https://schema.org",
+  "@type": ["MedicalClinic", "Physiotherapy"],
+  "@id": `${SITE.url}/#clinic`,
+  name: SITE.name,
+  url: SITE.url,
+  logo: new URL(SITE.logo, SITE.url).toString(),
+  image: ogImageUrl,
+  description: t.seo.homeDesc,
+  telephone: SITE.phone,
+  email: SITE.email,
+  priceRange: "€€",
+  address: {
+    "@type": "PostalAddress",
+    streetAddress: "Perikleous 63",
+    addressLocality: "Strovolos",
+    addressRegion: "Nicosia",
+    postalCode: "2021",
+    addressCountry: "CY",
+  },
+  openingHoursSpecification: [
+    {
+      "@type": "OpeningHoursSpecification",
+      dayOfWeek: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"],
+      opens: "08:00",
+      closes: "19:00",
+    },
+  ],
+  medicalSpecialty: ["Physiotherapy", "Osteopathy"],
+  sameAs: [SITE.social.instagram, SITE.social.facebook],
+};
 ---
 
 <!doctype html>
@@ -38,14 +80,28 @@ const canonical = new URL(Astro.url.pathname, SITE.url).toString();
 
     <title>{pageTitle}</title>
     <meta name="description" content={pageDesc} />
+    <meta name="theme-color" content="#1d3e62" />
     <link rel="canonical" href={canonical} />
+    <link rel="alternate" hreflang="el" href={elUrl} />
+    <link rel="alternate" hreflang="en" href={enUrl} />
+    <link rel="alternate" hreflang="x-default" href={elUrl} />
+    <link rel="sitemap" href="/sitemap-index.xml" />
 
     <meta property="og:type" content="website" />
+    <meta property="og:site_name" content={SITE.name} />
+    <meta property="og:locale" content={lang === "el" ? "el_GR" : "en_GB"} />
+    <meta property="og:locale:alternate" content={lang === "el" ? "en_GB" : "el_GR"} />
     <meta property="og:title" content={pageTitle} />
     <meta property="og:description" content={pageDesc} />
-    <meta property="og:image" content={SITE.logo} />
+    <meta property="og:image" content={ogImageUrl} />
+    <meta property="og:image:alt" content={SITE.name} />
     <meta property="og:url" content={canonical} />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={pageTitle} />
+    <meta name="twitter:description" content={pageDesc} />
+    <meta name="twitter:image" content={ogImageUrl} />
+
+    <script type="application/ld+json" set:html={JSON.stringify(structuredData)} />
 
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
