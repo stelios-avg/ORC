@@ -23,7 +23,7 @@ const el = {
   dir: "ltr" as const,
 
   /* Real contact details (matching the Fresha listing). */
-  address: "Περικλέους 63, Στρόβολος 2021, Κύπρος",
+  address: "Περικλέους 63, 2ος όροφος 201, Στρόβολος 2021, Κύπρος",
   hours: [
     { day: "Δευ – Παρ", time: "08:00 – 19:00" },
     { day: "Σαβ – Κυρ", time: "Κλειστά" },
@@ -359,7 +359,7 @@ const el = {
       "Δείτε τον χώρο του ORC στον Στρόβολο: αίθουσες θεραπείας, γυμναστήριο αποκατάστασης και στούντιο πιλάτες, σχεδιασμένα για την άνεση και την ανάρρωσή σας.",
     contactTitle: "Επικοινωνία & Ραντεβού — Στρόβολος, Λευκωσία",
     contactDesc:
-      "Επικοινωνήστε με το ORC Osteopathy & Rehabilitation Center: Περικλέους 63, Στρόβολος 2021, Λευκωσία. Τηλ. +357 96 322622. Κλείστε ραντεβού online ή στείλτε μας μήνυμα.",
+      "Επικοινωνήστε με το ORC Osteopathy & Rehabilitation Center: Περικλέους 63, 2ος όροφος 201, Στρόβολος 2021, Λευκωσία. Τηλ. +357 96 322622. Κλείστε ραντεβού online ή στείλτε μας μήνυμα.",
   },
 };
 
@@ -369,7 +369,7 @@ const en = {
   dir: "ltr" as const,
 
   /* Real contact details (matching the Fresha listing). */
-  address: "Perikleous 63, Strovolos 2021, Cyprus",
+  address: "Perikleous 63, 2nd floor 201, Strovolos 2021, Cyprus",
   hours: [
     { day: "Mon – Fri", time: "08:00 – 19:00" },
     { day: "Sat – Sun", time: "Closed" },
@@ -701,7 +701,7 @@ const en = {
       "Take a look inside ORC in Strovolos: treatment rooms, a rehabilitation gym and a Pilates studio designed for your comfort and recovery.",
     contactTitle: "Contact & Appointments — Strovolos, Nicosia",
     contactDesc:
-      "Contact ORC Osteopathy & Rehabilitation Center: Perikleous 63, Strovolos 2021, Nicosia. Tel. +357 96 322622. Book online or send us a message.",
+      "Contact ORC Osteopathy & Rehabilitation Center: Perikleous 63, 2nd floor 201, Strovolos 2021, Nicosia. Tel. +357 96 322622. Book online or send us a message.",
   },
 };
 

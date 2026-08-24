@@ -209,7 +209,7 @@ function emailHtmlEl(p: { name: string; whenDate: string; whenTime: string; endT
               <p style="margin:10px 0 0;font-size:13px;color:#6a6d72;">Διάρκεια: 45 λεπτά</p>
             </td></tr>
           </table>
-          <p style="margin:0 0 8px;font-size:14px;color:#44464a;"><strong>Διεύθυνση</strong><br/>Περικλέους 63, Στρόβολος 2021, Κύπρος</p>
+          <p style="margin:0 0 8px;font-size:14px;color:#44464a;"><strong>Διεύθυνση</strong><br/>Περικλέους 63, 2ος όροφος 201, Στρόβολος 2021, Κύπρος</p>
           <p style="margin:0 0 24px;font-size:14px;color:#44464a;"><strong>Τηλέφωνο</strong><br/><a href="tel:+35796322622" style="color:#1d3e62;">+357 96 322622</a></p>
           <p style="margin:0;font-size:13px;color:#6a6d72;line-height:1.5;">Αν χρειαστεί να αλλάξετε ή να ακυρώσετε το ραντεβού, καλέστε μας.</p>
         </td></tr>
@@ -245,7 +245,7 @@ function emailHtmlEn(p: { name: string; whenDate: string; whenTime: string; endT
               <p style="margin:10px 0 0;font-size:13px;color:#6a6d72;">Duration: 45 minutes</p>
             </td></tr>
           </table>
-          <p style="margin:0 0 8px;font-size:14px;color:#44464a;"><strong>Address</strong><br/>Perikleous 63, Strovolos 2021, Cyprus</p>
+          <p style="margin:0 0 8px;font-size:14px;color:#44464a;"><strong>Address</strong><br/>Perikleous 63, 2nd floor 201, Strovolos 2021, Cyprus</p>
           <p style="margin:0 0 24px;font-size:14px;color:#44464a;"><strong>Phone</strong><br/><a href="tel:+35796322622" style="color:#1d3e62;">+357 96 322622</a></p>
           <p style="margin:0;font-size:13px;color:#6a6d72;line-height:1.5;">If you need to change or cancel, please call us.</p>
         </td></tr>
