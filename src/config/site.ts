@@ -19,8 +19,8 @@ export const SITE = {
     "Expert physiotherapy and osteopathy at ORC Osteopathy & Rehabilitation Center. Personalised, evidence-based care to relieve pain, restore movement and keep you performing at your best.",
   /** Path is relative to /public. Transparent PNG lockup (wordmark + spine). */
   logo: "/orc-logo.png",
-  /** Production URL — update this once when a custom domain is connected. */
-  url: "https://orc-khaki.vercel.app",
+  /** Production URL. */
+  url: "https://orcosteopathy.com",
   email: "orcosteopathy@hotmail.com",
   phone: "+357 96 322622",
   phoneHref: "tel:+35796322622",
