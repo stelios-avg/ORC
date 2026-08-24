@@ -430,6 +430,19 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         </div>
       </div>
 
+      {/* Staff notes — every admin can add one; saved to the client's profile too */}
+      <div id="detail-staff-notes" class="mt-5 hidden rounded-xl border border-slate-200 px-4 py-3">
+        <p class="font-display text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Σημειώσεις</p>
+        <ul id="staff-notes-list" class="mt-2 space-y-2"></ul>
+        <p id="staff-notes-empty" class="hidden text-sm text-charcoal-muted">Καμία σημείωση ακόμη.</p>
+        <textarea id="staff-note-input" rows="2" placeholder="Νέα σημείωση…"
+          class="mt-3 w-full resize-y rounded-lg border border-slate-300 px-3 py-2 text-sm text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"></textarea>
+        <button id="staff-note-save" type="button"
+          class="mt-2 w-full rounded-full bg-spine px-4 py-2 font-display text-xs font-semibold text-white transition hover:bg-spine-700 disabled:opacity-50">
+          Προσθήκη σημείωσης
+        </button>
+      </div>
+
       {/* Who booked / created this appointment */}
       <p id="detail-created-by" class="mt-3 hidden text-xs text-charcoal-muted"></p>
 
@@ -464,7 +477,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 </style>
 
 <script>
-  import { getSupabase, type Appointment, type Patient } from "../../lib/supabase";
+  import { getSupabase, type Appointment, type AppointmentNote, type Patient } from "../../lib/supabase";
   import {
     THERAPISTS,
     ADMIN_SERVICES,
@@ -1672,8 +1685,70 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const deleteBtn = document.getElementById("detail-delete") as HTMLButtonElement;
     deleteBtn.classList.toggle("hidden", !canDelete(a));
 
+    // Staff notes (any admin can read + add)
+    staffNotesWrap.classList.toggle("hidden", a.is_blocked_time);
+    staffNoteInput.value = "";
+    if (!a.is_blocked_time) loadStaffNotes(a.id);
+
     openModal(detailSheet);
   }
+
+  // ── Staff notes on the appointment (mirrored on the client profile) ──
+  const staffNotesWrap = document.getElementById("detail-staff-notes")!;
+  const staffNotesList = document.getElementById("staff-notes-list")!;
+  const staffNotesEmpty = document.getElementById("staff-notes-empty")!;
+  const staffNoteInput = document.getElementById("staff-note-input") as HTMLTextAreaElement;
+  const staffNoteSaveBtn = document.getElementById("staff-note-save") as HTMLButtonElement;
+  let staffNotesToken = 0;
+
+  function staffNoteItem(n: AppointmentNote): string {
+    const author = creatorDisplayName(n.author_email) ?? n.author_email;
+    const when = new Date(n.created_at).toLocaleDateString("el-GR", {
+      day: "numeric", month: "short", year: "numeric",
+    });
+    return `
+      <li class="rounded-lg bg-sand px-3 py-2">
+        <p class="whitespace-pre-line text-sm text-charcoal">${escHtml(n.body)}</p>
+        <p class="mt-1 text-[11px] font-medium text-charcoal-muted">${escHtml(author)} · ${when}</p>
+      </li>`;
+  }
+
+  async function loadStaffNotes(appointmentId: string) {
+    const token = ++staffNotesToken;
+    staffNotesList.innerHTML = "";
+    staffNotesEmpty.classList.add("hidden");
+    const { data, error } = await supabase
+      .from("appointment_notes")
+      .select("*")
+      .eq("appointment_id", appointmentId)
+      .order("created_at", { ascending: true });
+    if (token !== staffNotesToken) return; // a newer appointment was opened
+    if (error) return;
+    const notes = (data ?? []) as AppointmentNote[];
+    staffNotesList.innerHTML = notes.map(staffNoteItem).join("");
+    staffNotesEmpty.classList.toggle("hidden", notes.length > 0);
+  }
+
+  staffNoteSaveBtn.addEventListener("click", async () => {
+    if (!selectedAppt || selectedAppt.is_blocked_time) return;
+    const body = staffNoteInput.value.trim();
+    if (!body) return;
+    await ensureAdminEmail();
+    staffNoteSaveBtn.disabled = true;
+    const { error } = await supabase.from("appointment_notes").insert({
+      appointment_id: selectedAppt.id,
+      patient_id: selectedAppt.patient_id,
+      author_email: adminEmail || "unknown",
+      body,
+    });
+    staffNoteSaveBtn.disabled = false;
+    if (error) {
+      alert(`Αποτυχία αποθήκευσης σημείωσης: ${error.message}`);
+      return;
+    }
+    staffNoteInput.value = "";
+    loadStaffNotes(selectedAppt.id);
+  });
 
   // ── Payment method (Μετρητά / Κάρτα / Άλλο) ──
   const methodRow = document.getElementById("detail-method-row")!;

@@ -92,6 +92,19 @@ export interface Appointment {
   therapists?: Pick<TherapistRow, "id" | "slug" | "name_el" | "name_en"> | null;
 }
 
+/** Staff note left on an appointment — also shown on the patient's profile. */
+export interface AppointmentNote {
+  id: string;
+  appointment_id: string;
+  patient_id: string | null;
+  /** Admin email of whoever wrote the note. */
+  author_email: string;
+  body: string;
+  created_at: string;
+  /** joined relation (when selected with `appointments(...)`) */
+  appointments?: Pick<Appointment, "id" | "start_time" | "service"> | null;
+}
+
 /** Special booking request for a closed day (visible to master accounts only). */
 export interface BookingRequest {
   id: string;

@@ -43,6 +43,12 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     </button>
   </div>
 
+  {/* ── Staff notes from appointments ── */}
+  <div id="appt-notes-wrap" class="mt-4 hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+    <h2 class="mb-3 font-display text-sm font-bold uppercase tracking-wide text-charcoal">Σημειώσεις ραντεβού</h2>
+    <ul id="appt-notes-list" class="space-y-2"></ul>
+  </div>
+
   {/* ── Appointment history ── */}
   <div class="mt-4">
     <h2 class="mb-3 font-display text-sm font-bold uppercase tracking-wide text-charcoal">Ραντεβού</h2>
@@ -85,8 +91,8 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 </AdminLayout>
 
 <script>
-  import { getSupabase, type Appointment, type Patient } from "../../lib/supabase";
-  import { canViewTherapistPayments, isMasterAccount } from "../../lib/admin-access";
+  import { getSupabase, type Appointment, type AppointmentNote, type Patient } from "../../lib/supabase";
+  import { canViewTherapistPayments, creatorDisplayName, isMasterAccount } from "../../lib/admin-access";
 
   const supabase = getSupabase();
   const id = new URLSearchParams(window.location.search).get("id");
@@ -122,6 +128,27 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     card: "Κάρτα",
     other: "Άλλο",
   };
+
+  const escHtml = (s: string) =>
+    s.replace(/[&<>"']/g, (c) =>
+      ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!,
+    );
+
+  function apptNoteItem(n: AppointmentNote): string {
+    const author = creatorDisplayName(n.author_email) ?? n.author_email;
+    const when = new Date(n.created_at).toLocaleDateString("el-GR", {
+      day: "numeric", month: "short", year: "numeric",
+    });
+    const appt = n.appointments
+      ? `Ραντεβού ${fmtDate(n.appointments.start_time)}${n.appointments.service ? ` · ${escHtml(n.appointments.service)}` : ""}`
+      : "";
+    return `
+      <li class="rounded-xl bg-sand px-4 py-3">
+        ${appt ? `<p class="text-[11px] font-semibold uppercase tracking-wide text-spine">${appt}</p>` : ""}
+        <p class="mt-1 whitespace-pre-line text-sm text-charcoal">${escHtml(n.body)}</p>
+        <p class="mt-1.5 text-[11px] font-medium text-charcoal-muted">${escHtml(author)} · ${when}</p>
+      </li>`;
+  }
 
   function apptItem(a: Appointment): string {
     const showPay =
@@ -166,7 +193,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       return;
     }
 
-    const [{ data: { session } }, { data: patient, error: pErr }, { data: appts, error: aErr }] = await Promise.all([
+    const [{ data: { session } }, { data: patient, error: pErr }, { data: appts, error: aErr }, { data: noteRows }] = await Promise.all([
       supabase.auth.getSession(),
       supabase.from("patients").select("*").eq("id", id).single(),
       supabase
@@ -175,6 +202,11 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         .eq("patient_id", id)
         .neq("status", "cancelled")
         .order("start_time", { ascending: false }),
+      supabase
+        .from("appointment_notes")
+        .select("*, appointments(id, start_time, service)")
+        .eq("patient_id", id)
+        .order("created_at", { ascending: false }),
     ]);
     adminEmail = session?.user?.email ?? "";
 
@@ -196,6 +228,14 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     if (p.email) { emailEl.textContent = p.email; emailEl.href = `mailto:${p.email}`; emailEl.classList.remove("hidden"); }
 
     (document.getElementById("cl-notes") as HTMLTextAreaElement).value = p.notes ?? "";
+
+    // Staff notes written on this client's appointments
+    const apptNotes = (noteRows ?? []) as AppointmentNote[];
+    if (apptNotes.length) {
+      document.getElementById("appt-notes-wrap")!.classList.remove("hidden");
+      document.getElementById("appt-notes-list")!.innerHTML =
+        apptNotes.map(apptNoteItem).join("");
+    }
 
     // History split into upcoming / past + outstanding balance
     if (!aErr && appts) {
