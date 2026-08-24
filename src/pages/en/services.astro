@@ -27,15 +27,30 @@ const s = t.servicesPage;
 
   {/* ── Services grid — video background ── */}
   <section class="relative overflow-hidden bg-spine-900 py-20">
-    {/* Background video — mobile only (hidden on sm+) */}
     <video
-      class="absolute inset-0 h-full w-full object-cover sm:hidden"
+      class="absolute inset-0 h-full w-full object-cover lg:hidden"
+      data-svc-bg-mobile
       autoplay muted loop playsinline preload="metadata"
       aria-hidden="true"
     >
-      <source src="/videos/services-bg.mp4" type="video/mp4" />
+      <source src="/videos/hero-mobile.mp4" type="video/mp4" />
     </video>
-    <div class="absolute inset-0 bg-spine-900/80 sm:bg-spine-900"></div>
+    <video
+      class="absolute inset-0 hidden h-full w-full object-cover lg:block"
+      data-svc-bg-desktop
+      autoplay muted loop playsinline preload="metadata"
+      aria-hidden="true"
+    >
+      <source src="/videos/hero.mp4" type="video/mp4" />
+    </video>
+    <script is:inline>
+      (() => {
+        var desktop = window.matchMedia("(min-width: 1024px)").matches;
+        var v = document.querySelector(desktop ? "[data-svc-bg-mobile]" : "[data-svc-bg-desktop]");
+        if (v) v.remove();
+      })();
+    </script>
+    <div class="absolute inset-0 bg-spine-900/75"></div>
     <div class="relative mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="mb-12 text-center">
         <p class="mb-2 font-display text-xs font-semibold uppercase tracking-widest text-spine-200">{s.servicesLabel}</p>
