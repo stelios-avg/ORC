@@ -20,7 +20,7 @@ export const SITE = {
   /** Path is relative to /public. Transparent PNG lockup (wordmark + spine). */
   logo: "/orc-logo.png",
   /** Production URL. */
-  url: "https://orcosteopathy.com",
+  url: "https://www.orcosteopathy.com",
   email: "orcosteopathy@hotmail.com",
   phone: "+357 96 322622",
   phoneHref: "tel:+35796322622",

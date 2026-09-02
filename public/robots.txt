@@ -2,4 +2,4 @@ User-agent: *
 Allow: /
 Disallow: /admin
 
-Sitemap: https://orcosteopathy.com/sitemap-index.xml
+Sitemap: https://www.orcosteopathy.com/sitemap-index.xml

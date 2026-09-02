@@ -7,7 +7,7 @@ import sitemap from "@astrojs/sitemap";
 // https://astro.build/config
 export default defineConfig({
   output: "static",
-  site: "https://orcosteopathy.com",
+  site: "https://www.orcosteopathy.com",
 
   integrations: [
     sitemap({
