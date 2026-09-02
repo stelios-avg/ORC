@@ -11,20 +11,6 @@ const s = t.servicesPage;
 <Layout lang={lang} title={t.seo.servicesTitle} description={t.seo.servicesDesc}>
   <PageHeader eyebrow={s.eyebrow} title={s.title} subtitle={s.subtitle} image="/images/page-hero.png" />
 
-  {/* ── Stats row ── */}
-  <section class="border-b border-slate-100 bg-white py-12">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-      <div class="grid grid-cols-2 gap-8 sm:grid-cols-4">
-        {s.stats.map((stat, i) => (
-          <div class="stat-item text-center" style={`--si:${i}`}>
-            <p class="font-display text-4xl font-extrabold text-spine sm:text-5xl">{stat.value}</p>
-            <p class="mt-2 text-sm font-medium uppercase tracking-wide text-charcoal-muted">{stat.label}</p>
-          </div>
-        ))}
-      </div>
-    </div>
-  </section>
-
   {/* ── Services grid — video background ── */}
   <section class="relative overflow-hidden bg-spine-900 py-20">
     <video
@@ -87,16 +73,9 @@ const s = t.servicesPage;
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
         <div class="why-img order-2 lg:order-1 flex justify-center">
-          <div class="relative h-80 w-80 sm:h-[26rem] sm:w-[26rem]">
-            <div
-              class="absolute inset-3 translate-x-3 translate-y-4 bg-spine/25"
-              style="border-radius: 42% 58% 48% 52% / 48% 42% 58% 52%"
-              aria-hidden="true"
-            ></div>
-            <div
-              class="relative h-full w-full overflow-hidden bg-spine-50 shadow-lg shadow-spine/10"
-              style="border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%"
-            >
+          <div class="why-blob-wrap relative h-80 w-80 sm:h-[26rem] sm:w-[26rem]">
+            <div class="why-blob-shadow absolute inset-3 translate-x-3 translate-y-4 bg-spine/25" aria-hidden="true"></div>
+            <div class="why-blob relative h-full w-full overflow-hidden bg-spine-50 shadow-lg shadow-spine/10">
               <img
                 src={s.whyImage}
                 alt={s.whyTitle}
@@ -145,16 +124,6 @@ const s = t.servicesPage;
 </Layout>
 
 <style>
-  .stat-item {
-    opacity: 0;
-    transform: translateY(20px);
-    transition:
-      opacity 0.55s cubic-bezier(0.22, 1, 0.36, 1),
-      transform 0.55s cubic-bezier(0.22, 1, 0.36, 1);
-    transition-delay: calc(var(--si) * 90ms);
-  }
-  .stat-item.visible { opacity: 1; transform: none; }
-
   .svc-card {
     opacity: 0;
     transform: translateY(24px);
@@ -182,8 +151,34 @@ const s = t.servicesPage;
   }
   .why-text.visible { opacity: 1; transform: none; }
 
+  .why-blob,
+  .why-blob-shadow {
+    border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%;
+  }
+  .why-blob {
+    animation: blob-morph 12s ease-in-out infinite;
+  }
+  .why-blob-shadow {
+    animation: blob-morph 16s ease-in-out infinite reverse;
+  }
+  .why-img.visible .why-blob-wrap {
+    animation: blob-float 9s ease-in-out infinite;
+  }
+
+  @keyframes blob-morph {
+    0%, 100% { border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%; }
+    25% { border-radius: 58% 42% 48% 52% / 42% 58% 48% 52%; }
+    50% { border-radius: 48% 52% 62% 38% / 58% 42% 52% 48%; }
+    75% { border-radius: 42% 58% 40% 60% / 48% 52% 58% 42%; }
+  }
+  @keyframes blob-float {
+    0%, 100% { transform: translate(0, 0); }
+    50% { transform: translate(8px, -12px); }
+  }
+
   @media (prefers-reduced-motion: reduce) {
-    .stat-item, .svc-card, .why-img, .why-text { opacity: 1; transform: none; transition: none; }
+    .svc-card, .why-img, .why-text { opacity: 1; transform: none; transition: none; }
+    .why-blob, .why-blob-shadow, .why-img.visible .why-blob-wrap { animation: none; }
   }
 </style>
 
@@ -191,5 +186,5 @@ const s = t.servicesPage;
   const io = new IntersectionObserver((entries) => {
     entries.forEach((e) => { if (e.isIntersecting) { e.target.classList.add("visible"); io.unobserve(e.target); } });
   }, { threshold: 0.1 });
-  document.querySelectorAll(".stat-item, .svc-card, .why-img, .why-text").forEach((el) => io.observe(el));
+  document.querySelectorAll(".svc-card, .why-img, .why-text").forEach((el) => io.observe(el));
 </script>
