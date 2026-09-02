@@ -4,6 +4,8 @@
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   overscroll-behavior-y: none;
+  /* Dense calendar UI stays Inter — serif is for the public site. */
+  --font-display: "Inter", ui-sans-serif, system-ui, sans-serif;
 }
 
 /* iOS: avoid zoom-on-focus (needs ≥16px) */
