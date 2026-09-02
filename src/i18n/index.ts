@@ -242,7 +242,7 @@ const el = {
       "Εξατομικευμένα προγράμματα αποκατάστασης",
       "Υποστήριξη σε κάθε βήμα της ανάρρωσης",
     ],
-    whyImage: "/images/home/team.svg",
+    whyImage: "/images/services/treatment.jpg",
     unsureTitle: "Δεν είστε σίγουροι ποια υπηρεσία χρειάζεστε;",
     unsureSubtitle:
       "Κλείστε μια αρχική αξιολόγηση και θα σας καθοδηγήσουμε στο κατάλληλο πρόγραμμα.",
@@ -585,7 +585,7 @@ const en = {
       "Individualised rehabilitation programmes",
       "Support at every step of recovery",
     ],
-    whyImage: "/images/home/team.svg",
+    whyImage: "/images/services/treatment.jpg",
     unsureTitle: "Not sure which service you need?",
     unsureSubtitle: "Book an initial assessment and we'll guide you to the right plan.",
     cta: "Book appointment",

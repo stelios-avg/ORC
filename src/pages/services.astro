@@ -86,12 +86,25 @@ const s = t.servicesPage;
   <section class="bg-white py-20 sm:py-24">
     <div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
       <div class="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
-        {/* Image */}
+        {/* Image — photo clipped to the organic graphic, not a square frame */}
         <div class="why-img order-2 lg:order-1 flex justify-center">
-          <div class="relative h-80 w-80 overflow-hidden rounded-[40%_60%_55%_45%/50%_45%_55%_50%] bg-spine-50 sm:h-96 sm:w-96">
-            <img src={s.whyImage} alt={s.whyTitle}
-              class="h-full w-full object-contain p-8"
-              onerror="this.closest('div').classList.add('flex','items-center','justify-center'); this.remove();" />
+          <div class="relative h-80 w-80 sm:h-[26rem] sm:w-[26rem]">
+            <div
+              class="absolute inset-3 translate-x-3 translate-y-4 bg-spine/25"
+              style="border-radius: 42% 58% 48% 52% / 48% 42% 58% 52%"
+              aria-hidden="true"
+            ></div>
+            <div
+              class="relative h-full w-full overflow-hidden bg-spine-50 shadow-lg shadow-spine/10"
+              style="border-radius: 40% 60% 55% 45% / 50% 45% 55% 50%"
+            >
+              <img
+                src={s.whyImage}
+                alt={s.whyTitle}
+                class="h-full w-full object-cover object-[center_28%]"
+                loading="lazy"
+              />
+            </div>
           </div>
         </div>
         {/* Text */}
