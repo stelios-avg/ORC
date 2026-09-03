@@ -30,3 +30,6 @@ assets-src/
 .vscode/*
 !.vscode/extensions.json
 .idea/
+
+# local import artifacts (patient PII — never commit)
+.tmp/

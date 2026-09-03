@@ -14,10 +14,20 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         class="w-full rounded-full border border-slate-300 bg-white py-3 pl-10 pr-4 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
       />
     </div>
+    <button id="import-excel-btn" type="button"
+      class="flex h-12 w-12 flex-none items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition active:scale-95 hover:border-spine hover:text-spine"
+      aria-label="Εισαγωγή από Excel" title="Εισαγωγή ονόματος, τηλεφώνου και email">
+      <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <path d="M12 3v12m0 0l-4-4m4 4l4-4M5 21h14"/>
+      </svg>
+    </button>
+    <input id="import-excel-file" type="file" accept=".xlsx,.xls,.csv" class="hidden" />
     <button id="add-client-btn" class="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-spine text-white transition active:scale-95 hover:bg-spine-600" aria-label="Νέος πελάτης">
       <svg class="h-5 w-5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
     </button>
   </div>
+  <p id="clients-count" class="mb-3 hidden text-xs font-medium text-charcoal-muted"></p>
+  <p id="import-status" class="mb-3 hidden text-sm text-charcoal-muted"></p>
 
   <ul id="client-list" class="space-y-2"></ul>
   <p id="clients-empty" class="mt-8 hidden text-center text-sm text-charcoal-muted">Δεν βρέθηκαν πελάτες.</p>
@@ -62,6 +72,8 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 <script>
   import { getSupabase, type Appointment, type Patient } from "../../lib/supabase";
   import { canViewTherapistPayments } from "../../lib/admin-access";
+  import { fetchAllPatients } from "../../lib/patients";
+  import { importExcelPatients, parseExcelPatients } from "../../lib/excel-patients";
 
   const supabase = getSupabase();
   const list = document.getElementById("client-list")!;
@@ -106,7 +118,10 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   async function load() {
     const [{ data: { session } }, { data, error }, unpaid] = await Promise.all([
       supabase.auth.getSession(),
-      supabase.from("patients").select("*").order("name"),
+      fetchAllPatients(supabase).then((rows) => ({ data: rows, error: null })).catch((e) => ({
+        data: null as Patient[] | null,
+        error: { message: e instanceof Error ? e.message : String(e) },
+      })),
       supabase
         .from("appointments")
         .select("patient_id, therapist_id, price, discount, is_paid, is_blocked_time, status")
@@ -132,6 +147,9 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     }
 
     allPatients = (data ?? []) as Patient[];
+    const countEl = document.getElementById("clients-count")!;
+    countEl.textContent = `${allPatients.length} πελάτες`;
+    countEl.classList.remove("hidden");
     render(allPatients);
   }
 
@@ -179,6 +197,54 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     form.reset();
     modal.classList.add("hidden"); modal.classList.remove("flex");
     load();
+  });
+
+  const importStatus = document.getElementById("import-status")!;
+  const importBtn = document.getElementById("import-excel-btn") as HTMLButtonElement;
+  const importFile = document.getElementById("import-excel-file") as HTMLInputElement;
+
+  importBtn.addEventListener("click", () => importFile.click());
+  importFile.addEventListener("change", async () => {
+    const file = importFile.files?.[0];
+    importFile.value = "";
+    if (!file) return;
+    importBtn.disabled = true;
+    importStatus.classList.remove("hidden");
+    importStatus.classList.remove("text-red-600");
+    importStatus.textContent = "Ανάγνωση αρχείου…";
+    try {
+      const XLSX = await import("xlsx");
+      const buf = await file.arrayBuffer();
+      const wb = XLSX.read(buf, { type: "array", cellDates: true });
+      const sheet = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(sheet, {
+        header: 1,
+        raw: true,
+        defval: "",
+      }) as unknown[][];
+      const records = parseExcelPatients(rows);
+      if (!records.length) {
+        throw new Error("Δεν βρέθηκαν πελάτες στο αρχείο.");
+      }
+      const result = await importExcelPatients(supabase, records, (done, total) => {
+        importStatus.textContent = `Εισαγωγή ${done} / ${total}…`;
+      });
+      const errHint = result.errors.length
+        ? ` · ${result.errors.length} σφάλματα`
+        : "";
+      importStatus.textContent =
+        `Έτοιμο: +${result.inserted} νέοι, ${result.updated} ενημερώθηκαν, ${result.skipped} ήδη υπήρχαν${errHint}`;
+      if (result.errors[0]) {
+        importStatus.classList.add("text-red-600");
+        importStatus.textContent += ` (${result.errors[0]})`;
+      }
+      await load();
+    } catch (err) {
+      importStatus.classList.add("text-red-600");
+      importStatus.textContent = err instanceof Error ? err.message : String(err);
+    } finally {
+      importBtn.disabled = false;
+    }
   });
 
   load();

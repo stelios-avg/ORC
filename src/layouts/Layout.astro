@@ -111,6 +111,21 @@ const structuredData = {
     />
   </head>
   <body>
+    <script is:inline>
+      (function () {
+        var path = location.pathname || "";
+        if (path.indexOf("/admin") === 0) return;
+        var blob = (location.search || "") + (location.hash || "");
+        var q = new URLSearchParams(location.search);
+        var recovery =
+          /type=recovery/.test(blob) ||
+          /error_code=otp_expired/.test(blob) ||
+          ((path === "/" || path === "/en" || path === "/en/") && q.has("code"));
+        if (recovery) {
+          location.replace("/admin/reset-password/" + location.search + location.hash);
+        }
+      })();
+    </script>
     <a
       href="#main"
       class="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[200] focus:rounded-md focus:bg-spine focus:px-4 focus:py-2 focus:text-white"

@@ -122,6 +122,12 @@ const { title = "Admin", active } = Astro.props;
       const supabase = getSupabase();
       const guard = document.getElementById("admin-guard");
 
+      supabase.auth.onAuthStateChange((event) => {
+        if (event === "PASSWORD_RECOVERY") {
+          window.location.replace("/admin/reset-password/");
+        }
+      });
+
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session) {
           window.location.replace("/admin/login");

@@ -190,7 +190,7 @@ const el = {
       {
         name: "Χαράλαμπος Νεοκλέους",
         role: "Οστεοπαθητικός",
-        img: "/images/team/charalambos.png",
+        img: "/images/team/charalambos.jpg",
         bio: "Ιδρυτής του ORC, ο Χαράλαμπος συνδυάζει την ολιστική, χειροπρακτική προσέγγιση της οστεοπαθητικής με σύγχρονες μεθόδους αποκατάστασης. Ακούει προσεκτικά, αξιολογεί διεξοδικά και θεραπεύει ολόκληρο τον άνθρωπο — όχι μόνο το σύμπτωμα.",
       },
       {
@@ -527,7 +527,7 @@ const en = {
       {
         name: "Charalambos Neokleous",
         role: "Osteopath",
-        img: "/images/team/charalambos.png",
+        img: "/images/team/charalambos.jpg",
         bio: "Founder of ORC, Charalambos blends osteopathy's holistic, hands-on approach with modern rehabilitation methods. He listens carefully, assesses thoroughly and treats the whole person — not just the symptom.",
       },
       {

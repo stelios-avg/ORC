@@ -478,6 +478,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
 <script>
   import { getSupabase, type Appointment, type AppointmentNote, type Patient } from "../../lib/supabase";
+  import { fetchAllPatients } from "../../lib/patients";
   import {
     THERAPISTS,
     ADMIN_SERVICES,
@@ -1391,8 +1392,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     minutes?: number;
   }) {
     // Always refetch so clients added on /admin/clients show up without a reload.
-    const { data, error } = await supabase.from("patients").select("*").order("name");
-    if (!error) patients = (data ?? []) as Patient[];
+    try {
+      patients = await fetchAllPatients(supabase);
+    } catch {
+      /* keep the last in-memory list */
+    }
     resetPatientPicker();
     setDefaultTherapistSelects();
     apptDiscountInput.value = "0";
