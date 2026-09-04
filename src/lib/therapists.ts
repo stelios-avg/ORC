@@ -134,17 +134,24 @@ export const ADMIN_SERVICES: {
   label: string;
   defaultPrice: number | null;
 }[] = [
+  { label: "Φυσιοθεραπεία εκτός ΓΕΣΥ", defaultPrice: 35 },
   { label: "Φυσιοθεραπεία με ΓΕΣΥ", defaultPrice: 10 },
-  { label: "Φυσιοθεραπεία χωρίς ΓΕΣΥ", defaultPrice: 35 },
-  { label: "Φυσιοθεραπεία χωρίς συνπληρωμή", defaultPrice: 0 },
+  { label: "Φυσιοθεραπεία ΓΕΣΥ χωρίς συμπλήρωση", defaultPrice: 0 },
   { label: "Μασάζ", defaultPrice: 50 },
   { label: "Οστεοπαθητική", defaultPrice: null },
   { label: "Κλινική Πιλάτες", defaultPrice: null },
   { label: "Άλλο", defaultPrice: null },
 ];
 
+/** Older admin labels — keep default prices working on existing appointments. */
+const ADMIN_SERVICE_PRICE_ALIASES: Record<string, string> = {
+  "Φυσιοθεραπεία χωρίς ΓΕΣΥ": "Φυσιοθεραπεία εκτός ΓΕΣΥ",
+  "Φυσιοθεραπεία χωρίς συνπληρωμή": "Φυσιοθεραπεία ΓΕΣΥ χωρίς συμπλήρωση",
+};
+
 export function defaultPriceForAdminService(label: string): number | null {
-  const hit = ADMIN_SERVICES.find((s) => s.label === label);
+  const resolved = ADMIN_SERVICE_PRICE_ALIASES[label] ?? label;
+  const hit = ADMIN_SERVICES.find((s) => s.label === resolved);
   return hit ? hit.defaultPrice : null;
 }
 

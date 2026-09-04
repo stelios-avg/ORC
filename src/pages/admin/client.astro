@@ -19,11 +19,57 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
           <a id="cl-email" href="#" class="hidden truncate text-charcoal-muted underline"></a>
         </div>
       </div>
+      <button id="edit-client-btn" type="button"
+        class="flex h-11 w-11 flex-none items-center justify-center rounded-full border border-slate-200 text-charcoal-muted transition hover:border-spine hover:text-spine"
+        aria-label="Επεξεργασία στοιχείων" title="Επεξεργασία στοιχείων">
+        <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M11.5 2.5l2 2L5 13H3v-2l8.5-8.5z"/>
+        </svg>
+      </button>
     </div>
     <div id="cl-balance-wrap" class="mt-4 hidden rounded-xl bg-sand px-4 py-3">
       <p class="text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Οφειλή</p>
       <p id="cl-balance" class="mt-0.5 font-display text-2xl font-bold text-amber-700">—</p>
       <p id="cl-balance-hint" class="mt-0.5 text-xs text-charcoal-muted">Άθροισμα απλήρωτων ραντεβού</p>
+    </div>
+    <button id="delete-client-btn" type="button"
+      class="mt-4 min-h-12 w-full rounded-full border border-red-200 px-6 py-3 font-display text-sm font-semibold text-red-600 transition hover:bg-red-50">
+      Διαγραφή πελάτη
+    </button>
+  </div>
+
+  {/* ══ Modal: edit client ══ */}
+  <div id="edit-client-modal" class="fixed inset-0 z-[100] hidden items-end justify-center sm:items-center">
+    <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-edit></div>
+    <div class="admin-sheet relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 class="font-display text-lg font-bold text-charcoal">Στοιχεία πελάτη</h2>
+        <button data-close-edit type="button" class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <form id="edit-client-form" class="space-y-4">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="edit-cl-name">Ονοματεπώνυμο *</label>
+          <input id="edit-cl-name" name="name" type="text" required minlength="2"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="edit-cl-phone">Τηλέφωνο</label>
+          <input id="edit-cl-phone" name="phone" type="tel"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+        </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="edit-cl-email">Email</label>
+          <input id="edit-cl-email" name="email" type="email"
+            class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+        </div>
+        <p id="edit-client-error" class="hidden text-sm text-red-600"></p>
+        <button type="submit"
+          class="w-full rounded-full bg-spine px-6 py-3 font-display font-semibold text-white transition hover:bg-spine-600 disabled:opacity-60">
+          Αποθήκευση
+        </button>
+      </form>
     </div>
   </div>
 
@@ -98,6 +144,8 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   const id = new URLSearchParams(window.location.search).get("id");
   const errorMsg = document.getElementById("client-error")!;
   let adminEmail = "";
+  let currentPatient: Patient | null = null;
+  let appointmentCount = 0;
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -217,15 +265,9 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     }
 
     const p = patient as Patient;
-    document.title = `${p.name} | ORC Admin`;
-    document.getElementById("cl-name")!.textContent = p.name;
-    document.getElementById("cl-avatar")!.textContent =
-      p.name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
-
-    const phoneEl = document.getElementById("cl-phone") as HTMLAnchorElement;
-    if (p.phone) { phoneEl.textContent = p.phone; phoneEl.href = `tel:${p.phone}`; phoneEl.classList.remove("hidden"); }
-    const emailEl = document.getElementById("cl-email") as HTMLAnchorElement;
-    if (p.email) { emailEl.textContent = p.email; emailEl.href = `mailto:${p.email}`; emailEl.classList.remove("hidden"); }
+    currentPatient = p;
+    appointmentCount = (appts as Appointment[] | null)?.length ?? 0;
+    renderProfile(p);
 
     (document.getElementById("cl-notes") as HTMLTextAreaElement).value = p.notes ?? "";
 
@@ -319,6 +361,114 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     }
     bulkBar.classList.add("hidden");
     load();
+  });
+
+  function renderProfile(p: Patient) {
+    document.title = `${p.name} | ORC Admin`;
+    document.getElementById("cl-name")!.textContent = p.name;
+    document.getElementById("cl-avatar")!.textContent =
+      p.name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
+
+    const phoneEl = document.getElementById("cl-phone") as HTMLAnchorElement;
+    if (p.phone) {
+      phoneEl.textContent = p.phone;
+      phoneEl.href = `tel:${p.phone}`;
+      phoneEl.classList.remove("hidden");
+    } else {
+      phoneEl.textContent = "";
+      phoneEl.removeAttribute("href");
+      phoneEl.classList.add("hidden");
+    }
+    const emailEl = document.getElementById("cl-email") as HTMLAnchorElement;
+    if (p.email) {
+      emailEl.textContent = p.email;
+      emailEl.href = `mailto:${p.email}`;
+      emailEl.classList.remove("hidden");
+    } else {
+      emailEl.textContent = "";
+      emailEl.removeAttribute("href");
+      emailEl.classList.add("hidden");
+    }
+  }
+
+  const editModal = document.getElementById("edit-client-modal")!;
+  const editName = document.getElementById("edit-cl-name") as HTMLInputElement;
+  const editPhone = document.getElementById("edit-cl-phone") as HTMLInputElement;
+  const editEmail = document.getElementById("edit-cl-email") as HTMLInputElement;
+  const editErr = document.getElementById("edit-client-error")!;
+
+  function openEditModal() {
+    if (!currentPatient) return;
+    editName.value = currentPatient.name;
+    editPhone.value = currentPatient.phone ?? "";
+    editEmail.value = currentPatient.email ?? "";
+    editErr.classList.add("hidden");
+    editModal.classList.remove("hidden");
+    editModal.classList.add("flex");
+  }
+  function closeEditModal() {
+    editModal.classList.add("hidden");
+    editModal.classList.remove("flex");
+  }
+
+  document.getElementById("edit-client-btn")!.addEventListener("click", openEditModal);
+  editModal.querySelectorAll("[data-close-edit]").forEach((el) =>
+    el.addEventListener("click", closeEditModal),
+  );
+
+  document.getElementById("edit-client-form")!.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    if (!id) return;
+    const name = editName.value.trim();
+    if (name.length < 2) {
+      editErr.textContent = "Το όνομα πρέπει να έχει τουλάχιστον 2 χαρακτήρες.";
+      editErr.classList.remove("hidden");
+      return;
+    }
+    const btn = (e.target as HTMLFormElement).querySelector("button[type=submit]") as HTMLButtonElement;
+    btn.disabled = true;
+    editErr.classList.add("hidden");
+    const { data, error } = await supabase
+      .from("patients")
+      .update({
+        name,
+        phone: editPhone.value.trim() || null,
+        email: editEmail.value.trim() || null,
+      })
+      .eq("id", id)
+      .select("*")
+      .single();
+    btn.disabled = false;
+    if (error || !data) {
+      editErr.textContent = error?.message ?? "Αποτυχία αποθήκευσης.";
+      editErr.classList.remove("hidden");
+      return;
+    }
+    currentPatient = data as Patient;
+    renderProfile(currentPatient);
+    closeEditModal();
+  });
+
+  document.getElementById("delete-client-btn")!.addEventListener("click", async () => {
+    if (!id || !currentPatient) return;
+    const { count } = await supabase
+      .from("appointments")
+      .select("id", { count: "exact", head: true })
+      .eq("patient_id", id);
+    const n = count ?? appointmentCount;
+    const extra = n > 0 ? ` Θα διαγραφούν και τα ${n} ραντεβού.` : "";
+    if (!confirm(`Διαγραφή του πελάτη «${currentPatient.name}»;${extra}`)) return;
+    if (n > 0 && !confirm("Η διαγραφή είναι οριστική. Συνέχεια;")) return;
+
+    const btn = document.getElementById("delete-client-btn") as HTMLButtonElement;
+    btn.disabled = true;
+    const { error } = await supabase.from("patients").delete().eq("id", id);
+    btn.disabled = false;
+    if (error) {
+      alert(`Η διαγραφή απέτυχε: ${error.message}`);
+      return;
+    }
+    window.location.href = "/admin/clients";
   });
 
   // ── Save notes ──

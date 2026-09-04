@@ -130,6 +130,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
                   <span class="absolute -left-1 -top-[5px] h-2 w-2 rounded-full bg-red-400"></span>
                 </div>
               </div>
+              <div id="cal-hover-slot" class="pointer-events-none z-[15] hidden rounded-md bg-spine/10 ring-1 ring-inset ring-spine/25">
+                <span id="cal-hover-time" class="block px-1.5 pt-0.5 font-display text-[11px] font-bold text-spine"></span>
+              </div>
             </div>
           </div>
         </div>
@@ -172,7 +175,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       <form id="appt-form" class="space-y-4">
         <div class="relative">
           <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-patient-search">Πελάτης</label>
-          <input type="hidden" id="appt-patient" name="patient_id" value="" required />
+          <input type="hidden" id="appt-patient" name="patient_id" value="" />
           <input
             id="appt-patient-search"
             type="search"
@@ -187,9 +190,15 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           ></div>
           <p id="appt-patient-selected" class="mt-1.5 hidden text-sm font-medium text-spine"></p>
           <p class="mt-1 text-xs text-charcoal-muted">
-            Γράψτε όνομα ή τηλέφωνο για αναζήτηση. Νέος πελάτης;
-            <a href="/admin/clients" class="text-spine underline">Πελάτες</a>.
+            Αναζήτηση υπάρχοντος, ή γράψτε όνομα νέου πελάτη και κλείστε το ραντεβού κατευθείαν.
           </p>
+          <div id="appt-new-patient-fields" class="mt-3 hidden space-y-3 rounded-xl bg-sand px-3 py-3">
+            <p class="text-xs font-medium text-charcoal-muted">Στοιχεία νέου πελάτη (προαιρετικά)</p>
+            <input id="appt-new-phone" type="tel" placeholder="Τηλέφωνο"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+            <input id="appt-new-email" type="email" placeholder="Email"
+              class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-therapist">Θεραπευτής</label>
@@ -474,11 +483,29 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     -webkit-user-select: none;
     user-select: none;
   }
+  @media (hover: hover) and (pointer: fine) {
+    #cal-grid [data-appt] {
+      transform-origin: left top;
+      transition: transform 0.16s ease, box-shadow 0.16s ease;
+    }
+    #cal-grid [data-appt]:hover {
+      z-index: 40;
+      overflow: visible;
+      transform: scale(1.16);
+      box-shadow: 0 10px 28px rgba(29, 62, 98, 0.18);
+    }
+    #cal-grid[data-dragging="true"] [data-appt]:hover {
+      z-index: 20;
+      overflow: hidden;
+      transform: none;
+      box-shadow: none;
+    }
+  }
 </style>
 
 <script>
   import { getSupabase, type Appointment, type AppointmentNote, type Patient } from "../../lib/supabase";
-  import { fetchAllPatients } from "../../lib/patients";
+  import { createPatient, fetchAllPatients } from "../../lib/patients";
   import {
     THERAPISTS,
     ADMIN_SERVICES,
@@ -818,6 +845,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     grid.style.gridTemplateColumns = template;
     grid.style.gridTemplateRows = `repeat(${TOTAL_ROWS}, var(--cal-row, 22px))`;
     grid.querySelectorAll("[data-appt], [data-hour-line], [data-col-rule]").forEach((el) => el.remove());
+    hideHoverSlot();
 
     for (let i = 0; i < MAJOR_SLOT_COUNT; i++) {
       const line = document.createElement("div");
@@ -943,27 +971,14 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         // Masters: keep € visible (muted) so they can find & restore it.
         const master = isMasterAccount(adminEmail);
         const showPay = canSeePayments(a) && (!a.payments_hidden || master);
-        const payable = showPay ? payableAmount(a) : null;
-        const amountLabel = payable != null
-          ? `<span class="flex-none text-[10px] font-semibold ${
-              a.payments_hidden
-                ? "text-slate-400 line-through"
-                : a.is_paid
-                  ? "text-emerald-600"
-                  : "text-charcoal-muted"
-            }">${fmtEuro(payable)}</span>`
-          : "";
         const paidMark = showPay && a.is_paid && !a.payments_hidden
           ? '<span class="flex h-4 w-4 flex-none items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">✓</span>'
           : "";
         const showTherapist = !therapistFilter;
         block.innerHTML = `
           <div class="flex items-center justify-between gap-1">
-            <p class="truncate font-display text-xs font-bold ${nameColor}">${a.patients?.name ?? "—"}</p>
-            <span class="flex flex-none items-center gap-1">
-              ${amountLabel}
-              ${paidMark}
-            </span>
+            <p class="min-w-0 truncate font-display text-xs font-bold ${nameColor}">${a.patients?.name ?? "—"}</p>
+            ${paidMark}
           </div>
           <p class="truncate text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
       }
@@ -1034,6 +1049,52 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     return { colIdx, row, cols };
   }
 
+  const hoverSlot = document.getElementById("cal-hover-slot")!;
+  const hoverTime = document.getElementById("cal-hover-time")!;
+
+  function canPreviewHover() {
+    return window.matchMedia("(hover: hover) and (pointer: fine)").matches;
+  }
+
+  function hideHoverSlot() {
+    hoverSlot.classList.add("hidden");
+  }
+
+  function updateHoverSlot(e: MouseEvent) {
+    if (
+      !canPreviewHover() ||
+      viewMode !== "day" ||
+      activeDrag ||
+      grid.dataset.dragging === "true"
+    ) {
+      hideHoverSlot();
+      return;
+    }
+    if ((e.target as HTMLElement).closest("[data-appt]")) {
+      hideHoverSlot();
+      return;
+    }
+    const cell = clientToGridCell(e.clientX, e.clientY);
+    if (!cell) {
+      hideHoverSlot();
+      return;
+    }
+    const minsFromStart = cell.row * SLOT_MINUTES;
+    const hours = DAY_START + Math.floor(minsFromStart / 60);
+    const minutes = minsFromStart % 60;
+    if (hours < DAY_START || hours > DAY_END) {
+      hideHoverSlot();
+      return;
+    }
+    hoverTime.textContent = `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
+    hoverSlot.style.gridRow = `${cell.row + 1} / ${cell.row + 2}`;
+    hoverSlot.style.gridColumn = String(cell.colIdx + 1);
+    hoverSlot.classList.remove("hidden");
+  }
+
+  grid.addEventListener("mousemove", updateHoverSlot);
+  grid.addEventListener("mouseleave", hideHoverSlot);
+
   function applyDragPreview(
     el: HTMLElement,
     row0: number,
@@ -1073,6 +1134,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     };
     el.dataset.dragging = "true";
     grid.dataset.dragging = "true";
+    hideHoverSlot();
     applyDragPreview(el, cell.row, rowSpan, cell.colIdx);
     try {
       el.setPointerCapture(pointerId);
@@ -1296,37 +1358,69 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const patientSearch = document.getElementById("appt-patient-search") as HTMLInputElement;
   const patientResults = document.getElementById("appt-patient-results")!;
   const patientSelected = document.getElementById("appt-patient-selected")!;
+  const newPatientFields = document.getElementById("appt-new-patient-fields")!;
+  const newPatientPhone = document.getElementById("appt-new-phone") as HTMLInputElement;
+  const newPatientEmail = document.getElementById("appt-new-email") as HTMLInputElement;
+  let forceNewPatient = false;
 
   function digitsOnly(s: string) {
     return s.replace(/\D/g, "");
   }
 
+  function syncNewPatientFields() {
+    const creating = !patientIdInput.value;
+    newPatientFields.classList.toggle("hidden", !creating);
+  }
+
   function resetPatientPicker() {
+    forceNewPatient = false;
     patientIdInput.value = "";
     patientSearch.value = "";
+    newPatientPhone.value = "";
+    newPatientEmail.value = "";
     patientSelected.textContent = "";
     patientSelected.classList.add("hidden");
     patientResults.classList.add("hidden");
     patientResults.innerHTML = "";
+    syncNewPatientFields();
   }
 
   function selectPatient(p: Patient) {
+    forceNewPatient = false;
     patientIdInput.value = p.id;
     patientSearch.value = p.name;
+    newPatientPhone.value = "";
+    newPatientEmail.value = "";
     patientSelected.textContent = p.phone ? `${p.name} · ${p.phone}` : p.name;
     patientSelected.classList.remove("hidden");
     patientResults.classList.add("hidden");
     patientResults.innerHTML = "";
+    syncNewPatientFields();
+  }
+
+  function selectNewPatient(name: string) {
+    forceNewPatient = true;
+    patientIdInput.value = "";
+    patientSearch.value = name;
+    patientSelected.textContent = `Νέος πελάτης · ${name}`;
+    patientSelected.classList.remove("hidden");
+    patientResults.classList.add("hidden");
+    patientResults.innerHTML = "";
+    syncNewPatientFields();
+    window.setTimeout(() => newPatientPhone.focus(), 40);
   }
 
   function renderPatientResults(matches: Patient[]) {
-    if (!matches.length) {
-      patientResults.innerHTML =
-        '<p class="px-3 py-2 text-sm text-charcoal-muted">Κανένα αποτέλεσμα</p>';
-      patientResults.classList.remove("hidden");
-      return;
-    }
-    patientResults.innerHTML = matches
+    const typed = patientSearch.value.trim();
+    const newRow =
+      typed.length >= 2
+        ? `<button type="button" data-new-patient
+            class="flex w-full flex-col items-start gap-0.5 border-b border-slate-100 px-3 py-2.5 text-left transition hover:bg-spine-50">
+            <span class="font-display text-sm font-semibold text-spine">Νέος πελάτης</span>
+            <span class="text-xs text-charcoal-muted">${typed}</span>
+          </button>`
+        : "";
+    const rows = matches
       .slice(0, 12)
       .map(
         (p) => `
@@ -1337,6 +1431,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       </button>`,
       )
       .join("");
+    if (!newRow && !rows) {
+      patientResults.innerHTML =
+        '<p class="px-3 py-2 text-sm text-charcoal-muted">Κανένα αποτέλεσμα</p>';
+    } else {
+      patientResults.innerHTML = newRow + rows;
+    }
     patientResults.classList.remove("hidden");
   }
 
@@ -1355,8 +1455,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
   patientSearch.addEventListener("input", () => {
     // Typing clears a previous selection until they pick again.
+    forceNewPatient = false;
     patientIdInput.value = "";
     patientSelected.classList.add("hidden");
+    syncNewPatientFields();
     const matches = filterPatients(patientSearch.value);
     if (!patientSearch.value.trim()) {
       patientResults.classList.add("hidden");
@@ -1373,6 +1475,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   });
 
   patientResults.addEventListener("click", (e) => {
+    const newBtn = (e.target as HTMLElement).closest<HTMLElement>("[data-new-patient]");
+    if (newBtn) {
+      selectNewPatient(patientSearch.value.trim());
+      return;
+    }
     const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-patient-id]");
     if (!btn) return;
     const p = patients.find((x) => x.id === btn.dataset.patientId);
@@ -1462,12 +1569,39 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const err = document.getElementById("appt-form-error")!;
     err.classList.add("hidden");
 
-    const patientId = String(fd.get("patient_id") || "").trim();
+    let patientId = String(fd.get("patient_id") || "").trim();
     if (!patientId) {
-      err.textContent = "Επιλέξτε πελάτη από τη λίστα αναζήτησης.";
-      err.classList.remove("hidden");
-      patientSearch.focus();
-      return;
+      const newName = patientSearch.value.trim();
+      if (newName.length < 2) {
+        err.textContent = "Γράψτε το όνομα του πελάτη ή επιλέξτε από τη λίστα.";
+        err.classList.remove("hidden");
+        patientSearch.focus();
+        return;
+      }
+      if (!forceNewPatient) {
+        const exact = patients.filter(
+          (p) => p.name.trim().toLowerCase() === newName.toLowerCase(),
+        );
+        if (exact.length === 1) {
+          patientId = exact[0].id;
+        }
+      }
+      if (!patientId) {
+        try {
+          const created = await createPatient(supabase, {
+            name: newName,
+            phone: newPatientPhone.value,
+            email: newPatientEmail.value,
+          });
+          patients = [created, ...patients.filter((p) => p.id !== created.id)];
+          patientId = created.id;
+        } catch (createErr) {
+          err.textContent =
+            createErr instanceof Error ? createErr.message : String(createErr);
+          err.classList.remove("hidden");
+          return;
+        }
+      }
     }
 
     const [h, m] = String(fd.get("start")).split(":").map(Number);

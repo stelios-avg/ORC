@@ -19,3 +19,22 @@ export async function fetchAllPatients(supabase: SupabaseClient): Promise<Patien
   }
   return all;
 }
+
+export async function createPatient(
+  supabase: SupabaseClient,
+  input: { name: string; phone?: string | null; email?: string | null },
+): Promise<Patient> {
+  const name = input.name.trim();
+  if (name.length < 2) throw new Error("Το όνομα πρέπει να έχει τουλάχιστον 2 χαρακτήρες.");
+  const { data, error } = await supabase
+    .from("patients")
+    .insert({
+      name,
+      phone: input.phone?.trim() || null,
+      email: input.email?.trim() || null,
+    })
+    .select("*")
+    .single();
+  if (error || !data) throw new Error(error?.message ?? "Αποτυχία δημιουργίας πελάτη.");
+  return data as Patient;
+}
