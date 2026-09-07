@@ -317,10 +317,105 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           <input id="block-reason" name="reason" type="text" placeholder="π.χ. Διάλειμμα"
             class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
         </div>
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="block-repeat">Επανάληψη</label>
+          <select id="block-repeat" name="repeat"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
+            <option value="none" selected>Χωρίς επανάληψη</option>
+            <option value="weekly">Κάθε εβδομάδα</option>
+            <option value="monthly">Κάθε μήνα</option>
+            <option value="custom">Προσαρμοσμένη</option>
+          </select>
+        </div>
+        <div id="block-repeat-opts" class="hidden grid-cols-2 gap-3">
+          <div id="block-repeat-interval-wrap" class="hidden">
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="block-repeat-interval">Κάθε πόσες εβδομάδες</label>
+            <input id="block-repeat-interval" name="repeat_interval" type="number" min="1" max="12" value="2" inputmode="numeric"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="block-repeat-count">Σύνολο επαναλήψεων</label>
+            <input id="block-repeat-count" name="repeat_count" type="number" min="2" max="52" value="4" inputmode="numeric"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
+        </div>
         <p id="block-form-error" class="hidden text-sm text-red-600"></p>
         <button type="submit"
           class="w-full rounded-full bg-charcoal px-6 py-3 font-display font-semibold text-white transition hover:bg-charcoal/80 disabled:opacity-60">
           Αποκλεισμός
+        </button>
+      </form>
+    </div>
+  </div>
+
+  {/* Hover preview card — outside overflow-hidden calendar */}
+  <div id="cal-appt-preview" class="pointer-events-none fixed z-[90] hidden w-[18.5rem] overflow-hidden rounded-xl bg-white shadow-2xl ring-1 ring-black/10">
+    <div id="cal-preview-head" class="flex items-center justify-between bg-spine px-3.5 py-2">
+      <span id="cal-preview-time" class="font-display text-xs font-bold text-white"></span>
+      <span id="cal-preview-status" class="rounded-full bg-white/20 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">Κλεισμένο</span>
+    </div>
+    <div class="px-3.5 py-3">
+      <div class="flex items-center gap-2.5">
+        <span id="cal-preview-avatar" class="flex h-9 w-9 flex-none items-center justify-center rounded-full bg-spine-50 font-display text-sm font-bold text-spine"></span>
+        <div class="min-w-0">
+          <p id="cal-preview-name" class="truncate font-display text-sm font-bold text-charcoal"></p>
+          <p id="cal-preview-phone" class="truncate text-xs text-charcoal-muted"></p>
+        </div>
+      </div>
+      <div class="mt-3 flex items-end justify-between gap-3">
+        <div class="min-w-0">
+          <p id="cal-preview-service" class="truncate text-sm text-charcoal"></p>
+          <p id="cal-preview-meta" class="mt-0.5 truncate text-xs text-charcoal-muted"></p>
+        </div>
+        <p id="cal-preview-price" class="flex-none font-display text-sm font-bold text-charcoal"></p>
+      </div>
+    </div>
+  </div>
+
+  {/* Right-click menu */}
+  <div id="cal-ctx-menu" class="fixed z-[120] hidden min-w-[12.5rem] overflow-hidden rounded-xl bg-white py-1 shadow-xl ring-1 ring-slate-200">
+    <button type="button" id="cal-ctx-repeat"
+      class="flex w-full items-center gap-2 px-3.5 py-2.5 text-left font-display text-sm font-semibold text-charcoal transition hover:bg-sand">
+      Επανάληψη
+    </button>
+  </div>
+
+  {/* ══ Modal: repeat existing appointment / block ══ */}
+  <div id="repeat-modal" class="fixed inset-0 z-[100] hidden items-end justify-center sm:items-center">
+    <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-modal></div>
+    <div class="admin-sheet relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+      <div class="mb-4 flex items-center justify-between">
+        <h2 id="repeat-modal-title" class="font-display text-lg font-bold text-charcoal">Επανάληψη</h2>
+        <button data-close-modal type="button" class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <form id="repeat-form" class="space-y-4">
+        <div>
+          <label class="mb-1 block text-sm font-medium text-charcoal" for="ctx-repeat">Επανάληψη</label>
+          <select id="ctx-repeat" name="repeat"
+            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30">
+            <option value="weekly" selected>Κάθε εβδομάδα</option>
+            <option value="monthly">Κάθε μήνα</option>
+            <option value="custom">Προσαρμοσμένη</option>
+          </select>
+        </div>
+        <div id="ctx-repeat-opts" class="grid grid-cols-2 gap-3">
+          <div id="ctx-repeat-interval-wrap" class="hidden">
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="ctx-repeat-interval">Κάθε πόσες εβδομάδες</label>
+            <input id="ctx-repeat-interval" name="repeat_interval" type="number" min="1" max="12" value="2" inputmode="numeric"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
+          <div>
+            <label class="mb-1 block text-sm font-medium text-charcoal" for="ctx-repeat-count">Πόσες φορές ακόμα</label>
+            <input id="ctx-repeat-count" name="repeat_count" type="number" min="1" max="51" value="4" inputmode="numeric"
+              class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+          </div>
+        </div>
+        <p id="repeat-form-error" class="hidden text-sm text-red-600"></p>
+        <button type="submit"
+          class="w-full rounded-full bg-spine px-6 py-3 font-display font-semibold text-white transition hover:bg-spine-600 disabled:opacity-60">
+          Δημιουργία
         </button>
       </form>
     </div>
@@ -455,6 +550,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       {/* Who booked / created this appointment */}
       <p id="detail-created-by" class="mt-3 hidden text-xs text-charcoal-muted"></p>
 
+      <button id="detail-repeat" type="button"
+        class="mt-4 min-h-12 w-full rounded-full border border-slate-200 px-6 py-3 font-display text-sm font-semibold text-charcoal transition hover:bg-sand">
+        Επανάληψη
+      </button>
       <button id="detail-delete"
         class="mt-4 min-h-12 w-full rounded-full border border-red-200 px-6 py-3 font-display text-sm font-semibold text-red-600 transition active:bg-red-50 hover:bg-red-50">
         Διαγραφή
@@ -482,24 +581,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     touch-action: manipulation;
     -webkit-user-select: none;
     user-select: none;
-  }
-  @media (hover: hover) and (pointer: fine) {
-    #cal-grid [data-appt] {
-      transform-origin: left top;
-      transition: transform 0.16s ease, box-shadow 0.16s ease;
-    }
-    #cal-grid [data-appt]:hover {
-      z-index: 40;
-      overflow: visible;
-      transform: scale(1.16);
-      box-shadow: 0 10px 28px rgba(29, 62, 98, 0.18);
-    }
-    #cal-grid[data-dragging="true"] [data-appt]:hover {
-      z-index: 20;
-      overflow: hidden;
-      transform: none;
-      box-shadow: none;
-    }
   }
 </style>
 
@@ -601,6 +682,28 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
   repeatSelect.addEventListener("change", syncRepeatControls);
 
+  const blockRepeatSelect = document.getElementById("block-repeat") as HTMLSelectElement;
+  const blockRepeatOpts = document.getElementById("block-repeat-opts")!;
+  const blockRepeatIntervalWrap = document.getElementById("block-repeat-interval-wrap")!;
+  const blockRepeatIntervalInput = document.getElementById("block-repeat-interval") as HTMLInputElement;
+  const blockRepeatCountInput = document.getElementById("block-repeat-count") as HTMLInputElement;
+
+  function syncBlockRepeatControls() {
+    const mode = blockRepeatSelect.value;
+    const repeats = mode !== "none";
+    blockRepeatOpts.classList.toggle("hidden", !repeats);
+    blockRepeatOpts.classList.toggle("grid", repeats);
+    blockRepeatIntervalWrap.classList.toggle("hidden", mode !== "custom");
+  }
+  blockRepeatSelect.addEventListener("change", syncBlockRepeatControls);
+
+  function resetBlockRepeatControls() {
+    blockRepeatSelect.value = "none";
+    blockRepeatIntervalInput.value = "2";
+    blockRepeatCountInput.value = "4";
+    syncBlockRepeatControls();
+  }
+
   function resetRepeatControls() {
     repeatSelect.value = "none";
     repeatIntervalInput.value = "2";
@@ -620,12 +723,16 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   /** Start datetimes for the whole series (first occurrence included). */
-  function buildOccurrences(first: Date): Date[] {
-    const mode = repeatSelect.value;
+  function buildOccurrences(
+    first: Date,
+    mode = repeatSelect.value,
+    countRaw = Number(repeatCountInput.value),
+    intervalRaw = Number(repeatIntervalInput.value),
+  ): Date[] {
     if (mode === "none") return [first];
-    const count = Math.min(52, Math.max(2, Number(repeatCountInput.value) || 2));
+    const count = Math.min(52, Math.max(1, Number(countRaw) || 1));
     const stepWeeks = mode === "weekly" ? 1
-      : mode === "custom" ? Math.min(12, Math.max(1, Number(repeatIntervalInput.value) || 1))
+      : mode === "custom" ? Math.min(12, Math.max(1, Number(intervalRaw) || 1))
       : 0;
     const dates: Date[] = [];
     for (let i = 0; i < count; i++) {
@@ -698,6 +805,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
   const fmtTime = (iso: string) =>
     new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+
+  const initialsOf = (name: string) =>
+    name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
 
   const dayLabel = (d: Date) => {
     const today = new Date(); today.setHours(0, 0, 0, 0);
@@ -846,6 +956,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     grid.style.gridTemplateRows = `repeat(${TOTAL_ROWS}, var(--cal-row, 22px))`;
     grid.querySelectorAll("[data-appt], [data-hour-line], [data-col-rule]").forEach((el) => el.remove());
     hideHoverSlot();
+    hideApptPreview();
+    hideCtxMenu();
 
     for (let i = 0; i < MAJOR_SLOT_COUNT; i++) {
       const line = document.createElement("div");
@@ -992,6 +1104,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         openDetail(a);
       });
       bindApptLongPressMove(block, a, rowEnd - rowStart);
+      bindApptHoverPreview(block, a);
+      bindApptContextMenu(block, a);
       grid.appendChild(block);
     });
 
@@ -1093,7 +1207,143 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   grid.addEventListener("mousemove", updateHoverSlot);
-  grid.addEventListener("mouseleave", hideHoverSlot);
+  grid.addEventListener("mouseleave", () => {
+    hideHoverSlot();
+    hideApptPreview();
+  });
+
+  const apptPreview = document.getElementById("cal-appt-preview")!;
+  const previewHead = document.getElementById("cal-preview-head")!;
+  const previewTime = document.getElementById("cal-preview-time")!;
+  const previewStatus = document.getElementById("cal-preview-status")!;
+  const previewAvatar = document.getElementById("cal-preview-avatar")!;
+  const previewName = document.getElementById("cal-preview-name")!;
+  const previewPhone = document.getElementById("cal-preview-phone")!;
+  const previewService = document.getElementById("cal-preview-service")!;
+  const previewMeta = document.getElementById("cal-preview-meta")!;
+  const previewPrice = document.getElementById("cal-preview-price")!;
+  let previewTimer: number | null = null;
+
+  function previewHeadClass(accent: string): string {
+    const base = "flex items-center justify-between px-3.5 py-2 ";
+    switch (accent) {
+      case "sky": return base + "bg-sky-600";
+      case "teal": return base + "bg-teal-600";
+      case "rose": return base + "bg-rose-600";
+      case "amber": return base + "bg-amber-700";
+      default: return base + "bg-spine";
+    }
+  }
+
+  function hideApptPreview() {
+    if (previewTimer != null) {
+      window.clearTimeout(previewTimer);
+      previewTimer = null;
+    }
+    apptPreview.classList.add("hidden");
+  }
+
+  function fillApptPreview(a: Appointment) {
+    const th = getTherapist(a.therapist_id);
+    previewHead.className = previewHeadClass(th?.accent ?? "spine");
+    previewTime.textContent = `${fmtTime(a.start_time)} – ${fmtTime(a.end_time)}`;
+    const mins = Math.max(1, Math.round((new Date(a.end_time).getTime() - new Date(a.start_time).getTime()) / 60_000));
+    if (a.is_blocked_time) {
+      previewStatus.textContent = "Κλειστό";
+      const label = a.service || "Κλειστό";
+      previewAvatar.textContent = "–";
+      previewName.textContent = label;
+      previewPhone.textContent = "";
+      previewPhone.classList.add("hidden");
+      previewService.textContent = "Αποκλεισμός ώρας";
+      previewMeta.textContent = `${therapistName(a)} · ${mins}′`;
+      previewPrice.textContent = "";
+      return;
+    }
+    const name = a.patients?.name ?? "Ραντεβού";
+    previewStatus.textContent = a.is_paid ? "Πληρωμένο" : "Κλεισμένο";
+    previewAvatar.textContent = initialsOf(name) || "?";
+    previewName.textContent = name;
+    if (a.patients?.phone) {
+      previewPhone.textContent = a.patients.phone;
+      previewPhone.classList.remove("hidden");
+    } else {
+      previewPhone.textContent = "";
+      previewPhone.classList.add("hidden");
+    }
+    previewService.textContent = a.service ?? "";
+    previewMeta.textContent = `${therapistName(a)} · ${mins}′`;
+    const master = isMasterAccount(adminEmail);
+    const showPay = canSeePayments(a) && (!a.payments_hidden || master);
+    const payable = showPay ? payableAmount(a) : null;
+    previewPrice.textContent = payable != null ? fmtEuro(payable) : "";
+  }
+
+  function placeApptPreview(anchor: HTMLElement) {
+    apptPreview.classList.remove("hidden");
+    const rect = anchor.getBoundingClientRect();
+    const cardW = apptPreview.offsetWidth || 296;
+    const cardH = apptPreview.offsetHeight || 140;
+    let left = rect.left - cardW - 12;
+    if (left < 8) left = rect.right + 12;
+    if (left + cardW > window.innerWidth - 8) left = Math.max(8, window.innerWidth - cardW - 8);
+    let top = rect.top;
+    if (top + cardH > window.innerHeight - 8) top = Math.max(8, window.innerHeight - cardH - 8);
+    apptPreview.style.left = `${left}px`;
+    apptPreview.style.top = `${top}px`;
+  }
+
+  function bindApptHoverPreview(el: HTMLButtonElement, a: Appointment) {
+    el.addEventListener("mouseenter", () => {
+      if (!canPreviewHover() || activeDrag || grid.dataset.dragging === "true") return;
+      hideHoverSlot();
+      if (previewTimer != null) window.clearTimeout(previewTimer);
+      previewTimer = window.setTimeout(() => {
+        previewTimer = null;
+        fillApptPreview(a);
+        placeApptPreview(el);
+      }, 160);
+    });
+    el.addEventListener("mouseleave", hideApptPreview);
+  }
+
+  const ctxMenu = document.getElementById("cal-ctx-menu")!;
+  let ctxAppt: Appointment | null = null;
+
+  function hideCtxMenu() {
+    ctxMenu.classList.add("hidden");
+  }
+
+  function bindApptContextMenu(el: HTMLButtonElement, a: Appointment) {
+    el.addEventListener("contextmenu", (e) => {
+      if (!canPreviewHover()) return;
+      e.preventDefault();
+      e.stopPropagation();
+      hideApptPreview();
+      hideHoverSlot();
+      ctxAppt = a;
+      ctxMenu.classList.remove("hidden");
+      const menuW = ctxMenu.offsetWidth || 200;
+      const menuH = ctxMenu.offsetHeight || 48;
+      let left = e.clientX;
+      let top = e.clientY;
+      if (left + menuW > window.innerWidth - 8) left = window.innerWidth - menuW - 8;
+      if (top + menuH > window.innerHeight - 8) top = window.innerHeight - menuH - 8;
+      ctxMenu.style.left = `${left}px`;
+      ctxMenu.style.top = `${top}px`;
+    });
+  }
+
+  document.addEventListener("click", (e) => {
+    if (!(e.target as HTMLElement).closest("#cal-ctx-menu")) hideCtxMenu();
+  });
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") hideCtxMenu();
+  });
+  document.getElementById("cal-h-scroll")?.addEventListener("scroll", () => {
+    hideCtxMenu();
+    hideApptPreview();
+  });
 
   function applyDragPreview(
     el: HTMLElement,
@@ -1135,6 +1385,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     el.dataset.dragging = "true";
     grid.dataset.dragging = "true";
     hideHoverSlot();
+    hideApptPreview();
+    hideCtxMenu();
     applyDragPreview(el, cell.row, rowSpan, cell.colIdx);
     try {
       el.setPointerCapture(pointerId);
@@ -1333,6 +1585,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const apptModal = document.getElementById("appt-modal")!;
   const blockModal = document.getElementById("block-modal")!;
   const detailSheet = document.getElementById("detail-sheet")!;
+  const repeatModal = document.getElementById("repeat-modal")!;
+  const allModals = [apptModal, blockModal, detailSheet, repeatModal];
   const openModal = (m: HTMLElement) => {
     m.classList.remove("hidden");
     m.classList.add("flex");
@@ -1341,16 +1595,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const closeModal = (m: HTMLElement) => {
     m.classList.add("hidden");
     m.classList.remove("flex");
-    if (
-      apptModal.classList.contains("hidden") &&
-      blockModal.classList.contains("hidden") &&
-      detailSheet.classList.contains("hidden")
-    ) {
+    if (allModals.every((el) => el.classList.contains("hidden"))) {
       document.body.classList.remove("no-scroll");
     }
   };
   document.querySelectorAll("[data-close-modal]").forEach((el) =>
-    el.addEventListener("click", () => [apptModal, blockModal, detailSheet].forEach(closeModal)),
+    el.addEventListener("click", () => allModals.forEach(closeModal)),
   );
 
   // ── New appointment (patient search by name / phone) ──
@@ -1657,6 +1907,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   // ── Block time ──
   document.getElementById("block-time-btn")!.addEventListener("click", () => {
     setDefaultTherapistSelects();
+    resetBlockRepeatControls();
     openModal(blockModal);
   });
 
@@ -1678,13 +1929,24 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       return;
     }
 
-    const { error } = await supabase.from("appointments").insert({
+    const durationMs = end.getTime() - start.getTime();
+    const occurrences = buildOccurrences(
+      start,
+      blockRepeatSelect.value,
+      Number(blockRepeatCountInput.value),
+      Number(blockRepeatIntervalInput.value),
+    );
+    const recurrenceGroup = occurrences.length > 1 ? crypto.randomUUID() : null;
+    const rows = occurrences.map((s) => ({
       is_blocked_time: true,
       therapist_id: String(fd.get("therapist_id")),
       service: String(fd.get("reason") || "Κλειστό"),
-      start_time: start.toISOString(),
-      end_time: end.toISOString(),
-    });
+      start_time: s.toISOString(),
+      end_time: new Date(s.getTime() + durationMs).toISOString(),
+      recurrence_group: recurrenceGroup,
+    }));
+
+    const { error } = await supabase.from("appointments").insert(rows);
 
     if (error) {
       err.textContent = error.message;
@@ -1693,7 +1955,95 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
     form.reset();
     setDefaultTherapistSelects();
+    resetBlockRepeatControls();
     closeModal(blockModal);
+    refresh();
+  });
+
+  const ctxRepeatSelect = document.getElementById("ctx-repeat") as HTMLSelectElement;
+  const ctxRepeatIntervalWrap = document.getElementById("ctx-repeat-interval-wrap")!;
+  const ctxRepeatIntervalInput = document.getElementById("ctx-repeat-interval") as HTMLInputElement;
+  const ctxRepeatCountInput = document.getElementById("ctx-repeat-count") as HTMLInputElement;
+
+  function syncCtxRepeatControls() {
+    ctxRepeatIntervalWrap.classList.toggle("hidden", ctxRepeatSelect.value !== "custom");
+  }
+  ctxRepeatSelect.addEventListener("change", syncCtxRepeatControls);
+
+  function openRepeatFor(a: Appointment) {
+    ctxAppt = a;
+    hideCtxMenu();
+    hideApptPreview();
+    document.getElementById("repeat-form-error")!.classList.add("hidden");
+    ctxRepeatSelect.value = "weekly";
+    ctxRepeatIntervalInput.value = "2";
+    ctxRepeatCountInput.value = "4";
+    syncCtxRepeatControls();
+    document.getElementById("repeat-modal-title")!.textContent = a.is_blocked_time
+      ? "Επανάληψη αποκλεισμού"
+      : "Επανάληψη ραντεβού";
+    closeModal(detailSheet);
+    openModal(repeatModal);
+  }
+
+  document.getElementById("cal-ctx-repeat")!.addEventListener("click", () => {
+    if (ctxAppt) openRepeatFor(ctxAppt);
+  });
+  document.getElementById("detail-repeat")!.addEventListener("click", () => {
+    if (selectedAppt) openRepeatFor(selectedAppt);
+  });
+
+  document.getElementById("repeat-form")!.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const source = ctxAppt;
+    if (!source) return;
+    const err = document.getElementById("repeat-form-error")!;
+    err.classList.add("hidden");
+    const extra = Math.min(51, Math.max(1, Number(ctxRepeatCountInput.value) || 1));
+    const dates = buildOccurrences(
+      new Date(source.start_time),
+      ctxRepeatSelect.value,
+      extra + 1,
+      Number(ctxRepeatIntervalInput.value),
+    ).slice(1);
+    if (!dates.length) {
+      err.textContent = "Δεν προέκυψαν επαναλήψεις.";
+      err.classList.remove("hidden");
+      return;
+    }
+
+    const durationMs = new Date(source.end_time).getTime() - new Date(source.start_time).getTime();
+    const recurrenceGroup = source.recurrence_group ?? crypto.randomUUID();
+    const rows = dates.map((s) => {
+      const row: Record<string, unknown> = {
+        therapist_id: source.therapist_id,
+        service: source.service,
+        start_time: s.toISOString(),
+        end_time: new Date(s.getTime() + durationMs).toISOString(),
+        is_blocked_time: source.is_blocked_time,
+        recurrence_group: recurrenceGroup,
+      };
+      if (!source.is_blocked_time) {
+        row.patient_id = source.patient_id;
+        row.price = source.price;
+        row.discount = source.discount ?? 0;
+      }
+      return row;
+    });
+
+    const btn = (e.target as HTMLFormElement).querySelector("button[type=submit]") as HTMLButtonElement;
+    btn.disabled = true;
+    if (!source.recurrence_group) {
+      await supabase.from("appointments").update({ recurrence_group: recurrenceGroup }).eq("id", source.id);
+    }
+    const { error } = await supabase.from("appointments").insert(rows);
+    btn.disabled = false;
+    if (error) {
+      err.textContent = error.message;
+      err.classList.remove("hidden");
+      return;
+    }
+    closeModal(repeatModal);
     refresh();
   });
 
@@ -1763,6 +2113,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   function openDetail(a: Appointment) {
+    hideApptPreview();
+    hideCtxMenu();
     selectedAppt = a;
     document.getElementById("detail-title")!.textContent =
       a.is_blocked_time ? (a.service || "Κλειστό") : (a.patients?.name ?? "Ραντεβού");
