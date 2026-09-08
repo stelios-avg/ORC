@@ -52,6 +52,18 @@ export interface Patient {
   created_at: string;
 }
 
+/** Photo or document attached to a client profile (visible to all admins). */
+export interface PatientFile {
+  id: string;
+  patient_id: string;
+  storage_path: string;
+  file_name: string;
+  mime_type: string | null;
+  size_bytes: number | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
 export interface TherapistRow {
   id: string;
   slug: string;

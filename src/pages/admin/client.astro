@@ -89,6 +89,38 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     </button>
   </div>
 
+  {/* ── Files & photos (shared with all admins) ── */}
+  <div class="mt-4 rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
+    <div class="mb-2 flex items-center justify-between gap-3">
+      <h2 class="font-display text-sm font-bold uppercase tracking-wide text-charcoal">Αρχεία &amp; φωτογραφίες</h2>
+      <span id="files-status" class="text-xs text-charcoal-muted"></span>
+    </div>
+    <p class="text-xs text-charcoal-muted">Φαίνονται σε όλους τους admin. Φωτογραφίες, PDF, Word — έως 15&nbsp;MB το καθένα.</p>
+    <label class="relative mt-3 flex min-h-12 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full bg-spine px-6 py-2.5 font-display text-sm font-semibold text-white transition hover:bg-spine-600">
+      <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3 8h10"/></svg>
+      Προσθήκη αρχείων
+      <input id="cl-files-input" type="file" class="absolute h-px w-px overflow-hidden opacity-0" multiple
+        accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,application/pdf,.pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+    </label>
+    <p id="files-error" class="mt-2 hidden text-sm text-red-600"></p>
+    <ul id="files-photos" class="mt-4 hidden grid-cols-2 gap-2 sm:grid-cols-3"></ul>
+    <ul id="files-docs" class="mt-3 hidden space-y-2"></ul>
+    <p id="files-empty" class="mt-4 text-center text-sm text-charcoal-muted">Δεν υπάρχουν αρχεία ακόμη.</p>
+  </div>
+
+  <div id="file-lightbox" class="fixed inset-0 z-[120] hidden items-center justify-center bg-spine-900/80 p-4">
+    <button type="button" data-close-lightbox class="absolute inset-0 cursor-default" aria-label="Κλείσιμο"></button>
+    <div class="relative z-10 max-h-[90dvh] w-full max-w-3xl">
+      <button type="button" data-close-lightbox
+        class="absolute -top-1 right-0 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-charcoal shadow"
+        aria-label="Κλείσιμο">
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+      <img id="file-lightbox-img" alt="" class="max-h-[80dvh] w-full rounded-2xl object-contain" />
+      <p id="file-lightbox-caption" class="mt-2 text-center text-sm text-white"></p>
+    </div>
+  </div>
+
   {/* ── Staff notes from appointments ── */}
   <div id="appt-notes-wrap" class="mt-4 hidden rounded-2xl bg-white p-5 shadow-sm ring-1 ring-slate-100">
     <h2 class="mb-3 font-display text-sm font-bold uppercase tracking-wide text-charcoal">Σημειώσεις ραντεβού</h2>
@@ -137,7 +169,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 </AdminLayout>
 
 <script>
-  import { getSupabase, type Appointment, type AppointmentNote, type Patient } from "../../lib/supabase";
+  import { getSupabase, type Appointment, type AppointmentNote, type Patient, type PatientFile } from "../../lib/supabase";
   import { canViewTherapistPayments, creatorDisplayName, isMasterAccount } from "../../lib/admin-access";
 
   const supabase = getSupabase();
@@ -146,6 +178,23 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   let adminEmail = "";
   let currentPatient: Patient | null = null;
   let appointmentCount = 0;
+  let patientFiles: (PatientFile & { signedUrl?: string })[] = [];
+
+  const FILES_BUCKET = "patient-files";
+  const FILE_MAX_BYTES = 15 * 1024 * 1024;
+  const FILE_SIGNED_TTL = 8 * 3600;
+  const FILE_ALLOWED_MIME = new Set([
+    "image/jpeg",
+    "image/jpg",
+    "image/png",
+    "image/webp",
+    "image/gif",
+    "image/heic",
+    "image/heif",
+    "application/pdf",
+    "application/msword",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  ]);
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
@@ -241,7 +290,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       return;
     }
 
-    const [{ data: { session } }, { data: patient, error: pErr }, { data: appts, error: aErr }, { data: noteRows }] = await Promise.all([
+    const [{ data: { session } }, { data: patient, error: pErr }, { data: appts, error: aErr }, { data: noteRows }, { data: fileRows, error: fErr }] = await Promise.all([
       supabase.auth.getSession(),
       supabase.from("patients").select("*").eq("id", id).single(),
       supabase
@@ -253,6 +302,11 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       supabase
         .from("appointment_notes")
         .select("*, appointments(id, start_time, service)")
+        .eq("patient_id", id)
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("patient_files")
+        .select("*")
         .eq("patient_id", id)
         .order("created_at", { ascending: false }),
     ]);
@@ -270,6 +324,13 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     renderProfile(p);
 
     (document.getElementById("cl-notes") as HTMLTextAreaElement).value = p.notes ?? "";
+
+    if (fErr) {
+      document.getElementById("files-error")!.textContent = `Σφάλμα αρχείων: ${fErr.message}`;
+      document.getElementById("files-error")!.classList.remove("hidden");
+    } else {
+      await renderFiles((fileRows ?? []) as PatientFile[]);
+    }
 
     // Staff notes written on this client's appointments
     const apptNotes = (noteRows ?? []) as AppointmentNote[];
@@ -462,6 +523,14 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
     const btn = document.getElementById("delete-client-btn") as HTMLButtonElement;
     btn.disabled = true;
+    const { data: attached } = await supabase
+      .from("patient_files")
+      .select("storage_path")
+      .eq("patient_id", id);
+    const paths = (attached ?? []).map((f) => f.storage_path as string).filter(Boolean);
+    if (paths.length) {
+      await supabase.storage.from(FILES_BUCKET).remove(paths);
+    }
     const { error } = await supabase.from("patients").delete().eq("id", id);
     btn.disabled = false;
     if (error) {
@@ -483,6 +552,227 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     saveBtn.disabled = false;
     notesStatus.textContent = error ? "Σφάλμα αποθήκευσης" : "Αποθηκεύτηκε ✓";
     setTimeout(() => (notesStatus.textContent = ""), 2500);
+  });
+
+  // ── Client files & photos ──
+  const filesStatus = document.getElementById("files-status")!;
+  const filesError = document.getElementById("files-error")!;
+  const filesPhotos = document.getElementById("files-photos")!;
+  const filesDocs = document.getElementById("files-docs")!;
+  const filesEmpty = document.getElementById("files-empty")!;
+  const filesInput = document.getElementById("cl-files-input") as HTMLInputElement;
+  const lightbox = document.getElementById("file-lightbox")!;
+  const lightboxImg = document.getElementById("file-lightbox-img") as HTMLImageElement;
+  const lightboxCaption = document.getElementById("file-lightbox-caption")!;
+
+  function isImageFile(mime: string | null | undefined, name: string) {
+    if (mime?.startsWith("image/")) return true;
+    return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name);
+  }
+
+  function fileAllowed(file: File) {
+    const mime = (file.type || "").toLowerCase();
+    if (FILE_ALLOWED_MIME.has(mime)) return true;
+    return /\.(jpe?g|png|webp|gif|heic|heif|pdf|docx?)$/i.test(file.name);
+  }
+
+  function safeFileName(name: string) {
+    const trimmed = name.trim() || "file";
+    return trimmed.replace(/[^\w.\-Α-Ωα-ωΆ-Ώά-ώ]+/g, "_").slice(0, 80);
+  }
+
+  function fmtBytes(n: number | null | undefined) {
+    if (n == null || Number.isNaN(n)) return "";
+    if (n < 1024) return `${n} B`;
+    if (n < 1024 * 1024) return `${Math.round(n / 1024)} KB`;
+    return `${(n / (1024 * 1024)).toFixed(1)} MB`;
+  }
+
+  function fileMetaLine(f: PatientFile) {
+    const who = creatorDisplayName(f.uploaded_by) ?? f.uploaded_by ?? "";
+    const when = new Date(f.created_at).toLocaleDateString("el-GR", {
+      day: "numeric", month: "short", year: "numeric",
+    });
+    const size = fmtBytes(f.size_bytes);
+    return [who, when, size].filter(Boolean).join(" · ");
+  }
+
+  async function renderFiles(rows: PatientFile[]) {
+    filesError.classList.add("hidden");
+    const paths = rows.map((f) => f.storage_path);
+    let urlByPath = new Map<string, string>();
+    if (paths.length) {
+      const { data: signed, error } = await supabase.storage
+        .from(FILES_BUCKET)
+        .createSignedUrls(paths, FILE_SIGNED_TTL);
+      if (error) {
+        filesError.textContent = error.message;
+        filesError.classList.remove("hidden");
+      }
+      for (const row of signed ?? []) {
+        if (row.path && row.signedUrl) urlByPath.set(row.path, row.signedUrl);
+      }
+    }
+    patientFiles = rows.map((f) => ({ ...f, signedUrl: urlByPath.get(f.storage_path) }));
+
+    const photos = patientFiles.filter((f) => isImageFile(f.mime_type, f.file_name));
+    const docs = patientFiles.filter((f) => !isImageFile(f.mime_type, f.file_name));
+
+    filesPhotos.innerHTML = photos.map((f) => {
+      const src = f.signedUrl ?? "";
+      return `
+        <li class="overflow-hidden rounded-xl bg-sand ring-1 ring-slate-100">
+          <button type="button" data-open-file="${f.id}" class="block w-full">
+            <img src="${escHtml(src)}" alt="${escHtml(f.file_name)}" class="aspect-square w-full object-cover bg-slate-100" />
+          </button>
+          <div class="flex items-start justify-between gap-1 px-2 py-1.5">
+            <p class="min-w-0 truncate text-[11px] text-charcoal-muted">${escHtml(f.file_name)}<br>${escHtml(fileMetaLine(f))}</p>
+            <button type="button" data-delete-file="${f.id}" class="flex h-8 w-8 flex-none items-center justify-center rounded-full text-red-600 hover:bg-red-50" aria-label="Διαγραφή">
+              <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4h10M6 4V3h4v1M6.5 7v5M9.5 7v5M4.5 4l.7 9h5.6l.7-9"/></svg>
+            </button>
+          </div>
+        </li>`;
+    }).join("");
+
+    filesDocs.innerHTML = docs.map((f) => {
+      const href = f.signedUrl ?? "#";
+      return `
+        <li class="flex items-center gap-3 rounded-xl bg-sand px-3 py-2.5">
+          <a href="${escHtml(href)}" target="_blank" rel="noopener" class="min-w-0 flex-1">
+            <p class="truncate font-display text-sm font-semibold text-charcoal">${escHtml(f.file_name)}</p>
+            <p class="text-[11px] text-charcoal-muted">${escHtml(fileMetaLine(f))}</p>
+          </a>
+          <button type="button" data-delete-file="${f.id}" class="flex h-9 w-9 flex-none items-center justify-center rounded-full text-red-600 hover:bg-red-50" aria-label="Διαγραφή">
+            <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4h10M6 4V3h4v1M6.5 7v5M9.5 7v5M4.5 4l.7 9h5.6l.7-9"/></svg>
+          </button>
+        </li>`;
+    }).join("");
+
+    filesPhotos.classList.toggle("hidden", photos.length === 0);
+    filesPhotos.classList.toggle("grid", photos.length > 0);
+    filesDocs.classList.toggle("hidden", docs.length === 0);
+    filesEmpty.classList.toggle("hidden", patientFiles.length > 0);
+  }
+
+  async function reloadFiles() {
+    if (!id) return;
+    const { data, error } = await supabase
+      .from("patient_files")
+      .select("*")
+      .eq("patient_id", id)
+      .order("created_at", { ascending: false });
+    if (error) {
+      filesError.textContent = error.message;
+      filesError.classList.remove("hidden");
+      return;
+    }
+    await renderFiles((data ?? []) as PatientFile[]);
+  }
+
+  filesInput.addEventListener("change", async () => {
+    if (!id) return;
+    const picked = Array.from(filesInput.files ?? []);
+    filesInput.value = "";
+    if (!picked.length) return;
+
+    filesError.classList.add("hidden");
+    filesInput.disabled = true;
+    const rejected: string[] = [];
+    const ready = picked.filter((file) => {
+      if (file.size > FILE_MAX_BYTES) {
+        rejected.push(`${file.name} (πάνω από 15 MB)`);
+        return false;
+      }
+      if (!fileAllowed(file)) {
+        rejected.push(`${file.name} (μη επιτρεπτός τύπος)`);
+        return false;
+      }
+      return true;
+    });
+    if (rejected.length) {
+      filesError.textContent = rejected.join(" · ");
+      filesError.classList.remove("hidden");
+    }
+    if (!ready.length) {
+      filesInput.disabled = false;
+      return;
+    }
+
+    filesStatus.textContent = "Ανέβασμα…";
+    try {
+    for (let i = 0; i < ready.length; i++) {
+      const file = ready[i]!;
+      filesStatus.textContent = `Ανέβασμα ${i + 1}/${ready.length}…`;
+      const path = `${id}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
+      const { error: upErr } = await supabase.storage.from(FILES_BUCKET).upload(path, file, {
+        contentType: file.type || undefined,
+        upsert: false,
+      });
+      if (upErr) {
+        filesError.textContent = `${file.name}: ${upErr.message}`;
+        filesError.classList.remove("hidden");
+        continue;
+      }
+      const { error: rowErr } = await supabase.from("patient_files").insert({
+        patient_id: id,
+        storage_path: path,
+        file_name: file.name,
+        mime_type: file.type || null,
+        size_bytes: file.size,
+        uploaded_by: adminEmail || null,
+      });
+      if (rowErr) {
+        await supabase.storage.from(FILES_BUCKET).remove([path]);
+        filesError.textContent = `${file.name}: ${rowErr.message}`;
+        filesError.classList.remove("hidden");
+      }
+    }
+    } finally {
+      filesStatus.textContent = "";
+      filesInput.disabled = false;
+    }
+    await reloadFiles();
+  });
+
+  document.addEventListener("click", async (e) => {
+    const t = e.target as HTMLElement;
+    const openBtn = t.closest<HTMLElement>("[data-open-file]");
+    if (openBtn) {
+      const file = patientFiles.find((f) => f.id === openBtn.dataset.openFile);
+      if (!file?.signedUrl) return;
+      lightboxImg.src = file.signedUrl;
+      lightboxImg.alt = file.file_name;
+      lightboxCaption.textContent = `${file.file_name} · ${fileMetaLine(file)}`;
+      lightbox.classList.remove("hidden");
+      lightbox.classList.add("flex");
+      return;
+    }
+    const delBtn = t.closest<HTMLElement>("[data-delete-file]");
+    if (delBtn) {
+      const file = patientFiles.find((f) => f.id === delBtn.dataset.deleteFile);
+      if (!file) return;
+      if (!confirm(`Διαγραφή του αρχείου «${file.file_name}»;`)) return;
+      const { error: stErr } = await supabase.storage.from(FILES_BUCKET).remove([file.storage_path]);
+      const { error: dbErr } = await supabase.from("patient_files").delete().eq("id", file.id);
+      if (stErr || dbErr) {
+        filesError.textContent = (stErr ?? dbErr)!.message;
+        filesError.classList.remove("hidden");
+        return;
+      }
+      await reloadFiles();
+    }
+  });
+
+  function closeLightbox() {
+    lightbox.classList.add("hidden");
+    lightbox.classList.remove("flex");
+    lightboxImg.src = "";
+  }
+  lightbox.querySelectorAll("[data-close-lightbox]").forEach((el) =>
+    el.addEventListener("click", closeLightbox),
+  );
+  document.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") closeLightbox();
   });
 
   load();
