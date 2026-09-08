@@ -95,7 +95,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       <h2 class="font-display text-sm font-bold uppercase tracking-wide text-charcoal">Αρχεία &amp; φωτογραφίες</h2>
       <span id="files-status" class="text-xs text-charcoal-muted"></span>
     </div>
-    <p class="text-xs text-charcoal-muted">Φαίνονται σε όλους τους admin. Φωτογραφίες, PDF, Word — έως 15&nbsp;MB το καθένα.</p>
+    <p class="text-xs text-charcoal-muted">Φαίνονται σε όλους τους admin. Πατήστε ένα αρχείο για να ανοίξει εδώ (φωτογραφίες, PDF, Word), χωρίς κατέβασμα. Έως 15&nbsp;MB.</p>
     <label class="relative mt-3 flex min-h-12 cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-full bg-spine px-6 py-2.5 font-display text-sm font-semibold text-white transition hover:bg-spine-600">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3 8h10"/></svg>
       Προσθήκη αρχείων
@@ -108,16 +108,21 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     <p id="files-empty" class="mt-4 text-center text-sm text-charcoal-muted">Δεν υπάρχουν αρχεία ακόμη.</p>
   </div>
 
-  <div id="file-lightbox" class="fixed inset-0 z-[120] hidden items-center justify-center bg-spine-900/80 p-4">
+  <div id="file-lightbox" class="fixed inset-0 z-[120] hidden items-end justify-center bg-spine-900/80 p-3 sm:items-center sm:p-4">
     <button type="button" data-close-lightbox class="absolute inset-0 cursor-default" aria-label="Κλείσιμο"></button>
-    <div class="relative z-10 max-h-[90dvh] w-full max-w-3xl">
-      <button type="button" data-close-lightbox
-        class="absolute -top-1 right-0 z-10 flex h-11 w-11 items-center justify-center rounded-full bg-white/90 text-charcoal shadow"
-        aria-label="Κλείσιμο">
-        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
-      </button>
-      <img id="file-lightbox-img" alt="" class="max-h-[80dvh] w-full rounded-2xl object-contain" />
-      <p id="file-lightbox-caption" class="mt-2 text-center text-sm text-white"></p>
+    <div class="relative z-10 flex max-h-[92dvh] w-full max-w-4xl flex-col rounded-2xl bg-spine-900/40 p-3 sm:p-4">
+      <div class="mb-2 flex items-start justify-between gap-3">
+        <p id="file-lightbox-caption" class="min-w-0 pt-1.5 text-sm text-white"></p>
+        <button type="button" data-close-lightbox
+          class="flex h-11 w-11 flex-none items-center justify-center rounded-full bg-white/90 text-charcoal shadow"
+          aria-label="Κλείσιμο">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <img id="file-lightbox-img" alt="" class="hidden max-h-[78dvh] w-full rounded-xl object-contain" />
+      <iframe id="file-lightbox-frame" title="Προεπισκόπηση αρχείου" class="hidden h-[78dvh] w-full rounded-xl bg-white"></iframe>
+      <div id="file-lightbox-docx" class="hidden h-[78dvh] overflow-auto rounded-xl bg-white"></div>
+      <p id="file-lightbox-fallback" class="hidden rounded-xl bg-white px-4 py-6 text-center text-sm text-charcoal"></p>
     </div>
   </div>
 
@@ -171,6 +176,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 <script>
   import { getSupabase, type Appointment, type AppointmentNote, type Patient, type PatientFile } from "../../lib/supabase";
   import { canViewTherapistPayments, creatorDisplayName, isMasterAccount } from "../../lib/admin-access";
+  import { renderAsync } from "docx-preview";
 
   const supabase = getSupabase();
   const id = new URLSearchParams(window.location.search).get("id");
@@ -563,11 +569,46 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   const filesInput = document.getElementById("cl-files-input") as HTMLInputElement;
   const lightbox = document.getElementById("file-lightbox")!;
   const lightboxImg = document.getElementById("file-lightbox-img") as HTMLImageElement;
+  const lightboxFrame = document.getElementById("file-lightbox-frame") as HTMLIFrameElement;
+  const lightboxFallback = document.getElementById("file-lightbox-fallback")!;
+  const lightboxDocx = document.getElementById("file-lightbox-docx")!;
   const lightboxCaption = document.getElementById("file-lightbox-caption")!;
+  let viewerObjectUrl: string | null = null;
 
   function isImageFile(mime: string | null | undefined, name: string) {
     if (mime?.startsWith("image/")) return true;
     return /\.(jpe?g|png|webp|gif|heic|heif)$/i.test(name);
+  }
+
+  function isPdfFile(mime: string | null | undefined, name: string) {
+    return (mime || "").toLowerCase() === "application/pdf" || /\.pdf$/i.test(name);
+  }
+
+  function isDocxFile(mime: string | null | undefined, name: string) {
+    const m = (mime || "").toLowerCase();
+    return m.includes("officedocument.wordprocessing") || /\.docx$/i.test(name);
+  }
+
+  function isLegacyDocFile(mime: string | null | undefined, name: string) {
+    const m = (mime || "").toLowerCase();
+    return m === "application/msword" || /\.doc$/i.test(name);
+  }
+
+  function guessMime(file: File) {
+    if (file.type) return file.type;
+    const n = file.name;
+    if (/\.pdf$/i.test(n)) return "application/pdf";
+    if (/\.png$/i.test(n)) return "image/png";
+    if (/\.webp$/i.test(n)) return "image/webp";
+    if (/\.gif$/i.test(n)) return "image/gif";
+    if (/\.jpe?g$/i.test(n)) return "image/jpeg";
+    if (/\.heic$/i.test(n)) return "image/heic";
+    if (/\.heif$/i.test(n)) return "image/heif";
+    if (/\.docx$/i.test(n)) {
+      return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    }
+    if (/\.doc$/i.test(n)) return "application/msword";
+    return undefined;
   }
 
   function fileAllowed(file: File) {
@@ -635,13 +676,12 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     }).join("");
 
     filesDocs.innerHTML = docs.map((f) => {
-      const href = f.signedUrl ?? "#";
       return `
         <li class="flex items-center gap-3 rounded-xl bg-sand px-3 py-2.5">
-          <a href="${escHtml(href)}" target="_blank" rel="noopener" class="min-w-0 flex-1">
+          <button type="button" data-open-file="${f.id}" class="min-w-0 flex-1 text-left">
             <p class="truncate font-display text-sm font-semibold text-charcoal">${escHtml(f.file_name)}</p>
             <p class="text-[11px] text-charcoal-muted">${escHtml(fileMetaLine(f))}</p>
-          </a>
+          </button>
           <button type="button" data-delete-file="${f.id}" class="flex h-9 w-9 flex-none items-center justify-center rounded-full text-red-600 hover:bg-red-50" aria-label="Διαγραφή">
             <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4h10M6 4V3h4v1M6.5 7v5M9.5 7v5M4.5 4l.7 9h5.6l.7-9"/></svg>
           </button>
@@ -705,7 +745,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       filesStatus.textContent = `Ανέβασμα ${i + 1}/${ready.length}…`;
       const path = `${id}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
       const { error: upErr } = await supabase.storage.from(FILES_BUCKET).upload(path, file, {
-        contentType: file.type || undefined,
+        contentType: guessMime(file),
         upsert: false,
       });
       if (upErr) {
@@ -717,7 +757,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         patient_id: id,
         storage_path: path,
         file_name: file.name,
-        mime_type: file.type || null,
+        mime_type: guessMime(file) || file.type || null,
         size_bytes: file.size,
         uploaded_by: adminEmail || null,
       });
@@ -739,12 +779,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     const openBtn = t.closest<HTMLElement>("[data-open-file]");
     if (openBtn) {
       const file = patientFiles.find((f) => f.id === openBtn.dataset.openFile);
-      if (!file?.signedUrl) return;
-      lightboxImg.src = file.signedUrl;
-      lightboxImg.alt = file.file_name;
-      lightboxCaption.textContent = `${file.file_name} · ${fileMetaLine(file)}`;
-      lightbox.classList.remove("hidden");
-      lightbox.classList.add("flex");
+      if (file) void openInViewer(file);
       return;
     }
     const delBtn = t.closest<HTMLElement>("[data-delete-file]");
@@ -763,10 +798,92 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     }
   });
 
+  function clearViewer() {
+    lightboxImg.src = "";
+    lightboxImg.classList.add("hidden");
+    lightboxFrame.src = "about:blank";
+    lightboxFrame.classList.add("hidden");
+    lightboxFallback.classList.add("hidden");
+    lightboxFallback.textContent = "";
+    lightboxDocx.classList.add("hidden");
+    lightboxDocx.innerHTML = "";
+    if (viewerObjectUrl) {
+      URL.revokeObjectURL(viewerObjectUrl);
+      viewerObjectUrl = null;
+    }
+  }
+
   function closeLightbox() {
     lightbox.classList.add("hidden");
     lightbox.classList.remove("flex");
-    lightboxImg.src = "";
+    clearViewer();
+  }
+
+  async function openInViewer(file: PatientFile & { signedUrl?: string }) {
+    clearViewer();
+    lightboxCaption.textContent = `${file.file_name} · ${fileMetaLine(file)}`;
+    lightbox.classList.remove("hidden");
+    lightbox.classList.add("flex");
+
+    if (isImageFile(file.mime_type, file.file_name) && file.signedUrl) {
+      lightboxImg.classList.remove("hidden");
+      lightboxImg.alt = file.file_name;
+      lightboxImg.src = file.signedUrl;
+      return;
+    }
+
+    if (isDocxFile(file.mime_type, file.file_name)) {
+      if (!file.signedUrl) {
+        lightboxFallback.classList.remove("hidden");
+        lightboxFallback.textContent = "Δεν ήταν δυνατή η προεπισκόπηση.";
+        return;
+      }
+      try {
+        const res = await fetch(file.signedUrl);
+        if (!res.ok) throw new Error("fetch failed");
+        const buf = await res.arrayBuffer();
+        lightboxDocx.classList.remove("hidden");
+        await renderAsync(buf, lightboxDocx, undefined, {
+          inWrapper: true,
+          ignoreWidth: true,
+          breakPages: true,
+          useBase64URL: true,
+        });
+      } catch {
+        lightboxDocx.classList.add("hidden");
+        lightboxFallback.classList.remove("hidden");
+        lightboxFallback.textContent = "Δεν άνοιξε το Word. Δοκιμάστε να το αποθηκεύσετε ως PDF.";
+      }
+      return;
+    }
+
+    if (isLegacyDocFile(file.mime_type, file.file_name)) {
+      lightboxFallback.classList.remove("hidden");
+      lightboxFallback.textContent =
+        "Τα παλιά αρχεία .doc δεν ανοίγουν εδώ. Αποθηκεύστε τα ως .docx ή PDF.";
+      return;
+    }
+
+    if (!file.signedUrl) {
+      lightboxFallback.classList.remove("hidden");
+      lightboxFallback.textContent = "Δεν ήταν δυνατή η προεπισκόπηση.";
+      return;
+    }
+
+    try {
+      const res = await fetch(file.signedUrl);
+      if (!res.ok) throw new Error("fetch failed");
+      const buf = await res.arrayBuffer();
+      const mime = isPdfFile(file.mime_type, file.file_name)
+        ? "application/pdf"
+        : (file.mime_type || "application/octet-stream");
+      viewerObjectUrl = URL.createObjectURL(new Blob([buf], { type: mime }));
+      lightboxFrame.classList.remove("hidden");
+      lightboxFrame.src = viewerObjectUrl;
+    } catch {
+      lightboxFrame.classList.remove("hidden");
+      lightboxFrame.src = file.signedUrl;
+    }
   }
   lightbox.querySelectorAll("[data-close-lightbox]").forEach((el) =>
     el.addEventListener("click", closeLightbox),
