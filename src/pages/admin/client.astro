@@ -245,13 +245,46 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     const appt = n.appointments
       ? `Ραντεβού ${fmtDate(n.appointments.start_time)}${n.appointments.service ? ` · ${escHtml(n.appointments.service)}` : ""}`
       : "";
+    // Only master accounts (Egly, Charalambos) may delete notes
+    const delBtn = isMasterAccount(adminEmail)
+      ? `<button type="button" data-delete-note="${n.id}"
+          class="flex h-8 w-8 flex-none items-center justify-center rounded-full text-red-600 transition hover:bg-red-50"
+          aria-label="Διαγραφή σημείωσης">
+          <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4h10M6 4V3h4v1M6.5 7v5M9.5 7v5M4.5 4l.7 9h5.6l.7-9"/></svg>
+        </button>`
+      : "";
     return `
       <li class="rounded-xl bg-sand px-4 py-3">
-        ${appt ? `<p class="text-[11px] font-semibold uppercase tracking-wide text-spine">${appt}</p>` : ""}
-        <p class="mt-1 whitespace-pre-line text-sm text-charcoal">${escHtml(n.body)}</p>
+        <div class="flex items-start justify-between gap-2">
+          <div class="min-w-0 flex-1">
+            ${appt ? `<p class="text-[11px] font-semibold uppercase tracking-wide text-spine">${appt}</p>` : ""}
+            <p class="mt-1 whitespace-pre-line text-sm text-charcoal">${escHtml(n.body)}</p>
+          </div>
+          ${delBtn}
+        </div>
         <p class="mt-1.5 text-[11px] font-medium text-charcoal-muted">${escHtml(author)} · ${when}</p>
       </li>`;
   }
+
+  document.getElementById("appt-notes-list")!.addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-delete-note]");
+    if (!btn) return;
+    if (!isMasterAccount(adminEmail)) return;
+    if (!confirm("Διαγραφή αυτής της σημείωσης;")) return;
+    const { error } = await supabase
+      .from("appointment_notes")
+      .delete()
+      .eq("id", btn.dataset.deleteNote);
+    if (error) {
+      alert(`Η διαγραφή απέτυχε: ${error.message}`);
+      return;
+    }
+    btn.closest("li")?.remove();
+    const list = document.getElementById("appt-notes-list")!;
+    if (!list.children.length) {
+      document.getElementById("appt-notes-wrap")!.classList.add("hidden");
+    }
+  });
 
   function apptItem(a: Appointment): string {
     const showPay =

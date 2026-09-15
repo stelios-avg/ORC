@@ -567,6 +567,35 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       </button>
     </div>
   </div>
+
+  {/* ══ Modal: delete options (single / series / patient upcoming) ══ */}
+  <div id="delete-modal" class="fixed inset-0 z-[110] hidden items-end justify-center sm:items-center">
+    <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-delete></div>
+    <div class="admin-sheet relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+      <div class="mb-1 flex items-center justify-between">
+        <h2 class="font-display text-lg font-bold text-charcoal">Διαγραφή</h2>
+        <button data-close-delete type="button" class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <p id="delete-modal-info" class="text-sm text-charcoal-muted"></p>
+      <p id="delete-modal-error" class="mt-2 hidden text-sm text-red-600"></p>
+      <div class="mt-4 space-y-2">
+        <button id="delete-only-btn" type="button"
+          class="min-h-12 w-full rounded-full border border-red-200 px-6 py-3 font-display text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50">
+          Μόνο αυτή την καταχώρηση
+        </button>
+        <button id="delete-series-btn" type="button"
+          class="min-h-12 w-full rounded-full border border-red-200 px-6 py-3 font-display text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"></button>
+        <button id="delete-upcoming-btn" type="button"
+          class="min-h-12 w-full rounded-full border border-red-200 px-6 py-3 font-display text-sm font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-50"></button>
+        <button type="button" data-close-delete
+          class="min-h-12 w-full rounded-full border border-slate-200 px-6 py-3 font-display text-sm font-semibold text-charcoal transition hover:bg-sand">
+          Άκυρο
+        </button>
+      </div>
+    </div>
+  </div>
 </AdminLayout>
 
 <style>
@@ -1611,7 +1640,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const blockModal = document.getElementById("block-modal")!;
   const detailSheet = document.getElementById("detail-sheet")!;
   const repeatModal = document.getElementById("repeat-modal")!;
-  const allModals = [apptModal, blockModal, detailSheet, repeatModal];
+  const deleteModal = document.getElementById("delete-modal")!;
+  const allModals = [apptModal, blockModal, detailSheet, repeatModal, deleteModal];
   const openModal = (m: HTMLElement) => {
     m.classList.remove("hidden");
     m.classList.add("flex");
@@ -2148,8 +2178,16 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     hideApptPreview();
     hideCtxMenu();
     selectedAppt = a;
-    document.getElementById("detail-title")!.textContent =
-      a.is_blocked_time ? (a.service || "Κλειστό") : (a.patients?.name ?? "Ραντεβού");
+    const detailTitle = document.getElementById("detail-title")!;
+    if (!a.is_blocked_time && a.patient_id) {
+      // Name links to the client profile (files, notes, history)
+      detailTitle.innerHTML =
+        `<a href="/admin/client?id=${a.patient_id}" ` +
+        `class="underline decoration-spine/40 underline-offset-4 transition hover:text-spine">` +
+        `${escHtml(a.patients?.name ?? "Ραντεβού")}</a>`;
+    } else {
+      detailTitle.textContent = a.is_blocked_time ? (a.service || "Κλειστό") : "Ραντεβού";
+    }
 
     detailStartInput.value = toTimeInputValue(a.start_time);
     detailEndInput.value = toTimeInputValue(a.end_time);
@@ -2243,12 +2281,39 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const when = new Date(n.created_at).toLocaleDateString("el-GR", {
       day: "numeric", month: "short", year: "numeric",
     });
+    // Only master accounts (Egly, Charalambos) may delete notes
+    const delBtn = isMasterAccount(adminEmail)
+      ? `<button type="button" data-delete-note="${n.id}"
+          class="flex h-8 w-8 flex-none items-center justify-center rounded-full text-red-600 transition hover:bg-red-50"
+          aria-label="Διαγραφή σημείωσης">
+          <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 4h10M6 4V3h4v1M6.5 7v5M9.5 7v5M4.5 4l.7 9h5.6l.7-9"/></svg>
+        </button>`
+      : "";
     return `
       <li class="rounded-lg bg-sand px-3 py-2">
-        <p class="whitespace-pre-line text-sm text-charcoal">${escHtml(n.body)}</p>
+        <div class="flex items-start justify-between gap-2">
+          <p class="min-w-0 whitespace-pre-line text-sm text-charcoal">${escHtml(n.body)}</p>
+          ${delBtn}
+        </div>
         <p class="mt-1 text-[11px] font-medium text-charcoal-muted">${escHtml(author)} · ${when}</p>
       </li>`;
   }
+
+  staffNotesList.addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-delete-note]");
+    if (!btn || !selectedAppt) return;
+    if (!isMasterAccount(adminEmail)) return;
+    if (!confirm("Διαγραφή αυτής της σημείωσης;")) return;
+    const { error } = await supabase
+      .from("appointment_notes")
+      .delete()
+      .eq("id", btn.dataset.deleteNote);
+    if (error) {
+      alert(`Η διαγραφή απέτυχε: ${error.message}`);
+      return;
+    }
+    loadStaffNotes(selectedAppt.id);
+  });
 
   async function loadStaffNotes(appointmentId: string) {
     const token = ++staffNotesToken;
@@ -2514,23 +2579,118 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     refresh();
   });
 
+  // ── Delete: single entry, whole repeat series, or all upcoming of the patient ──
+  const deleteInfo = document.getElementById("delete-modal-info")!;
+  const deleteError = document.getElementById("delete-modal-error")!;
+  const deleteOnlyBtn = document.getElementById("delete-only-btn") as HTMLButtonElement;
+  const deleteSeriesBtn = document.getElementById("delete-series-btn") as HTMLButtonElement;
+  const deleteUpcomingBtn = document.getElementById("delete-upcoming-btn") as HTMLButtonElement;
+
+  deleteModal.querySelectorAll("[data-close-delete]").forEach((el) =>
+    el.addEventListener("click", () => closeModal(deleteModal)),
+  );
+
+  async function runDelete(mode: "one" | "series" | "upcoming") {
+    const a = selectedAppt;
+    if (!a) return;
+    const nowIso = new Date().toISOString();
+    const btns = [deleteOnlyBtn, deleteSeriesBtn, deleteUpcomingBtn];
+    btns.forEach((b) => (b.disabled = true));
+    deleteError.classList.add("hidden");
+
+    let error: { message: string } | null = null;
+    if (mode === "series" && a.recurrence_group) {
+      ({ error } = await supabase
+        .from("appointments")
+        .delete()
+        .eq("recurrence_group", a.recurrence_group)
+        .gte("start_time", nowIso)
+        .neq("id", a.id));
+    } else if (mode === "upcoming" && a.patient_id) {
+      let q = supabase
+        .from("appointments")
+        .delete()
+        .eq("patient_id", a.patient_id)
+        .gte("start_time", nowIso)
+        .neq("id", a.id);
+      // Non-masters only clear their own calendar
+      if (!isMasterAccount(adminEmail)) q = q.eq("therapist_id", a.therapist_id ?? "");
+      ({ error } = await q);
+    }
+    if (!error) {
+      ({ error } = await supabase.from("appointments").delete().eq("id", a.id));
+    }
+    btns.forEach((b) => (b.disabled = false));
+    if (error) {
+      deleteError.textContent = `Η διαγραφή απέτυχε: ${error.message}`;
+      deleteError.classList.remove("hidden");
+      return;
+    }
+    closeModal(deleteModal);
+    closeModal(detailSheet);
+    refresh();
+  }
+
+  deleteOnlyBtn.addEventListener("click", () => void runDelete("one"));
+  deleteSeriesBtn.addEventListener("click", () => void runDelete("series"));
+  deleteUpcomingBtn.addEventListener("click", () => void runDelete("upcoming"));
+
   document.getElementById("detail-delete")!.addEventListener("click", async () => {
-    if (!selectedAppt) return;
-    if (!canDelete(selectedAppt)) {
+    const a = selectedAppt;
+    if (!a) return;
+    if (!canDelete(a)) {
       alert("Μπορείτε να διαγράψετε μόνο τα δικά σας ραντεβού.");
       return;
     }
-    if (!confirm("Σίγουρα θέλετε να διαγράψετε αυτή την καταχώρηση;")) return;
-    const deleteBtn = document.getElementById("detail-delete") as HTMLButtonElement;
-    deleteBtn.disabled = true;
-    const { error } = await supabase.from("appointments").delete().eq("id", selectedAppt.id);
-    deleteBtn.disabled = false;
-    if (error) {
-      alert(`Η διαγραφή απέτυχε: ${error.message}`);
+
+    // How many other entries would the bulk options touch?
+    const nowIso = new Date().toISOString();
+    let seriesCount = 0;
+    let upcomingCount = 0;
+    if (a.recurrence_group) {
+      const { count } = await supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("recurrence_group", a.recurrence_group)
+        .neq("id", a.id)
+        .gte("start_time", nowIso);
+      seriesCount = count ?? 0;
+    }
+    if (!a.is_blocked_time && a.patient_id) {
+      let q = supabase
+        .from("appointments")
+        .select("id", { count: "exact", head: true })
+        .eq("patient_id", a.patient_id)
+        .neq("id", a.id)
+        .neq("status", "cancelled")
+        .gte("start_time", nowIso);
+      if (!isMasterAccount(adminEmail)) q = q.eq("therapist_id", a.therapist_id ?? "");
+      const { count } = await q;
+      upcomingCount = count ?? 0;
+    }
+
+    if (!seriesCount && !upcomingCount) {
+      if (!confirm("Σίγουρα θέλετε να διαγράψετε αυτή την καταχώρηση;")) return;
+      const deleteBtn = document.getElementById("detail-delete") as HTMLButtonElement;
+      deleteBtn.disabled = true;
+      const { error } = await supabase.from("appointments").delete().eq("id", a.id);
+      deleteBtn.disabled = false;
+      if (error) {
+        alert(`Η διαγραφή απέτυχε: ${error.message}`);
+        return;
+      }
+      closeModal(detailSheet);
+      refresh();
       return;
     }
-    closeModal(detailSheet);
-    refresh();
+
+    deleteInfo.textContent = "Η καταχώρηση συνδέεται με άλλες. Τι θέλετε να διαγραφεί;";
+    deleteSeriesBtn.classList.toggle("hidden", !seriesCount);
+    deleteSeriesBtn.textContent = `Αυτή + τις επόμενες επαναλήψεις (${seriesCount})`;
+    deleteUpcomingBtn.classList.toggle("hidden", !upcomingCount);
+    deleteUpcomingBtn.textContent = `Αυτή + όλα τα επερχόμενα του πελάτη (${upcomingCount})`;
+    deleteError.classList.add("hidden");
+    openModal(deleteModal);
   });
 
   // ── Closed-day booking requests (visible to master accounts only) ──

@@ -613,9 +613,10 @@ const services = BOOKABLE_SERVICES.map((s) => {
         return;
       }
 
-      const busy = (data ?? []).map((b: { busy_start: string; busy_end: string }) => ({
+      const busy = (data ?? []).map((b: { busy_start: string; busy_end: string; is_block?: boolean }) => ({
         start: new Date(b.busy_start).getTime(),
         end: new Date(b.busy_end).getTime(),
+        block: !!b.is_block,
       }));
       const capacity = slotCapacityForService(payload.serviceKey);
 
@@ -626,10 +627,13 @@ const services = BOOKABLE_SERVICES.map((s) => {
           const s = new Date(day); s.setHours(Math.floor(m / 60), m % 60, 0, 0);
           const e = s.getTime() + SLOT_MIN * 60_000;
           if (s.getTime() < now + MIN_LEAD_MS) continue;
-          const overlaps = busy.filter(
+          const hits = busy.filter(
             (b: { start: number; end: number }) => b.start < e && b.end > s.getTime(),
-          ).length;
-          if (overlaps >= capacity) continue;
+          );
+          // Blocked time on the calendar closes the slot completely,
+          // no matter how many therapists would otherwise be free.
+          if (hits.some((b: { block: boolean }) => b.block)) continue;
+          if (hits.length >= capacity) continue;
           slots.push(s);
         }
       }
