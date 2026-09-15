@@ -24,7 +24,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 });
 ---
 
-<AdminLayout title="Πρόγραμμα" active="calendar">
+<AdminLayout title="Πρόγραμμα" active="calendar" wide>
   {/* ── Date navigation + view toggle ── */}
   <div class="mb-3 flex items-center justify-between gap-2">
     <button id="cal-prev" class="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition active:bg-sand hover:border-spine hover:text-spine" aria-label="Προηγούμενο">
@@ -43,7 +43,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     <button id="view-day-btn" type="button"
       class="view-btn flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 font-display text-xs font-semibold transition">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="2" y="3" width="12" height="11" rx="1.5"/><path d="M2 6h12M5 1v3M11 1v3"/></svg>
-      Ημέρα
+      Σήμερα
     </button>
     <button id="view-month-btn" type="button"
       class="view-btn flex min-h-11 flex-1 items-center justify-center gap-1.5 rounded-full px-3 py-2 font-display text-xs font-semibold transition">
@@ -82,6 +82,19 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       <h2 class="font-display text-sm font-bold text-charcoal">Αιτήματα για κλειστές μέρες</h2>
     </div>
     <ul id="requests-list" class="space-y-2"></ul>
+  </div>
+
+  {/* ── Cancelled bookings (master accounts only, collapsed by default) ── */}
+  <div id="cancelled-banner" class="mb-3 hidden overflow-hidden rounded-2xl border border-slate-200 bg-white">
+    <button id="cancelled-toggle" type="button"
+      class="flex min-h-12 w-full items-center justify-between gap-2 px-4 py-3 text-left transition hover:bg-sand">
+      <span class="flex items-center gap-2">
+        <span id="cancelled-count" class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-400 text-[11px] font-bold text-white">0</span>
+        <span class="font-display text-sm font-bold text-charcoal">Ακυρωμένες κρατήσεις</span>
+      </span>
+      <svg id="cancelled-chevron" class="h-4 w-4 text-charcoal-muted transition-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+    </button>
+    <ul id="cancelled-list" class="hidden space-y-2 border-t border-slate-100 p-3"></ul>
   </div>
 
   {/* ── Actions (day view only; FAB covers primary on phone) ── */}
@@ -1629,7 +1642,17 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     refresh();
   });
 
-  viewDayBtn.addEventListener("click", () => setViewMode("day"));
+  // "Σήμερα": jump to today's date in day view and scroll to the current time.
+  viewDayBtn.addEventListener("click", () => {
+    currentDay = new Date();
+    currentDay.setHours(0, 0, 0, 0);
+    viewMonth = startOfMonth(currentDay);
+    setViewMode("day");
+    positionNowLine();
+    if (!nowLine.classList.contains("hidden")) {
+      nowLine.scrollIntoView({ block: "center", behavior: "smooth" });
+    }
+  });
   viewMonthBtn.addEventListener("click", () => {
     viewMonth = startOfMonth(currentDay);
     setViewMode("month");
@@ -2603,14 +2626,18 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
     let error: { message: string } | null = null;
     if (mode === "series" && deleteSeriesIds.length) {
-      ({ error } = await supabase
-        .from("appointments")
-        .delete()
-        .in("id", deleteSeriesIds));
+      // Patient appointments are soft-cancelled (kept for the masters' cancelled
+      // list); blocked time is just removed.
+      ({ error } = a.is_blocked_time
+        ? await supabase.from("appointments").delete().in("id", deleteSeriesIds)
+        : await supabase
+            .from("appointments")
+            .update({ status: "cancelled" })
+            .in("id", deleteSeriesIds));
     } else if (mode === "upcoming" && a.patient_id) {
       let q = supabase
         .from("appointments")
-        .delete()
+        .update({ status: "cancelled" })
         .eq("patient_id", a.patient_id)
         .gte("start_time", nowIso)
         .neq("id", a.id);
@@ -2619,7 +2646,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       ({ error } = await q);
     }
     if (!error) {
-      ({ error } = await supabase.from("appointments").delete().eq("id", a.id));
+      ({ error } = a.is_blocked_time
+        ? await supabase.from("appointments").delete().eq("id", a.id)
+        : await supabase
+            .from("appointments")
+            .update({ status: "cancelled" })
+            .eq("id", a.id));
     }
     btns.forEach((b) => (b.disabled = false));
     if (error) {
@@ -2630,6 +2662,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     closeModal(deleteModal);
     closeModal(detailSheet);
     refresh();
+    void loadCancelled();
   }
 
   deleteOnlyBtn.addEventListener("click", () => void runDelete("one"));
@@ -2697,7 +2730,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       if (!confirm("Σίγουρα θέλετε να διαγράψετε αυτή την καταχώρηση;")) return;
       const deleteBtn = document.getElementById("detail-delete") as HTMLButtonElement;
       deleteBtn.disabled = true;
-      const { error } = await supabase.from("appointments").delete().eq("id", a.id);
+      const { error } = a.is_blocked_time
+        ? await supabase.from("appointments").delete().eq("id", a.id)
+        : await supabase
+            .from("appointments")
+            .update({ status: "cancelled" })
+            .eq("id", a.id);
       deleteBtn.disabled = false;
       if (error) {
         alert(`Η διαγραφή απέτυχε: ${error.message}`);
@@ -2705,6 +2743,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       }
       closeModal(detailSheet);
       refresh();
+      void loadCancelled();
       return;
     }
 
@@ -2847,8 +2886,106 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
   });
 
+  // ── Cancelled bookings list (visible to master accounts only) ──
+  const cancelledBanner = document.getElementById("cancelled-banner")!;
+  const cancelledToggle = document.getElementById("cancelled-toggle")!;
+  const cancelledChevron = document.getElementById("cancelled-chevron")!;
+  const cancelledList = document.getElementById("cancelled-list")!;
+  const cancelledCount = document.getElementById("cancelled-count")!;
+
+  cancelledToggle.addEventListener("click", () => {
+    const open = cancelledList.classList.toggle("hidden");
+    cancelledChevron.classList.toggle("rotate-180", !open);
+  });
+
+  let cancelledAppts: Appointment[] = [];
+
+  async function loadCancelled() {
+    if (!isMasterAccount(adminEmail)) return;
+    // Recent + upcoming cancellations (last 60 days of appointment dates).
+    const since = new Date();
+    since.setDate(since.getDate() - 60);
+    const { data, error } = await supabase
+      .from("appointments")
+      .select(APPT_SELECT)
+      .eq("status", "cancelled")
+      .eq("is_blocked_time", false)
+      .gte("start_time", since.toISOString())
+      .order("start_time", { ascending: false })
+      .limit(100);
+    if (error) return;
+
+    cancelledAppts = (data ?? []) as Appointment[];
+    cancelledBanner.classList.toggle("hidden", cancelledAppts.length === 0);
+    cancelledCount.textContent = String(cancelledAppts.length);
+    cancelledList.innerHTML = cancelledAppts
+      .map((a) => {
+        const start = new Date(a.start_time);
+        const when =
+          start.toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" }) +
+          " · " +
+          start.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+        return `
+        <li class="rounded-xl bg-sand p-3" data-cancelled-id="${a.id}">
+          <div class="flex items-start justify-between gap-2">
+            <div class="min-w-0">
+              <p class="truncate font-display text-sm font-bold text-charcoal">${escHtml(a.patients?.name ?? "—")}</p>
+              <p class="mt-0.5 text-xs font-medium text-charcoal-muted">${when} · ${escHtml(therapistName(a))}${a.service ? ` · ${escHtml(a.service)}` : ""}</p>
+            </div>
+          </div>
+          <div class="mt-2 grid grid-cols-2 gap-2">
+            <button type="button" data-cancelled-restore
+              class="min-h-10 rounded-full border border-spine/30 px-3 py-2 font-display text-xs font-semibold text-spine transition hover:bg-spine/5 disabled:opacity-60">
+              Επαναφορά
+            </button>
+            <button type="button" data-cancelled-purge
+              class="min-h-10 rounded-full border border-red-200 px-3 py-2 font-display text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60">
+              Οριστική διαγραφή
+            </button>
+          </div>
+        </li>`;
+      })
+      .join("");
+  }
+
+  cancelledList.addEventListener("click", async (e) => {
+    const target = e.target as HTMLElement;
+    const item = target.closest<HTMLElement>("[data-cancelled-id]");
+    if (!item) return;
+    const appt = cancelledAppts.find((a) => a.id === item.dataset.cancelledId);
+    if (!appt) return;
+
+    if (target.closest("[data-cancelled-restore]")) {
+      const btn = target.closest<HTMLButtonElement>("[data-cancelled-restore]")!;
+      btn.disabled = true;
+      const { error } = await supabase
+        .from("appointments")
+        .update({ status: "confirmed" })
+        .eq("id", appt.id);
+      btn.disabled = false;
+      if (error) {
+        alert(`Η επαναφορά απέτυχε: ${error.message}`);
+        return;
+      }
+      await loadCancelled();
+      refresh();
+    } else if (target.closest("[data-cancelled-purge]")) {
+      if (!confirm("Οριστική διαγραφή αυτής της κράτησης; Δεν αναιρείται.")) return;
+      const btn = target.closest<HTMLButtonElement>("[data-cancelled-purge]")!;
+      btn.disabled = true;
+      const { error } = await supabase.from("appointments").delete().eq("id", appt.id);
+      btn.disabled = false;
+      if (error) {
+        alert(`Η διαγραφή απέτυχε: ${error.message}`);
+        return;
+      }
+      await loadCancelled();
+    }
+  });
+
   ensureAdminEmail().then(() => {
     setViewMode("day");
     void loadBookingRequests();
+    void loadCancelled();
   });
 </script>

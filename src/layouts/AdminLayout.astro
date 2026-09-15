@@ -6,9 +6,12 @@ interface Props {
   title?: string;
   /** current nav item for highlighting */
   active?: "calendar" | "clients" | "payments";
+  /** Wider container on desktop (used by the calendar page). */
+  wide?: boolean;
 }
 
-const { title = "Admin", active } = Astro.props;
+const { title = "Admin", active, wide = false } = Astro.props;
+const containerWidth = wide ? "max-w-7xl" : "max-w-5xl";
 ---
 
 <!doctype html>
@@ -49,7 +52,7 @@ const { title = "Admin", active } = Astro.props;
       class="sticky top-0 z-40 border-b border-slate-200 bg-white/95 backdrop-blur"
       style="padding-top: env(safe-area-inset-top)"
     >
-      <div class="mx-auto flex h-12 max-w-5xl items-center justify-between px-3 sm:h-14 sm:px-4">
+      <div class:list={["mx-auto flex h-12 items-center justify-between px-3 sm:h-14 sm:px-4", containerWidth]}>
         <a href="/admin" class="flex min-h-11 items-center gap-2">
           <img src="/orc-logo.png" alt="ORC" class="h-7 w-auto sm:h-8" />
           <span class="font-display text-sm font-bold text-charcoal">Admin</span>
@@ -64,7 +67,7 @@ const { title = "Admin", active } = Astro.props;
     </header>
 
     {/* Page content — bottom padding clears the fixed bottom nav + FAB */}
-    <main class="mx-auto max-w-5xl px-3 pb-32 pt-3 sm:px-4 sm:pb-28 sm:pt-5">
+    <main class:list={["mx-auto px-3 pb-32 pt-3 sm:px-4 sm:pb-28 sm:pt-5", containerWidth]}>
       <slot />
     </main>
 
@@ -73,7 +76,7 @@ const { title = "Admin", active } = Astro.props;
       class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur"
       style="padding-bottom: env(safe-area-inset-bottom)"
     >
-      <div class="mx-auto grid h-[4.25rem] max-w-5xl grid-cols-3">
+      <div class:list={["mx-auto grid h-[4.25rem] grid-cols-3", containerWidth]}>
         <a
           href="/admin"
           class:list={[
