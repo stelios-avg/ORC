@@ -97,6 +97,9 @@ export interface Appointment {
   created_by: string | null;
   /** Shared id linking appointments created as a recurring series. */
   recurrence_group: string | null;
+  /** Admin email that cancelled it (masters' cancelled-bookings list). */
+  cancelled_by: string | null;
+  cancelled_at: string | null;
   created_at: string;
   /** joined relation (when selected with `patients(...)`) */
   patients?: Pick<Patient, "id" | "name" | "phone"> | null;

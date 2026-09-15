@@ -991,8 +991,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     // Taller fine rows so each 45′ square stays easy to tap
     document.documentElement.style.setProperty("--cal-row", isNarrow() ? "22px" : "20px");
 
-    colsWrap.style.width = multi ? `${cols.length * colMin}px` : "";
-    colsWrap.style.minWidth = multi ? `${cols.length * colMin}px` : "100%";
+    // Columns need at least colMin each (horizontal scroll on phones), but
+    // stretch evenly to fill the container when there is room (desktop).
+    colsWrap.style.width = "";
+    colsWrap.style.minWidth = multi ? `max(${cols.length * colMin}px, 100%)` : "100%";
     scrollHint.classList.toggle("hidden", !(multi && isNarrow()));
 
     colHeadersInner.style.gridTemplateColumns = template;
@@ -2616,6 +2618,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   /** Upcoming ids the "repeats" option would delete (series + same weekday/time). */
   let deleteSeriesIds: string[] = [];
 
+  /** Soft-cancel payload — records who cancelled and when for the masters' list. */
+  const cancelStamp = () => ({
+    status: "cancelled",
+    cancelled_by: adminEmail,
+    cancelled_at: new Date().toISOString(),
+  });
+
   async function runDelete(mode: "one" | "series" | "upcoming") {
     const a = selectedAppt;
     if (!a) return;
@@ -2632,12 +2641,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         ? await supabase.from("appointments").delete().in("id", deleteSeriesIds)
         : await supabase
             .from("appointments")
-            .update({ status: "cancelled" })
+            .update(cancelStamp())
             .in("id", deleteSeriesIds));
     } else if (mode === "upcoming" && a.patient_id) {
       let q = supabase
         .from("appointments")
-        .update({ status: "cancelled" })
+        .update(cancelStamp())
         .eq("patient_id", a.patient_id)
         .gte("start_time", nowIso)
         .neq("id", a.id);
@@ -2650,7 +2659,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         ? await supabase.from("appointments").delete().eq("id", a.id)
         : await supabase
             .from("appointments")
-            .update({ status: "cancelled" })
+            .update(cancelStamp())
             .eq("id", a.id));
     }
     btns.forEach((b) => (b.disabled = false));
@@ -2734,7 +2743,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         ? await supabase.from("appointments").delete().eq("id", a.id)
         : await supabase
             .from("appointments")
-            .update({ status: "cancelled" })
+            .update(cancelStamp())
             .eq("id", a.id);
       deleteBtn.disabled = false;
       if (error) {
@@ -2925,63 +2934,26 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           start.toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" }) +
           " · " +
           start.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+        const who = a.cancelled_by
+          ? (creatorDisplayName(a.cancelled_by) ?? a.cancelled_by)
+          : null;
+        const at = a.cancelled_at
+          ? new Date(a.cancelled_at).toLocaleDateString("el-GR", { day: "numeric", month: "short" })
+          : null;
+        const byLine = who
+          ? `<p class="mt-1 text-[11px] font-medium text-red-600">Ακύρωση από ${escHtml(who)}${at ? ` · ${at}` : ""}</p>`
+          : "";
         return `
         <li class="rounded-xl bg-sand p-3" data-cancelled-id="${a.id}">
-          <div class="flex items-start justify-between gap-2">
-            <div class="min-w-0">
-              <p class="truncate font-display text-sm font-bold text-charcoal">${escHtml(a.patients?.name ?? "—")}</p>
-              <p class="mt-0.5 text-xs font-medium text-charcoal-muted">${when} · ${escHtml(therapistName(a))}${a.service ? ` · ${escHtml(a.service)}` : ""}</p>
-            </div>
-          </div>
-          <div class="mt-2 grid grid-cols-2 gap-2">
-            <button type="button" data-cancelled-restore
-              class="min-h-10 rounded-full border border-spine/30 px-3 py-2 font-display text-xs font-semibold text-spine transition hover:bg-spine/5 disabled:opacity-60">
-              Επαναφορά
-            </button>
-            <button type="button" data-cancelled-purge
-              class="min-h-10 rounded-full border border-red-200 px-3 py-2 font-display text-xs font-semibold text-red-600 transition hover:bg-red-50 disabled:opacity-60">
-              Οριστική διαγραφή
-            </button>
+          <div class="min-w-0">
+            <p class="truncate font-display text-sm font-bold text-charcoal">${escHtml(a.patients?.name ?? "—")}</p>
+            <p class="mt-0.5 text-xs font-medium text-charcoal-muted">${when} · ${escHtml(therapistName(a))}${a.service ? ` · ${escHtml(a.service)}` : ""}</p>
+            ${byLine}
           </div>
         </li>`;
       })
       .join("");
   }
-
-  cancelledList.addEventListener("click", async (e) => {
-    const target = e.target as HTMLElement;
-    const item = target.closest<HTMLElement>("[data-cancelled-id]");
-    if (!item) return;
-    const appt = cancelledAppts.find((a) => a.id === item.dataset.cancelledId);
-    if (!appt) return;
-
-    if (target.closest("[data-cancelled-restore]")) {
-      const btn = target.closest<HTMLButtonElement>("[data-cancelled-restore]")!;
-      btn.disabled = true;
-      const { error } = await supabase
-        .from("appointments")
-        .update({ status: "confirmed" })
-        .eq("id", appt.id);
-      btn.disabled = false;
-      if (error) {
-        alert(`Η επαναφορά απέτυχε: ${error.message}`);
-        return;
-      }
-      await loadCancelled();
-      refresh();
-    } else if (target.closest("[data-cancelled-purge]")) {
-      if (!confirm("Οριστική διαγραφή αυτής της κράτησης; Δεν αναιρείται.")) return;
-      const btn = target.closest<HTMLButtonElement>("[data-cancelled-purge]")!;
-      btn.disabled = true;
-      const { error } = await supabase.from("appointments").delete().eq("id", appt.id);
-      btn.disabled = false;
-      if (error) {
-        alert(`Η διαγραφή απέτυχε: ${error.message}`);
-        return;
-      }
-      await loadCancelled();
-    }
-  });
 
   ensureAdminEmail().then(() => {
     setViewMode("day");
