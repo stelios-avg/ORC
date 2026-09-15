@@ -45,6 +45,12 @@ export const NAV_LINKS: NavLink[] = [
  * so the build never breaks. Set PUBLIC_FRESHA_BOOKING_URL in your .env /
  * Vercel project settings.
  */
+/**
+ * Public website booking. Flip to `true` when the clinic wants to take
+ * online appointments again (and set public.public_booking_is_open() to true).
+ */
+export const PUBLIC_BOOKING_ENABLED = false;
+
 export const FRESHA_BOOKING_URL: string =
   import.meta.env.PUBLIC_FRESHA_BOOKING_URL ||
   "https://www.fresha.com/a/orc-til-96322622-osteopathitikos-haralampos-neokleoys-strovolos-aitolon-aitolon-bnk279fh";

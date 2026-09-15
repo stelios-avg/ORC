@@ -179,6 +179,10 @@ const el = {
     successTitle: "Το ραντεβού σας κλείστηκε!",
     successMsg: "Θα επικοινωνήσουμε μαζί σας για επιβεβαίωση. Σας περιμένουμε!",
     successClose: "Τέλεια, ευχαριστώ",
+    pausedTitle: "Προσωρινά κλειστές οι online κρατήσεις",
+    pausedBody:
+      "Δεν δεχόμαστε ραντεβού από την ιστοσελίδα προς το παρόν. Καλέστε μας για να κλείσετε.",
+    pausedCall: "Κλήση",
   },
 
   bioPage: {
@@ -516,6 +520,10 @@ const en = {
     successTitle: "Your appointment is booked!",
     successMsg: "We'll be in touch to confirm. See you soon!",
     successClose: "Great, thanks",
+    pausedTitle: "Online booking is temporarily closed",
+    pausedBody:
+      "We are not taking appointments through the website at the moment. Please call us to book.",
+    pausedCall: "Call",
   },
 
   bioPage: {
