@@ -2590,6 +2590,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     el.addEventListener("click", () => closeModal(deleteModal)),
   );
 
+  /** Upcoming ids the "repeats" option would delete (series + same weekday/time). */
+  let deleteSeriesIds: string[] = [];
+
   async function runDelete(mode: "one" | "series" | "upcoming") {
     const a = selectedAppt;
     if (!a) return;
@@ -2599,13 +2602,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     deleteError.classList.add("hidden");
 
     let error: { message: string } | null = null;
-    if (mode === "series" && a.recurrence_group) {
+    if (mode === "series" && deleteSeriesIds.length) {
       ({ error } = await supabase
         .from("appointments")
         .delete()
-        .eq("recurrence_group", a.recurrence_group)
-        .gte("start_time", nowIso)
-        .neq("id", a.id));
+        .in("id", deleteSeriesIds));
     } else if (mode === "upcoming" && a.patient_id) {
       let q = supabase
         .from("appointments")
@@ -2645,17 +2646,40 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
     // How many other entries would the bulk options touch?
     const nowIso = new Date().toISOString();
-    let seriesCount = 0;
     let upcomingCount = 0;
-    if (a.recurrence_group) {
-      const { count } = await supabase
-        .from("appointments")
-        .select("id", { count: "exact", head: true })
-        .eq("recurrence_group", a.recurrence_group)
-        .neq("id", a.id)
-        .gte("start_time", nowIso);
-      seriesCount = count ?? 0;
-    }
+
+    // "Repeats" = same recurrence series OR same weekday & time on the same
+    // calendar (catches series made before groups existed, without ticking
+    // them one by one).
+    deleteSeriesIds = [];
+    const src = new Date(a.start_time);
+    const isSameSlot = (iso: string) => {
+      const d = new Date(iso);
+      return (
+        d.getDay() === src.getDay() &&
+        d.getHours() === src.getHours() &&
+        d.getMinutes() === src.getMinutes()
+      );
+    };
+    let sq = supabase
+      .from("appointments")
+      .select("id, start_time, recurrence_group")
+      .eq("therapist_id", a.therapist_id ?? "")
+      .eq("is_blocked_time", a.is_blocked_time)
+      .neq("status", "cancelled")
+      .neq("id", a.id)
+      .gte("start_time", nowIso);
+    if (!a.is_blocked_time) sq = sq.eq("patient_id", a.patient_id ?? "");
+    const { data: seriesRows } = await sq;
+    deleteSeriesIds = ((seriesRows ?? []) as Pick<Appointment, "id" | "start_time" | "recurrence_group">[])
+      .filter(
+        (r) =>
+          (a.recurrence_group && r.recurrence_group === a.recurrence_group) ||
+          isSameSlot(r.start_time),
+      )
+      .map((r) => r.id);
+    const seriesCount = deleteSeriesIds.length;
+
     if (!a.is_blocked_time && a.patient_id) {
       let q = supabase
         .from("appointments")
@@ -2686,7 +2710,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
     deleteInfo.textContent = "Η καταχώρηση συνδέεται με άλλες. Τι θέλετε να διαγραφεί;";
     deleteSeriesBtn.classList.toggle("hidden", !seriesCount);
-    deleteSeriesBtn.textContent = `Αυτή + τις επόμενες επαναλήψεις (${seriesCount})`;
+    deleteSeriesBtn.textContent = `Αυτή + τις επαναλήψεις ίδιας μέρας & ώρας (${seriesCount})`;
     deleteUpcomingBtn.classList.toggle("hidden", !upcomingCount);
     deleteUpcomingBtn.textContent = `Αυτή + όλα τα επερχόμενα του πελάτη (${upcomingCount})`;
     deleteError.classList.add("hidden");
