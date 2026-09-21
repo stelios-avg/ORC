@@ -11,53 +11,60 @@ interface Props {
   promiseTitle: string;
   promiseBody: string;
   promiseCta: string;
+  readMore: string;
+  closeLabel: string;
 }
 
-const { team, promiseTitle, promiseBody, promiseCta } = Astro.props;
+const { team, promiseTitle, promiseBody, promiseCta, readMore, closeLabel } = Astro.props;
+
+const members = team.map((m) => ({
+  name: m.name,
+  role: m.role,
+  img: m.img,
+  bio: Array.isArray(m.bio) ? [...m.bio] : [m.bio],
+}));
 ---
 
 <section class="bg-white py-16 sm:py-20">
-  <div class="mx-auto max-w-4xl sm:px-6 lg:px-8">
-    <div
-      id="team-scroller"
-      class="team-scroller flex snap-x snap-mandatory gap-4 overflow-x-auto px-[7.5vw] pb-3 no-scrollbar sm:mx-0 sm:grid sm:snap-none sm:grid-cols-1 sm:gap-10 sm:overflow-visible sm:px-0 sm:pb-0"
-    >
-      {team.map((m, i) => {
-        const paras = Array.isArray(m.bio) ? m.bio : [m.bio];
-        return (
-          <article
-            class="team-card w-[85vw] max-w-sm flex-none snap-center overflow-hidden rounded-2xl bg-sand shadow-sm ring-1 ring-slate-100 sm:w-auto sm:max-w-none sm:grid sm:grid-cols-[200px_1fr] lg:grid-cols-[240px_1fr]"
-            data-team-card
-            style={`--i: ${i}`}
-          >
-            <div class="aspect-[4/5] overflow-hidden sm:aspect-auto">
-              <img src={m.img} alt={m.name} width="640" height="800"
-                class="h-full w-full object-cover" loading="lazy" />
-            </div>
-            <div class="flex flex-col justify-center p-5 sm:p-8">
-              <h2 class="font-display text-xl font-bold text-charcoal sm:text-2xl">{m.name}</h2>
-              <p class="mt-1 font-display text-sm font-semibold text-spine">{m.role}</p>
-              {paras.map((p) => (
-                <p class="mt-3 text-[15px] leading-7 text-charcoal-muted sm:text-base">{p}</p>
-              ))}
-            </div>
-          </article>
-        );
-      })}
-    </div>
-
-    <div id="team-dots" class="mt-5 flex items-center justify-center gap-2 sm:hidden" aria-hidden="true">
-      {team.map((_, i) => (
+  <div class="mx-auto max-w-4xl px-4 sm:px-6 lg:px-8">
+    {/* Mobile: compact tappable rows */}
+    <div class="space-y-3 sm:hidden">
+      {members.map((m, i) => (
         <button
           type="button"
-          data-team-dot={String(i)}
-          class:list={[
-            "h-2 rounded-full bg-slate-300 transition-all duration-300 data-[active=true]:w-6 data-[active=true]:bg-spine",
-            i === 0 ? "w-6 bg-spine" : "w-2",
-          ]}
-          data-active={i === 0 ? "true" : "false"}
-          aria-label={`Προφίλ ${i + 1}`}
-        />
+          class="flex w-full items-center gap-3.5 rounded-2xl bg-sand p-3.5 text-left shadow-sm ring-1 ring-slate-100 transition active:bg-sand/80"
+          data-team-open={String(i)}
+        >
+          <img src={m.img} alt="" width="128" height="128"
+            class="h-16 w-16 flex-none rounded-xl object-cover" loading="lazy" />
+          <div class="min-w-0 flex-1">
+            <h2 class="truncate font-display text-base font-bold text-charcoal">{m.name}</h2>
+            <p class="mt-0.5 truncate font-display text-sm font-semibold text-spine">{m.role}</p>
+            <span class="mt-1.5 inline-flex items-center gap-1 font-display text-sm font-semibold text-spine">
+              {readMore}
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 15l6-6 6 6"/></svg>
+            </span>
+          </div>
+        </button>
+      ))}
+    </div>
+
+    {/* Desktop: photo beside full bio */}
+    <div class="hidden space-y-10 sm:block">
+      {members.map((m) => (
+        <article class="overflow-hidden rounded-2xl bg-sand shadow-sm ring-1 ring-slate-100 sm:grid sm:grid-cols-[200px_1fr] lg:grid-cols-[240px_1fr]">
+          <div class="overflow-hidden">
+            <img src={m.img} alt={m.name} width="640" height="800"
+              class="h-full w-full object-cover" loading="lazy" />
+          </div>
+          <div class="flex flex-col justify-center p-8">
+            <h2 class="font-display text-2xl font-bold text-charcoal">{m.name}</h2>
+            <p class="mt-1 font-display text-sm font-semibold text-spine">{m.role}</p>
+            {m.bio.map((p) => (
+              <p class="mt-3 text-base leading-7 text-charcoal-muted">{p}</p>
+            ))}
+          </div>
+        </article>
       ))}
     </div>
 
@@ -72,108 +79,137 @@ const { team, promiseTitle, promiseBody, promiseCta } = Astro.props;
   </div>
 </section>
 
-<style>
-  .team-scroller {
-    -webkit-overflow-scrolling: touch;
-    scroll-padding-inline: 7.5vw;
-  }
+{/* Mobile profile sheet */}
+<div id="team-sheet" class="fixed inset-0 z-[120] hidden sm:hidden" aria-modal="true" role="dialog" aria-labelledby="team-sheet-name">
+  <div class="absolute inset-0 bg-spine-900/55 backdrop-blur-sm" data-team-sheet-close></div>
+  <div
+    id="team-sheet-panel"
+    class="absolute inset-x-0 bottom-0 flex max-h-[92dvh] flex-col rounded-t-3xl bg-white shadow-2xl"
+  >
+    <div data-team-sheet-handle class="flex flex-none items-center justify-between px-4 pb-2 pt-3">
+      <span class="w-11"></span>
+      <span class="h-1.5 w-12 rounded-full bg-slate-300"></span>
+      <button type="button" class="flex h-11 w-11 items-center justify-center rounded-full text-charcoal-muted transition active:bg-sand" data-team-sheet-close aria-label={closeLabel}>
+        <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </div>
+    <div id="team-sheet-scroll" class="min-h-0 flex-1 overflow-y-auto overscroll-contain px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))]">
+      <div class="overflow-hidden rounded-2xl">
+        <img id="team-sheet-img" src="" alt="" class="aspect-[4/5] max-h-[42vh] w-full object-cover" />
+      </div>
+      <h2 id="team-sheet-name" class="mt-5 font-display text-2xl font-bold text-charcoal"></h2>
+      <p id="team-sheet-role" class="mt-1 font-display text-sm font-semibold text-spine"></p>
+      <div id="team-sheet-bio" class="mt-4 space-y-3 pb-4"></div>
+    </div>
+  </div>
+</div>
 
-  .team-card {
-    transform-origin: center center;
-    will-change: transform, opacity;
-  }
-
-  @media (min-width: 640px) {
-    .team-card {
-      transform: none !important;
-      opacity: 1 !important;
-    }
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    .team-card {
-      transform: none !important;
-      opacity: 1 !important;
-    }
-  }
-</style>
+<script type="application/json" id="team-members-data" is:inline set:html={JSON.stringify(members)}></script>
 
 <script>
-  const scroller = document.getElementById("team-scroller");
-  if (scroller) {
-    const cards = Array.from(scroller.querySelectorAll<HTMLElement>("[data-team-card]"));
-    const dots = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-team-dot]"));
-    const desktop = window.matchMedia("(min-width: 640px)");
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+  type TeamMember = { name: string; role: string; img: string; bio: string[] };
 
-    function activeIndex() {
-      const mid = scroller.scrollLeft + scroller.clientWidth / 2;
-      let best = 0;
-      let bestDist = Infinity;
-      cards.forEach((card, i) => {
-        const c = card.offsetLeft + card.offsetWidth / 2;
-        const d = Math.abs(c - mid);
-        if (d < bestDist) {
-          bestDist = d;
-          best = i;
-        }
-      });
-      return best;
+  const sheet = document.getElementById("team-sheet");
+  const panel = document.getElementById("team-sheet-panel") as HTMLElement | null;
+  const handle = document.querySelector("[data-team-sheet-handle]") as HTMLElement | null;
+  const img = document.getElementById("team-sheet-img") as HTMLImageElement | null;
+  const nameEl = document.getElementById("team-sheet-name");
+  const roleEl = document.getElementById("team-sheet-role");
+  const bioEl = document.getElementById("team-sheet-bio");
+  const raw = document.getElementById("team-members-data")?.textContent;
+  const members = (raw ? JSON.parse(raw) : []) as TeamMember[];
+
+  if (sheet && panel && img && nameEl && roleEl && bioEl) {
+    let startY = 0;
+    let dragging = false;
+
+    function fill(m: TeamMember) {
+      img.src = m.img;
+      img.alt = m.name;
+      nameEl.textContent = m.name;
+      roleEl.textContent = m.role;
+      bioEl.replaceChildren(
+        ...m.bio.map((p) => {
+          const el = document.createElement("p");
+          el.className = "text-[15px] leading-7 text-charcoal-muted";
+          el.textContent = p;
+          return el;
+        }),
+      );
     }
 
-    function paint() {
-      if (desktop.matches || reduce.matches) {
-        cards.forEach((card) => {
-          card.style.transform = "";
-          card.style.opacity = "";
-        });
-        return;
-      }
-      const mid = scroller.scrollLeft + scroller.clientWidth / 2;
-      cards.forEach((card) => {
-        const c = card.offsetLeft + card.offsetWidth / 2;
-        const t = Math.min(Math.abs(c - mid) / (card.offsetWidth * 0.85), 1);
-        card.style.opacity = String(1 - t * 0.4);
-        card.style.transform = `scale(${1 - t * 0.08})`;
-      });
-      const i = activeIndex();
-      dots.forEach((dot, n) => {
-        dot.dataset.active = String(n === i);
-      });
+    function open(i: number) {
+      const m = members[i];
+      if (!m) return;
+      fill(m);
+      panel.style.transform = "";
+      sheet.classList.remove("hidden");
+      sheet.offsetHeight;
+      sheet.classList.add("is-open");
+      document.body.classList.add("no-scroll");
     }
 
-    let ticking = false;
-    scroller.addEventListener(
-      "scroll",
-      () => {
-        if (ticking) return;
-        ticking = true;
-        requestAnimationFrame(() => {
-          paint();
-          ticking = false;
-        });
-      },
-      { passive: true },
-    );
-    desktop.addEventListener("change", paint);
-    paint();
+    function close() {
+      sheet.classList.remove("is-open");
+      document.body.classList.remove("no-scroll");
+      window.setTimeout(() => {
+        if (!sheet.classList.contains("is-open")) sheet.classList.add("hidden");
+        panel.style.transform = "";
+      }, 320);
+    }
 
-    dots.forEach((dot) => {
-      dot.addEventListener("click", () => {
-        const i = Number(dot.dataset.teamDot);
-        const card = cards[i];
-        if (!card) return;
-        card.scrollIntoView({ behavior: reduce.matches ? "auto" : "smooth", inline: "center", block: "nearest" });
-      });
+    document.querySelectorAll<HTMLElement>("[data-team-open]").forEach((btn) => {
+      btn.addEventListener("click", () => open(Number(btn.dataset.teamOpen)));
+    });
+    sheet.querySelectorAll("[data-team-sheet-close]").forEach((el) => {
+      el.addEventListener("click", close);
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape" && sheet.classList.contains("is-open")) close();
     });
 
-    // Gentle nudge so it's obvious the row swipes sideways on phones.
-    if (!desktop.matches && !reduce.matches) {
-      const start = () => {
-        scroller.scrollTo({ left: 56, behavior: "smooth" });
-        window.setTimeout(() => scroller.scrollTo({ left: 0, behavior: "smooth" }), 650);
-      };
-      window.setTimeout(start, 700);
-    }
+    handle?.addEventListener("pointerdown", (e) => {
+      if (!sheet.classList.contains("is-open")) return;
+      dragging = true;
+      startY = e.clientY;
+      handle.setPointerCapture(e.pointerId);
+      panel.style.transition = "none";
+    });
+    handle?.addEventListener("pointermove", (e) => {
+      if (!dragging) return;
+      const dy = Math.max(0, e.clientY - startY);
+      panel.style.transform = `translateY(${dy}px)`;
+    });
+    const endDrag = (e: PointerEvent) => {
+      if (!dragging) return;
+      dragging = false;
+      panel.style.transition = "";
+      const dy = Math.max(0, e.clientY - startY);
+      if (dy > 90) close();
+      else panel.style.transform = "";
+    };
+    handle?.addEventListener("pointerup", endDrag);
+    handle?.addEventListener("pointercancel", endDrag);
+
+    window.matchMedia("(min-width: 640px)").addEventListener("change", (e) => {
+      if (e.matches) close();
+    });
   }
 </script>
+
+<style>
+  #team-sheet-panel {
+    transform: translateY(110%);
+    transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1);
+  }
+  #team-sheet.is-open #team-sheet-panel {
+    transform: translateY(0);
+  }
+  #team-sheet [data-team-sheet-close].absolute {
+    opacity: 0;
+    transition: opacity 0.3s ease;
+  }
+  #team-sheet.is-open [data-team-sheet-close].absolute {
+    opacity: 1;
+  }
+</style>

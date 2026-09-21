@@ -31,8 +31,8 @@
     "Sofia Sans", "Sofia Pro", ui-sans-serif, system-ui, -apple-system,
     "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-display:
-    "Sofia Sans", "Sofia Pro", ui-sans-serif, system-ui, -apple-system,
-    "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    "Bodoni Moda", "Playfair Display", "Iowan Old Style", Palatino, Georgia,
+    serif;
 }
 
 /* Hide scrollbar on horizontal swipe carousels */
@@ -47,6 +47,7 @@
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  font-optical-sizing: auto;
 }
 
 body {

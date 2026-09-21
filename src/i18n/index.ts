@@ -220,6 +220,8 @@ const el = {
         ],
       },
     ],
+    readMore: "Διαβάστε περισσότερα",
+    close: "Κλείσιμο",
     promiseTitle: "Η υπόσχεσή μας",
     promiseBody:
       "Δεν θα είστε ποτέ απλώς ένας αριθμός. Αναμένετε άνετες συνεδρίες, σαφείς εξηγήσεις και ένα πρόγραμμα που πραγματικά καταλαβαίνετε.",
@@ -565,6 +567,8 @@ const en = {
         ],
       },
     ],
+    readMore: "Read more",
+    close: "Close",
     promiseTitle: "Our promise",
     promiseBody:
       "You'll never be just a number. Expect unhurried appointments, clear explanations, and a plan you actually understand.",
