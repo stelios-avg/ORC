@@ -1,0 +1,179 @@
+---
+interface Member {
+  name: string;
+  role: string;
+  img: string;
+  bio: string | readonly string[];
+}
+
+interface Props {
+  team: readonly Member[];
+  promiseTitle: string;
+  promiseBody: string;
+  promiseCta: string;
+}
+
+const { team, promiseTitle, promiseBody, promiseCta } = Astro.props;
+---
+
+<section class="bg-white py-16 sm:py-20">
+  <div class="mx-auto max-w-4xl sm:px-6 lg:px-8">
+    <div
+      id="team-scroller"
+      class="team-scroller flex snap-x snap-mandatory gap-4 overflow-x-auto px-[7.5vw] pb-3 no-scrollbar sm:mx-0 sm:grid sm:snap-none sm:grid-cols-1 sm:gap-10 sm:overflow-visible sm:px-0 sm:pb-0"
+    >
+      {team.map((m, i) => {
+        const paras = Array.isArray(m.bio) ? m.bio : [m.bio];
+        return (
+          <article
+            class="team-card w-[85vw] max-w-sm flex-none snap-center overflow-hidden rounded-2xl bg-sand shadow-sm ring-1 ring-slate-100 sm:w-auto sm:max-w-none sm:grid sm:grid-cols-[200px_1fr] lg:grid-cols-[240px_1fr]"
+            data-team-card
+            style={`--i: ${i}`}
+          >
+            <div class="aspect-[4/5] overflow-hidden sm:aspect-auto">
+              <img src={m.img} alt={m.name} width="640" height="800"
+                class="h-full w-full object-cover" loading="lazy" />
+            </div>
+            <div class="flex flex-col justify-center p-5 sm:p-8">
+              <h2 class="font-display text-xl font-bold text-charcoal sm:text-2xl">{m.name}</h2>
+              <p class="mt-1 font-display text-sm font-semibold text-spine">{m.role}</p>
+              {paras.map((p) => (
+                <p class="mt-3 text-[15px] leading-7 text-charcoal-muted sm:text-base">{p}</p>
+              ))}
+            </div>
+          </article>
+        );
+      })}
+    </div>
+
+    <div id="team-dots" class="mt-5 flex items-center justify-center gap-2 sm:hidden" aria-hidden="true">
+      {team.map((_, i) => (
+        <button
+          type="button"
+          data-team-dot={String(i)}
+          class:list={[
+            "h-2 rounded-full bg-slate-300 transition-all duration-300 data-[active=true]:w-6 data-[active=true]:bg-spine",
+            i === 0 ? "w-6 bg-spine" : "w-2",
+          ]}
+          data-active={i === 0 ? "true" : "false"}
+          aria-label={`Προφίλ ${i + 1}`}
+        />
+      ))}
+    </div>
+
+    <div class="mx-auto mt-12 max-w-3xl rounded-2xl border border-spine-100 bg-spine-50 p-6 text-center sm:mt-14 sm:p-8">
+      <p class="font-display text-lg font-semibold text-charcoal">{promiseTitle}</p>
+      <p class="mt-2 text-charcoal-muted">{promiseBody}</p>
+      <button type="button" data-book-trigger
+        class="mt-5 inline-flex items-center justify-center rounded-full bg-spine px-6 py-3 font-display font-semibold text-white transition hover:bg-spine-600">
+        {promiseCta}
+      </button>
+    </div>
+  </div>
+</section>
+
+<style>
+  .team-scroller {
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-inline: 7.5vw;
+  }
+
+  .team-card {
+    transform-origin: center center;
+    will-change: transform, opacity;
+  }
+
+  @media (min-width: 640px) {
+    .team-card {
+      transform: none !important;
+      opacity: 1 !important;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .team-card {
+      transform: none !important;
+      opacity: 1 !important;
+    }
+  }
+</style>
+
+<script>
+  const scroller = document.getElementById("team-scroller");
+  if (scroller) {
+    const cards = Array.from(scroller.querySelectorAll<HTMLElement>("[data-team-card]"));
+    const dots = Array.from(document.querySelectorAll<HTMLButtonElement>("[data-team-dot]"));
+    const desktop = window.matchMedia("(min-width: 640px)");
+    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)");
+
+    function activeIndex() {
+      const mid = scroller.scrollLeft + scroller.clientWidth / 2;
+      let best = 0;
+      let bestDist = Infinity;
+      cards.forEach((card, i) => {
+        const c = card.offsetLeft + card.offsetWidth / 2;
+        const d = Math.abs(c - mid);
+        if (d < bestDist) {
+          bestDist = d;
+          best = i;
+        }
+      });
+      return best;
+    }
+
+    function paint() {
+      if (desktop.matches || reduce.matches) {
+        cards.forEach((card) => {
+          card.style.transform = "";
+          card.style.opacity = "";
+        });
+        return;
+      }
+      const mid = scroller.scrollLeft + scroller.clientWidth / 2;
+      cards.forEach((card) => {
+        const c = card.offsetLeft + card.offsetWidth / 2;
+        const t = Math.min(Math.abs(c - mid) / (card.offsetWidth * 0.85), 1);
+        card.style.opacity = String(1 - t * 0.4);
+        card.style.transform = `scale(${1 - t * 0.08})`;
+      });
+      const i = activeIndex();
+      dots.forEach((dot, n) => {
+        dot.dataset.active = String(n === i);
+      });
+    }
+
+    let ticking = false;
+    scroller.addEventListener(
+      "scroll",
+      () => {
+        if (ticking) return;
+        ticking = true;
+        requestAnimationFrame(() => {
+          paint();
+          ticking = false;
+        });
+      },
+      { passive: true },
+    );
+    desktop.addEventListener("change", paint);
+    paint();
+
+    dots.forEach((dot) => {
+      dot.addEventListener("click", () => {
+        const i = Number(dot.dataset.teamDot);
+        const card = cards[i];
+        if (!card) return;
+        card.scrollIntoView({ behavior: reduce.matches ? "auto" : "smooth", inline: "center", block: "nearest" });
+      });
+    });
+
+    // Gentle nudge so it's obvious the row swipes sideways on phones.
+    if (!desktop.matches && !reduce.matches) {
+      const start = () => {
+        scroller.scrollTo({ left: 56, behavior: "smooth" });
+        window.setTimeout(() => scroller.scrollTo({ left: 0, behavior: "smooth" }), 650);
+      };
+      window.setTimeout(start, 700);
+    }
+  }
+</script>

@@ -200,7 +200,7 @@ const el = {
       {
         name: "Ραφαέλλος Ονησιφόρου",
         role: "Φυσιοθεραπευτής",
-        img: "/images/team/rafaellos.png",
+        img: "/images/team/rafaellos.jpg",
         bio: "Ο Ραφαέλλος ειδικεύεται στην αξιολόγηση και αποκατάσταση μυοσκελετικών προβλημάτων. Με στοχευμένη θεραπευτική άσκηση και χειροπρακτικές τεχνικές, βοηθά τους ασθενείς να επιστρέψουν με ασφάλεια στην καθημερινότητα και τον αθλητισμό.",
       },
       {
@@ -210,10 +210,14 @@ const el = {
         bio: "Ο Αντρέας είναι φυσιοθεραπευτής με έμφαση στην αποκατάσταση μυοσκελετικών προβλημάτων. Δουλεύει στοχευμένα, με σαφές πλάνο, ώστε οι ασθενείς να επιστρέφουν με ασφάλεια στην κίνηση και την καθημερινότητά τους.",
       },
       {
-        name: "Κωνσταντίνα Κιτρομηλίδη",
+        name: "Κωνσταντίνα Κιτρομιλίδη",
         role: "Φυσιοθεραπεύτρια & Pilates Instructor",
         img: "/images/team/konstantina.png",
-        bio: "Η Κωνσταντίνα συνδυάζει τη φυσιοθεραπεία με το κλινικό πιλάτες, σχεδιάζοντας εξατομικευμένα προγράμματα ενδυνάμωσης, βελτίωσης στάσης και πρόληψης τραυματισμών για κάθε ασθενή.",
+        bio: [
+          "Η Κωνσταντίνα Κιτρομιλίδη είναι φυσικοθεραπεύτρια με ακαδημαϊκή κατάρτιση και επαγγελματική εμπειρία σε κέντρα αποκατάστασης και φυσικοθεραπευτήρια. Είναι απόφοιτη Φυσικοθεραπείας του Ευρωπαϊκού Πανεπιστημίου Κύπρου.",
+          "Έχει εργαστεί σε κλινικά και θεραπευτικά περιβάλλοντα, με εμπειρία στην αποκατάσταση μυοσκελετικών, νευρολογικών, καρδιοαναπνευστικών και κυκλοφορικών παθήσεων. Έχει πραγματοποιήσει πρακτική άσκηση σε φυσικοθεραπευτήρια και κέντρα αποκατάστασης.",
+          "Έχει παρακολουθήσει επιμορφωτικά σεμινάρια στην ελαστική αντίσταση, το Bobath Concept, την τεχνική ERGON και το Clinical Pilates, με ιδιαίτερο ενδιαφέρον για την αποκατάσταση και τη συνεχή επαγγελματική εξέλιξη.",
+        ],
       },
     ],
     promiseTitle: "Η υπόσχεσή μας",
@@ -541,7 +545,7 @@ const en = {
       {
         name: "Rafaellos Onisiforou",
         role: "Physiotherapist",
-        img: "/images/team/rafaellos.png",
+        img: "/images/team/rafaellos.jpg",
         bio: "Rafaellos specialises in assessing and rehabilitating musculoskeletal conditions. Through targeted therapeutic exercise and hands-on techniques, he helps patients return safely to daily life and sport.",
       },
       {
@@ -554,7 +558,11 @@ const en = {
         name: "Konstantina Kitromilidi",
         role: "Physiotherapist & Pilates Instructor",
         img: "/images/team/konstantina.png",
-        bio: "Konstantina combines physiotherapy with clinical Pilates, designing individualised programmes for strength, posture and injury prevention tailored to every patient.",
+        bio: [
+          "Konstantina Kitromilidi is a physiotherapist with academic training and professional experience in rehabilitation centres and physiotherapy clinics. She is a Physiotherapy graduate of European University Cyprus.",
+          "She has worked in clinical and therapeutic settings, with experience in the rehabilitation of musculoskeletal, neurological, cardiorespiratory and circulatory conditions, and has completed internships in physiotherapy clinics and rehabilitation centres.",
+          "She has attended professional seminars on elastic resistance, the Bobath Concept, the ERGON technique and Clinical Pilates, with a particular interest in rehabilitation and ongoing professional development.",
+        ],
       },
     ],
     promiseTitle: "Our promise",
