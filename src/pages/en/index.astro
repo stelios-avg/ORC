@@ -15,7 +15,7 @@ const base = "/en";
   <section class="relative flex min-h-[100svh] items-center justify-center overflow-hidden">
     {/* Mobile/tablet: vertical clip */}
     <video
-      class="absolute inset-0 h-full w-full object-cover lg:hidden"
+      class="hero-video absolute inset-0 h-full w-full object-cover lg:hidden"
       data-hero-mobile
       autoplay muted loop playsinline preload="auto"
       poster="/images/hero-poster-mobile.jpg"
@@ -25,7 +25,7 @@ const base = "/en";
     </video>
     {/* Desktop */}
     <video
-      class="absolute inset-0 hidden h-full w-full object-cover lg:block"
+      class="hero-video absolute inset-0 hidden h-full w-full object-cover lg:block"
       data-hero-desktop
       autoplay muted loop playsinline preload="auto"
       poster="/images/hero-poster.jpg"

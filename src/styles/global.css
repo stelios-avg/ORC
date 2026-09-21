@@ -64,14 +64,26 @@ body {
   }
 }
 
-/* Utility for the dark overlay gradient used on the hero. */
+/* Hero video: a little extra punch so full-screen playback doesn’t look muddy. */
+.hero-video {
+  filter: contrast(1.12) saturate(1.1) brightness(1.08);
+}
+
+/* Overlay: dim behind the title, keep the footage visible around it. */
 .hero-overlay {
-  background: linear-gradient(
-    180deg,
-    rgba(8, 24, 38, 0.55) 0%,
-    rgba(8, 24, 38, 0.45) 40%,
-    rgba(8, 24, 38, 0.7) 100%
-  );
+  background:
+    radial-gradient(
+      ellipse 90% 70% at 50% 42%,
+      rgba(8, 24, 38, 0.42) 0%,
+      rgba(8, 24, 38, 0.14) 72%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(8, 24, 38, 0.28) 0%,
+      rgba(8, 24, 38, 0.1) 36%,
+      rgba(8, 24, 38, 0.22) 68%,
+      rgba(8, 24, 38, 0.48) 100%
+    );
 }
 
 /* Modal open: lock body scroll. Toggled via JS adding `.overflow-hidden`. */
@@ -119,6 +131,7 @@ body {
   font-size: clamp(2.5rem, 9vw, 6.25rem);
   line-height: 1.02;
   letter-spacing: -0.02em;
+  text-shadow: 0 2px 28px rgba(8, 24, 38, 0.45);
 }
 .headline-statement {
   font-size: clamp(2rem, 6.5vw, 4.5rem);
