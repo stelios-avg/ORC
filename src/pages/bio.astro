@@ -11,12 +11,5 @@ const b = t.bioPage;
 
 <Layout lang={lang} title={t.seo.bioTitle} description={t.seo.bioDesc}>
   <PageHeader eyebrow={b.eyebrow} title={b.title} subtitle={b.subtitle} image="/images/page-hero.png" />
-  <TeamList
-    team={b.team}
-    promiseTitle={b.promiseTitle}
-    promiseBody={b.promiseBody}
-    promiseCta={b.promiseCta}
-    readMore={b.readMore}
-    closeLabel={b.close}
-  />
+  <TeamList team={b.team} promiseTitle={b.promiseTitle} promiseBody={b.promiseBody} promiseCta={b.promiseCta} />
 </Layout>
