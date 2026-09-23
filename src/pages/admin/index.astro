@@ -90,7 +90,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       class="flex min-h-12 w-full items-center justify-between gap-2 px-4 py-3 text-left transition hover:bg-sand">
       <span class="flex items-center gap-2">
         <span id="cancelled-count" class="flex h-6 w-6 items-center justify-center rounded-full bg-slate-400 text-[11px] font-bold text-white">0</span>
-        <span class="font-display text-sm font-bold text-charcoal">Ακυρωμένες κρατήσεις</span>
+        <span id="cancelled-title" class="font-display text-sm font-bold text-charcoal">Ακυρωμένες κρατήσεις</span>
       </span>
       <svg id="cancelled-chevron" class="h-4 w-4 text-charcoal-muted transition-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
     </button>
@@ -653,6 +653,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     canDeleteAppointment,
     isMasterAccount,
     creatorDisplayName,
+    therapistIdForEmail,
   } from "../../lib/admin-access";
   import type { BookingRequest } from "../../lib/supabase";
 
@@ -852,6 +853,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       });
       setDefaultTherapistSelects();
       refresh();
+      void loadCancelled();
     });
   });
 
@@ -2913,6 +2915,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const cancelledChevron = document.getElementById("cancelled-chevron")!;
   const cancelledList = document.getElementById("cancelled-list")!;
   const cancelledCount = document.getElementById("cancelled-count")!;
+  const cancelledTitle = document.getElementById("cancelled-title")!;
 
   cancelledToggle.addEventListener("click", () => {
     const open = cancelledList.classList.toggle("hidden");
@@ -2921,12 +2924,27 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
   let cancelledAppts: Appointment[] = [];
 
+  /** Whose cancellations this account may see. null = none. */
+  function cancelledScopeId(): string | null | "all" {
+    const master = isMasterAccount(adminEmail);
+    if (master) return therapistFilter ?? "all";
+    const ownId = therapistIdForEmail(adminEmail);
+    if (!ownId) return null;
+    if (therapistFilter && therapistFilter !== ownId) return null;
+    return ownId;
+  }
+
   async function loadCancelled() {
-    if (!isMasterAccount(adminEmail)) return;
+    const scope = cancelledScopeId();
+    if (!scope) {
+      cancelledAppts = [];
+      cancelledBanner.classList.add("hidden");
+      return;
+    }
     // Recent + upcoming cancellations (last 60 days of appointment dates).
     const since = new Date();
     since.setDate(since.getDate() - 60);
-    const { data, error } = await supabase
+    let q = supabase
       .from("appointments")
       .select(APPT_SELECT)
       .eq("status", "cancelled")
@@ -2934,11 +2952,18 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       .gte("start_time", since.toISOString())
       .order("start_time", { ascending: false })
       .limit(100);
+    if (scope !== "all") q = q.eq("therapist_id", scope);
+    const { data, error } = await q;
     if (error) return;
 
     cancelledAppts = (data ?? []) as Appointment[];
+    const whoName = scope === "all" ? null : (getTherapist(scope)?.nameEl ?? null);
+    cancelledTitle.textContent = whoName
+      ? `Ακυρωμένες · ${whoName}`
+      : "Ακυρωμένες κρατήσεις";
     cancelledBanner.classList.toggle("hidden", cancelledAppts.length === 0);
     cancelledCount.textContent = String(cancelledAppts.length);
+    const canPurge = isMasterAccount(adminEmail);
     cancelledList.innerHTML = cancelledAppts
       .map((a) => {
         const start = new Date(a.start_time);
@@ -2955,17 +2980,45 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         const byLine = who
           ? `<p class="mt-1 text-[11px] font-medium text-red-600">Ακύρωση από ${escHtml(who)}${at ? ` · ${at}` : ""}</p>`
           : "";
+        const trash = canPurge
+          ? `<button type="button" data-cancelled-delete="${a.id}" aria-label="Διαγραφή ακύρωσης"
+              class="flex h-11 w-11 flex-none items-center justify-center rounded-full text-red-600 transition hover:bg-red-50 active:bg-red-100">
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+                <path d="M4 7h16M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2M6 7l1 13a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-13"/>
+                <path d="M10 11v6M14 11v6"/>
+              </svg>
+            </button>`
+          : "";
         return `
-        <li class="rounded-xl bg-sand p-3" data-cancelled-id="${a.id}">
-          <div class="min-w-0">
+        <li class="flex items-center gap-2 rounded-xl bg-sand p-3" data-cancelled-id="${a.id}">
+          <div class="min-w-0 flex-1">
             <p class="truncate font-display text-sm font-bold text-charcoal">${escHtml(a.patients?.name ?? "—")}</p>
             <p class="mt-0.5 text-xs font-medium text-charcoal-muted">${when} · ${escHtml(therapistName(a))}${a.service ? ` · ${escHtml(a.service)}` : ""}</p>
             ${byLine}
           </div>
+          ${trash}
         </li>`;
       })
       .join("");
   }
+
+  cancelledList.addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-cancelled-delete]");
+    if (!btn || !isMasterAccount(adminEmail)) return;
+    const id = btn.dataset.cancelledDelete;
+    const row = cancelledAppts.find((a) => a.id === id);
+    if (!id || !row) return;
+    const label = row.patients?.name ?? "αυτή την ακύρωση";
+    if (!confirm(`Διαγραφή της ακύρωσης για ${label}; Δεν αναιρείται.`)) return;
+    btn.disabled = true;
+    const { error } = await supabase.from("appointments").delete().eq("id", id);
+    if (error) {
+      btn.disabled = false;
+      alert(`Αποτυχία διαγραφής: ${error.message}`);
+      return;
+    }
+    await loadCancelled();
+  });
 
   ensureAdminEmail().then(() => {
     setViewMode("day");
