@@ -2,9 +2,9 @@
  * Clinic therapists — IDs must match the seed in supabase/add-therapists.sql
  *
  * Online booking routing:
- *   Osteopathy        → Charalambos
- *   Physiotherapy     → Rafaellos
- *   Clinical Pilates  → Pilates calendar (no person name)
+ *   Physiotherapy     → a free physio (capacity 2)
+ *   Osteopathy        → Charalambos only (45′ session or 1h assessment)
+ *   Clinical Pilates  → not online; clients call. Staff still book it in admin.
  *
  * Antreas & Constantina are on the admin schedule (physiotherapy) but are not
  * the default online-booking targets — staff can transfer appointments to them.
@@ -13,7 +13,7 @@
  */
 
 export type TherapistSlug = "charalambos" | "rafaellos" | "antreas" | "constantina" | "pilates";
-export type BookableService = "osteopathy" | "physiotherapy" | "pilates";
+export type BookableService = "osteopathy" | "osteopathy_assessment" | "physiotherapy";
 export type TherapistAccent = "spine" | "sky" | "teal" | "rose" | "amber";
 
 export interface Therapist {
@@ -81,6 +81,7 @@ export const BOOKABLE_SERVICES: {
   labelEl: string;
   labelEn: string;
   therapistSlug: TherapistSlug;
+  durationMin: number;
   /** Hide “με …” — therapist is auto-assigned or calendar is anonymous */
   hideTherapistName?: boolean;
 }[] = [
@@ -89,6 +90,7 @@ export const BOOKABLE_SERVICES: {
     labelEl: "Φυσιοθεραπεία",
     labelEn: "Physiotherapy",
     therapistSlug: "rafaellos",
+    durationMin: 45,
     hideTherapistName: true, // assigned to a free physio at booking time
   },
   {
@@ -96,13 +98,27 @@ export const BOOKABLE_SERVICES: {
     labelEl: "Οστεοπαθητική",
     labelEn: "Osteopathy",
     therapistSlug: "charalambos",
+    durationMin: 45,
   },
+  {
+    key: "osteopathy_assessment",
+    labelEl: "Οστεοπαθητική — Αξιολόγηση",
+    labelEn: "Osteopathy — Assessment",
+    therapistSlug: "charalambos",
+    durationMin: 60,
+  },
+];
+
+/** Shown in the booking form, but not sent as an online appointment. */
+export const PHONE_ONLY_SERVICES: {
+  key: "pilates";
+  labelEl: string;
+  labelEn: string;
+}[] = [
   {
     key: "pilates",
     labelEl: "Κλινική Πιλάτες",
     labelEn: "Clinical Pilates",
-    therapistSlug: "pilates",
-    hideTherapistName: true,
   },
 ];
 
@@ -129,18 +145,22 @@ export function slotCapacityForService(service: BookableService | string): numbe
   return service === "physiotherapy" ? 2 : 1;
 }
 
-/** Admin “new appointment” service list with default prices (EUR). Discount stays editable. */
+/** Admin “new appointment” service list with default prices (EUR) and duration. Discount stays editable. */
 export const ADMIN_SERVICES: {
   label: string;
   defaultPrice: number | null;
+  durationMin: number;
+  /** When set, the appointment can only be placed on this therapist. */
+  therapistSlug?: TherapistSlug;
 }[] = [
-  { label: "Φυσιοθεραπεία εκτός ΓΕΣΥ", defaultPrice: 35 },
-  { label: "Φυσιοθεραπεία με ΓΕΣΥ", defaultPrice: 10 },
-  { label: "Φυσιοθεραπεία ΓΕΣΥ χωρίς συμπλήρωση", defaultPrice: 0 },
-  { label: "Μασάζ", defaultPrice: 50 },
-  { label: "Οστεοπαθητική", defaultPrice: null },
-  { label: "Κλινική Πιλάτες", defaultPrice: null },
-  { label: "Άλλο", defaultPrice: null },
+  { label: "Φυσιοθεραπεία εκτός ΓΕΣΥ", defaultPrice: 35, durationMin: 45 },
+  { label: "Φυσιοθεραπεία με ΓΕΣΥ", defaultPrice: 10, durationMin: 45 },
+  { label: "Φυσιοθεραπεία ΓΕΣΥ χωρίς συμπλήρωση", defaultPrice: 0, durationMin: 45 },
+  { label: "Μασάζ", defaultPrice: 50, durationMin: 60 },
+  { label: "Οστεοπαθητική", defaultPrice: 60, durationMin: 45, therapistSlug: "charalambos" },
+  { label: "Οστεοπαθητική — Αξιολόγηση", defaultPrice: 60, durationMin: 60, therapistSlug: "charalambos" },
+  { label: "Κλινική Πιλάτες", defaultPrice: null, durationMin: 45 },
+  { label: "Άλλο", defaultPrice: null, durationMin: 45 },
 ];
 
 /** Older admin labels — keep default prices working on existing appointments. */
@@ -149,16 +169,32 @@ const ADMIN_SERVICE_PRICE_ALIASES: Record<string, string> = {
   "Φυσιοθεραπεία χωρίς συνπληρωμή": "Φυσιοθεραπεία ΓΕΣΥ χωρίς συμπλήρωση",
 };
 
-export function defaultPriceForAdminService(label: string): number | null {
+function adminServiceByLabel(label: string) {
   const resolved = ADMIN_SERVICE_PRICE_ALIASES[label] ?? label;
-  const hit = ADMIN_SERVICES.find((s) => s.label === resolved);
+  return ADMIN_SERVICES.find((s) => s.label === resolved);
+}
+
+export function defaultPriceForAdminService(label: string): number | null {
+  const hit = adminServiceByLabel(label);
   return hit ? hit.defaultPrice : null;
+}
+
+export function durationForAdminService(label: string): number {
+  return adminServiceByLabel(label)?.durationMin ?? 45;
+}
+
+/** Osteopathy (session and assessment) can only sit on Charalambos. */
+export function lockedTherapistIdForAdminService(label: string): string | null {
+  const slug = adminServiceByLabel(label)?.therapistSlug;
+  return slug ? getTherapist(slug)!.id : null;
 }
 
 /** Suggest therapist when admin picks a Greek service name. */
 export function suggestTherapistIdForService(service: string): string | null {
+  const locked = lockedTherapistIdForAdminService(service);
+  if (locked) return locked;
   const s = service.trim().toLowerCase();
-  if (s.includes("οστεο") || s.includes("osteo")) {
+  if (s.includes("οστεο") || s.includes("osteo") || s.includes("αξιολόγ") || s.includes("axiolog")) {
     return getTherapist("charalambos")!.id;
   }
   if (s.includes("πιλάτ") || s.includes("pilates")) {

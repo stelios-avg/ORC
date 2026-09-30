@@ -1,22 +1,32 @@
 ---
 import { FRESHA_BOOKING_URL, LEAD_ENDPOINT, LEAD_ACCESS_KEY, PUBLIC_BOOKING_ENABLED, SITE } from "../config/site";
 import { useTranslations, type Lang } from "../i18n";
-import { BOOKABLE_SERVICES, THERAPISTS } from "../lib/therapists";
+import { BOOKABLE_SERVICES, PHONE_ONLY_SERVICES, THERAPISTS } from "../lib/therapists";
 
 interface Props { lang?: Lang; }
 const { lang = "el" } = Astro.props;
 const t = useTranslations(lang).booking;
+const durationText = (min: number) =>
+  lang === "en"
+    ? min === 60 ? "1 hour" : `${min} minutes`
+    : min === 60 ? "1 ώρα" : `${min} λεπτά`;
 const services = BOOKABLE_SERVICES.map((s) => {
   const th = THERAPISTS.find((x) => x.slug === s.therapistSlug)!;
   const hideName = s.hideTherapistName || th.anonymous;
   return {
     key: s.key,
     label: lang === "en" ? s.labelEn : s.labelEl,
+    durationMin: s.durationMin,
+    durationLabel: durationText(s.durationMin),
     therapistId: th.id,
     /** Empty when auto-assigned / anonymous — no “με …” line */
     therapistName: hideName ? "" : lang === "en" ? th.nameEn : th.nameEl,
   };
 });
+const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
+  key: s.key,
+  label: lang === "en" ? s.labelEn : s.labelEl,
+}));
 ---
 
 <div
@@ -48,6 +58,8 @@ const services = BOOKABLE_SERVICES.map((s) => {
   data-req-sending={t.requestSending}
   data-req-error={t.requestError}
   data-req-open={t.requestOpen}
+  data-duration-45={t.duration45}
+  data-duration-60={t.duration60}
   data-booking-enabled={PUBLIC_BOOKING_ENABLED ? "true" : "false"}
 >
   <div id="booking-backdrop" class="absolute inset-0 bg-spine-900/70 backdrop-blur-sm" data-book-close></div>
@@ -93,15 +105,25 @@ const services = BOOKABLE_SERVICES.map((s) => {
                     data-therapist-id={s.therapistId}
                     data-service-label={s.label}
                     data-therapist-name={s.therapistName}
+                    data-duration-min={s.durationMin}
                     checked={s.key === "physiotherapy"}
                   />
                   <span>
                     <span class="block font-display text-sm font-semibold text-charcoal">{s.label}</span>
-                    {s.therapistName ? (
-                      <span class="mt-0.5 block text-xs text-charcoal-muted">{t.withTherapist} {s.therapistName}</span>
-                    ) : null}
+                    <span class="mt-0.5 block text-xs text-charcoal-muted">
+                      {s.durationLabel}{s.therapistName ? ` · ${t.withTherapist} ${s.therapistName}` : ""}
+                    </span>
                   </span>
                 </label>
+              ))}
+              {phoneOnly.map((s) => (
+                <div class="rounded-xl border border-slate-200 bg-sand px-3 py-3">
+                  <span class="block font-display text-sm font-semibold text-charcoal">{s.label}</span>
+                  <span class="mt-0.5 block text-xs text-charcoal-muted">{t.pilatesCall}</span>
+                  <a href={SITE.phoneHref} class="mt-2 inline-flex text-sm font-semibold text-spine underline-offset-2 hover:underline">
+                    {t.pilatesCallBtn} {SITE.phone}
+                  </a>
+                </div>
               ))}
             </div>
             <p class="mt-1 hidden text-xs text-red-600" data-error-for="service"></p>
@@ -163,7 +185,7 @@ const services = BOOKABLE_SERVICES.map((s) => {
       {/* ══ Step 2: pick day & time ══ */}
       <div id="booking-step-2" class="hidden px-6 py-5" data-step="2">
         <p class="font-display text-sm font-bold text-charcoal">{t.pickTitle}</p>
-        <p class="mt-0.5 text-xs text-charcoal-muted">{t.pickSubtitle}</p>
+        <p id="slot-duration" class="mt-0.5 text-xs text-charcoal-muted">{t.pickSubtitle}</p>
 
         {/* Month calendar */}
         <div class="mt-4 flex items-center justify-between">
@@ -329,8 +351,7 @@ const services = BOOKABLE_SERVICES.map((s) => {
     const WINDOWS: Array<[number, number]> = [
       [8 * 60, 19 * 60],   // 08:00 – 19:00
     ];
-    const SLOT_MIN = 45;
-    const STEP_MIN = 45;
+    let sessionMin = 45;
     const CLOSED_DAYS = [0, 6]; // Sunday, Saturday
     const MAX_MONTHS_AHEAD = 2; // bookable window: this month + 2
     const MIN_LEAD_MS = 60 * 60 * 1000; // can't book less than 1h ahead
@@ -362,6 +383,7 @@ const services = BOOKABLE_SERVICES.map((s) => {
       serviceLabel: "",
       therapistId: "",
       therapistName: "",
+      durationMin: 45,
     };
     let selectedDay: Date | null = null;
     let selectedStart: Date | null = null;
@@ -437,9 +459,10 @@ const services = BOOKABLE_SERVICES.map((s) => {
       const therapistId = serviceRadio?.dataset.therapistId || "";
       const serviceLabel = serviceRadio?.dataset.serviceLabel || "";
       const therapistName = serviceRadio?.dataset.therapistName || "";
+      const durationMin = Number(serviceRadio?.dataset.durationMin) || 45;
       let ok = true;
 
-      if (!serviceKey || !therapistId) { setError("service", errMap.service); ok = false; } else setError("service", "");
+      if (!serviceKey || !therapistId || serviceKey === "pilates") { setError("service", errMap.service); ok = false; } else setError("service", "");
       if (fullName.length < 2) { setError("fullName", errMap.fullName); ok = false; } else setError("fullName", "");
       if (!isEmail(email))      { setError("email",    errMap.email);    ok = false; } else setError("email", "");
       if (!isPhone(phone))      { setError("phone",    errMap.phone);    ok = false; } else setError("phone", "");
@@ -449,7 +472,7 @@ const services = BOOKABLE_SERVICES.map((s) => {
         ok,
         payload: {
           fullName, email, phone, concern,
-          serviceKey, serviceLabel, therapistId, therapistName,
+          serviceKey, serviceLabel, therapistId, therapistName, durationMin,
         },
       };
     };
@@ -460,6 +483,11 @@ const services = BOOKABLE_SERVICES.map((s) => {
       const res = validate();
       if (!res.ok) { form.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus(); return; }
       payload = res.payload;
+      sessionMin = payload.durationMin === 60 ? 60 : 45;
+      const slotDuration = document.getElementById("slot-duration");
+      if (slotDuration) {
+        slotDuration.textContent = sessionMin === 60 ? (ds.duration60 || "") : (ds.duration45 || "");
+      }
 
       if (!supabase) {
         // No Supabase configured → legacy behaviour: straight to Fresha.
@@ -578,7 +606,7 @@ const services = BOOKABLE_SERVICES.map((s) => {
       requestTimeSelect.innerHTML = "";
       const now = Date.now();
       for (const [winStart, winEnd] of WINDOWS) {
-        for (let m = winStart; m + SLOT_MIN <= winEnd; m += STEP_MIN) {
+        for (let m = winStart; m + sessionMin <= winEnd; m += sessionMin) {
           const s = new Date(day); s.setHours(Math.floor(m / 60), m % 60, 0, 0);
           if (s.getTime() < now + MIN_LEAD_MS) continue;
           const opt = document.createElement("option");
@@ -598,7 +626,7 @@ const services = BOOKABLE_SERVICES.map((s) => {
       requestSubmitBtn.textContent = ds.reqSending || "…";
 
       const start = new Date(Number(requestTimeSelect.value));
-      const end = new Date(start.getTime() + SLOT_MIN * 60_000);
+      const end = new Date(start.getTime() + sessionMin * 60_000);
       const { error } = await supabase.rpc("request_closed_day_booking", {
         p_name: payload.fullName,
         p_email: payload.email,
@@ -649,9 +677,9 @@ const services = BOOKABLE_SERVICES.map((s) => {
       const now = Date.now();
       const slots: Date[] = [];
       for (const [winStart, winEnd] of WINDOWS) {
-        for (let m = winStart; m + SLOT_MIN <= winEnd; m += STEP_MIN) {
+        for (let m = winStart; m + sessionMin <= winEnd; m += sessionMin) {
           const s = new Date(day); s.setHours(Math.floor(m / 60), m % 60, 0, 0);
-          const e = s.getTime() + SLOT_MIN * 60_000;
+          const e = s.getTime() + sessionMin * 60_000;
           if (s.getTime() < now + MIN_LEAD_MS) continue;
           const hits = busy.filter(
             (b: { start: number; end: number }) => b.start < e && b.end > s.getTime(),
@@ -718,7 +746,7 @@ const services = BOOKABLE_SERVICES.map((s) => {
       document.getElementById("confirm-label")!.textContent = ds.labelBooking || "…";
       document.getElementById("confirm-spinner")!.classList.remove("hidden");
 
-      const end = new Date(selectedStart.getTime() + SLOT_MIN * 60_000);
+      const end = new Date(selectedStart.getTime() + sessionMin * 60_000);
       const { error } = await supabase.rpc("book_appointment", {
         p_name: payload.fullName,
         p_email: payload.email,

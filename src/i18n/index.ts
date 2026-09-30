@@ -152,6 +152,10 @@ const el = {
     // step 2: date & time
     pickTitle: "Επιλέξτε ημέρα & ώρα",
     pickSubtitle: "Διάρκεια συνεδρίας: 45 λεπτά",
+    duration45: "Διάρκεια συνεδρίας: 45 λεπτά",
+    duration60: "Διάρκεια συνεδρίας: 1 ώρα",
+    pilatesCall: "Δεν κλείνεται online. Καλέστε μας για ραντεβού.",
+    pilatesCallBtn: "Κλήση",
     pickDayHint: "Επιλέξτε μια ημέρα για να δείτε τις διαθέσιμες ώρες.",
     loadingSlots: "Φόρτωση διαθεσιμότητας…",
     noSlots: "Δεν υπάρχουν διαθέσιμες ώρες αυτή την ημέρα.",
@@ -497,6 +501,10 @@ const en = {
     // step 2: date & time
     pickTitle: "Pick a day & time",
     pickSubtitle: "Session duration: 45 minutes",
+    duration45: "Session duration: 45 minutes",
+    duration60: "Session duration: 1 hour",
+    pilatesCall: "Not available online. Call us to book.",
+    pilatesCallBtn: "Call",
     pickDayHint: "Pick a day to see available times.",
     loadingSlots: "Loading availability…",
     noSlots: "No available times on this day.",

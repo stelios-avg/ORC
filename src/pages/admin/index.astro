@@ -221,6 +221,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
               <option value={th.id}>{th.nameEl}</option>
             ))}
           </select>
+          <p id="appt-therapist-lock" class="mt-1 hidden text-xs text-charcoal-muted">Η οστεοπαθητική κλείνεται μόνο με τον Χαράλαμπο.</p>
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-service">Υπηρεσία</label>
@@ -488,7 +489,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             <option value={th.id}>{th.nameEl}</option>
           ))}
         </select>
-        <p class="mt-1 text-[11px] text-charcoal-muted">Μπορείτε να μεταφέρετε το ραντεβού σε άλλον θεραπευτή.</p>
+        <p id="detail-therapist-transfer" class="mt-1 text-[11px] text-charcoal-muted">Μπορείτε να μεταφέρετε το ραντεβού σε άλλον θεραπευτή.</p>
+        <p id="detail-therapist-lock" class="mt-1 hidden text-[11px] text-charcoal-muted">Η οστεοπαθητική κλείνεται μόνο με τον Χαράλαμπο.</p>
       </div>
       <a id="detail-phone" href="#" class="mt-1 hidden text-sm font-medium text-spine underline"></a>
 
@@ -647,6 +649,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     suggestTherapistIdForService,
     therapistAccentClasses,
     defaultPriceForAdminService,
+    durationForAdminService,
+    lockedTherapistIdForAdminService,
   } from "../../lib/therapists";
   import {
     canViewTherapistPayments,
@@ -705,18 +709,35 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const apptServiceSelect = document.getElementById("appt-service") as HTMLSelectElement;
   const apptPriceInput = document.getElementById("appt-price") as HTMLInputElement;
   const apptDiscountInput = document.getElementById("appt-discount") as HTMLInputElement;
+  const apptDurationSelect = document.getElementById("appt-duration") as HTMLSelectElement;
+  const apptTherapistLock = document.getElementById("appt-therapist-lock")!;
 
-  function applyServiceDefaultPrice() {
+  function syncTherapistOptions(select: HTMLSelectElement, service: string, note?: HTMLElement) {
+    const locked = lockedTherapistIdForAdminService(service);
+    for (const opt of Array.from(select.options)) {
+      const off = !!locked && opt.value !== locked;
+      opt.hidden = off;
+      opt.disabled = off;
+    }
+    if (locked) select.value = locked;
+    note?.classList.toggle("hidden", !locked);
+  }
+
+  function applyServiceDefaults() {
     const price = defaultPriceForAdminService(apptServiceSelect.value);
     apptPriceInput.value = price != null ? String(price) : "";
-    // Keep discount field; only reset when opening a fresh form / changing service defaults
     if (apptDiscountInput.value.trim() === "") apptDiscountInput.value = "0";
+    const dur = String(durationForAdminService(apptServiceSelect.value));
+    if ([...apptDurationSelect.options].some((o) => o.value === dur)) apptDurationSelect.value = dur;
+    syncTherapistOptions(apptTherapistSelect, apptServiceSelect.value, apptTherapistLock);
   }
 
   apptServiceSelect.addEventListener("change", () => {
-    applyServiceDefaultPrice();
-    const suggested = suggestTherapistIdForService(apptServiceSelect.value);
-    if (suggested && !therapistFilter) apptTherapistSelect.value = suggested;
+    applyServiceDefaults();
+    if (!lockedTherapistIdForAdminService(apptServiceSelect.value)) {
+      const suggested = suggestTherapistIdForService(apptServiceSelect.value);
+      if (suggested && !therapistFilter) apptTherapistSelect.value = suggested;
+    }
   });
 
   // ── Recurring appointment controls ──
@@ -1505,6 +1526,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const maxStartRow0 = Math.max(0, TOTAL_ROWS - drag.rowSpan);
     const row0 = Math.min(maxStartRow0, Math.max(0, cell.row));
     const therapistId = cell.cols[cell.colIdx]?.id ?? drag.appt.therapist_id;
+    const lockedTherapist = lockedTherapistIdForAdminService(drag.appt.service ?? "");
+    if (lockedTherapist && therapistId !== lockedTherapist) {
+      alert("Η οστεοπαθητική μένει μόνο στον Χαράλαμπο.");
+      refresh();
+      return;
+    }
 
     const newStart = new Date(currentDay);
     newStart.setHours(DAY_START, 0, 0, 0);
@@ -1851,7 +1878,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     resetPatientPicker();
     setDefaultTherapistSelects();
     apptDiscountInput.value = "0";
-    applyServiceDefaultPrice();
     resetRepeatControls();
     if (opts?.therapistId) {
       apptTherapistSelect.value = opts.therapistId;
@@ -1859,6 +1885,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       const suggested = suggestTherapistIdForService(apptServiceSelect.value);
       if (suggested && !therapistFilter) apptTherapistSelect.value = suggested;
     }
+    applyServiceDefaults();
     const startInput = document.getElementById("appt-start") as HTMLInputElement;
     if (opts?.hours != null) {
       const hh = String(opts.hours).padStart(2, "0");
@@ -1970,10 +1997,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     // One row per occurrence; recurring series share a recurrence_group id.
     const occurrences = buildOccurrences(start);
     const recurrenceGroup = occurrences.length > 1 ? crypto.randomUUID() : null;
+    const serviceName = String(fd.get("service"));
+    const lockedTherapist = lockedTherapistIdForAdminService(serviceName);
     const rows = occurrences.map((s) => ({
       patient_id: patientId,
-      therapist_id: String(fd.get("therapist_id")),
-      service: String(fd.get("service")),
+      therapist_id: lockedTherapist ?? String(fd.get("therapist_id")),
+      service: serviceName,
       start_time: s.toISOString(),
       end_time: new Date(s.getTime() + durationMs).toISOString(),
       price,
@@ -1991,8 +2020,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     form.reset();
     resetPatientPicker();
     apptDiscountInput.value = "0";
-    applyServiceDefaultPrice();
     setDefaultTherapistSelects();
+    applyServiceDefaults();
     resetRepeatControls();
     closeModal(apptModal);
     refresh();
@@ -2237,6 +2266,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
     detailTherapistRow.classList.remove("hidden");
     detailTherapistSelect.value = a.therapist_id ?? DEFAULT_THERAPIST_ID;
+    syncDetailTherapistLock(a.service ?? "");
 
     const phoneEl = document.getElementById("detail-phone") as HTMLAnchorElement;
     if (!a.is_blocked_time && a.patients?.phone) {
@@ -2447,8 +2477,31 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     refresh();
   });
 
+  const detailTherapistLock = document.getElementById("detail-therapist-lock")!;
+  const detailTherapistTransfer = document.getElementById("detail-therapist-transfer")!;
+
+  function endTimeAfter(startValue: string, durationMin: number): string {
+    const [h, m] = startValue.split(":").map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m)) return startValue;
+    const total = h * 60 + m + durationMin;
+    const eh = Math.floor(total / 60) % 24;
+    const em = total % 60;
+    return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
+  }
+
+  function syncDetailTherapistLock(service: string) {
+    syncTherapistOptions(detailTherapistSelect, service, detailTherapistLock);
+    const locked = !!lockedTherapistIdForAdminService(service);
+    detailTherapistTransfer.classList.toggle("hidden", locked);
+  }
+
   detailServiceSelect.addEventListener("change", () => {
     if (!selectedAppt || selectedAppt.is_blocked_time) return;
+    syncDetailTherapistLock(detailServiceSelect.value);
+    detailEndInput.value = endTimeAfter(
+      detailStartInput.value,
+      durationForAdminService(detailServiceSelect.value),
+    );
     if (!canSeePayments(selectedAppt)) return;
     const price = defaultPriceForAdminService(detailServiceSelect.value);
     if (price != null) {
@@ -2481,6 +2534,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       end_time: string;
       service?: string | null;
       price?: number | null;
+      therapist_id?: string;
     } = {
       start_time: start.toISOString(),
       end_time: end.toISOString(),
@@ -2493,6 +2547,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         return;
       }
       patch.service = service;
+      const lockedTherapist = lockedTherapistIdForAdminService(service);
+      const therapistId = lockedTherapist ?? detailTherapistSelect.value;
+      if (therapistId && therapistId !== selectedAppt.therapist_id) {
+        patch.therapist_id = therapistId;
+      }
       // Only when category changes: apply that service’s default price
       if (service !== (selectedAppt.service ?? "") && canSeePayments(selectedAppt)) {
         const def = defaultPriceForAdminService(service);
@@ -2520,6 +2579,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     selectedAppt.end_time = patch.end_time;
     if (patch.service !== undefined) selectedAppt.service = patch.service;
     if (patch.price !== undefined) selectedAppt.price = patch.price;
+    if (patch.therapist_id) {
+      selectedAppt.therapist_id = patch.therapist_id;
+      const th = getTherapist(patch.therapist_id);
+      selectedAppt.therapists = th
+        ? { id: th.id, slug: th.slug, name_el: th.nameEl, name_en: th.nameEn }
+        : null;
+    }
     refresh();
   });
 
@@ -2527,6 +2593,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (!selectedAppt) return;
     const nextId = detailTherapistSelect.value;
     const prevId = selectedAppt.therapist_id;
+    const locked = lockedTherapistIdForAdminService(selectedAppt.service ?? detailServiceSelect.value);
+    if (locked && nextId !== locked) {
+      detailTherapistSelect.value = locked;
+      return;
+    }
     if (nextId === prevId) return;
 
     detailTherapistSelect.disabled = true;
