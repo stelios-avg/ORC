@@ -678,10 +678,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     z-index: 30;
     background: white;
   }
+  #cal-grid {
+    z-index: 0;
+  }
   #cal-col-headers-inner {
     position: sticky;
     top: 0;
-    z-index: 20;
+    z-index: 5;
     background: white;
   }
   #cal-hours > :first-child {
