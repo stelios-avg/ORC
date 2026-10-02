@@ -1845,35 +1845,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
 
     skipNextApptClick = true;
-    const oldStart = new Date(drag.appt.start_time);
-    const oldEnd = new Date(drag.appt.end_time);
-    const clockChanged = clockMinutes(newStart) !== clockMinutes(oldStart)
-      || clockMinutes(newEnd) !== clockMinutes(oldEnd);
-    if (clockChanged) {
-      try {
-        const series = await applyClockToSeries(drag.appt, newStart, newEnd);
-        if (series.error) {
-          alert(`Αποτυχία μετακίνησης: ${series.error}`);
-          refresh();
-          return;
-        }
-        if (series.applied) {
-          if (!sameTherapist) {
-            const { error } = await supabase
-              .from("appointments")
-              .update({ therapist_id: therapistId })
-              .eq("id", drag.appt.id);
-            if (error) alert(`Αποτυχία μετακίνησης: ${error.message}`);
-          }
-          refresh();
-          return;
-        }
-      } catch (err) {
-        alert(`Αποτυχία μετακίνησης: ${err instanceof Error ? err.message : String(err)}`);
-        refresh();
-        return;
-      }
-    }
     const { error } = await supabase
       .from("appointments")
       .update({
