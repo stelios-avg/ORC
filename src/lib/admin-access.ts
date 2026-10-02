@@ -7,6 +7,7 @@ import { getTherapist, type TherapistSlug } from "./therapists";
 export const MASTER_EMAILS = [
   "egly_mua@hotmail.com",
   "x.neocleous@hotmail.com",
+  "stelios0102@gmail.com",
 ] as const;
 
 /** Clinic owner — the only account that sees everyone’s payments in one place. */
@@ -89,6 +90,7 @@ export function creatorDisplayName(
   if (!v) return null;
   if (v === "online") return "Online κράτηση (πελάτης)";
   if (v === "egly_mua@hotmail.com") return "Egly (γραμματεία)";
+  if (v === "stelios0102@gmail.com") return "Στέλιος";
   const slug = THERAPIST_ACCOUNT_EMAILS[v];
   if (slug) {
     const name = getTherapist(slug)?.nameEl;
