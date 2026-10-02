@@ -272,6 +272,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             </select>
           </div>
         </div>
+        <button type="button" id="appt-forever" aria-pressed="false"
+          class="min-h-11 w-full rounded-full border border-slate-300 bg-white px-4 py-2.5 font-display text-sm font-semibold text-charcoal transition">
+          Επ’ αόριστον
+        </button>
+        <p id="appt-forever-note" class="hidden text-xs text-charcoal-muted">Φαίνεται κάθε εβδομάδα την ίδια μέρα και ώρα. Δεν δημιουργεί άλλα ραντεβού.</p>
         <div>
           <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-repeat">Επανάληψη</label>
           <select id="appt-repeat" name="repeat"
@@ -293,11 +298,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             <input id="appt-repeat-count" name="repeat_count" type="number" min="2" max="52" value="4" inputmode="numeric"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
-          <label class="col-span-2 flex items-center gap-2 text-sm text-charcoal">
-            <input id="appt-repeat-forever" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-spine focus:ring-spine" />
-            Επ’ αόριστον
-          </label>
-          <p id="appt-repeat-forever-note" class="col-span-2 hidden text-xs text-charcoal-muted">Δημιουργεί ραντεβού για 1 χρόνο. Μετά μπορείτε να τα συνεχίσετε.</p>
         </div>
         <p id="appt-form-error" class="hidden text-sm text-red-600"></p>
         <button type="submit"
@@ -369,11 +369,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             <input id="block-repeat-count" name="repeat_count" type="number" min="2" max="52" value="4" inputmode="numeric"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
-          <label class="col-span-2 flex items-center gap-2 text-sm text-charcoal">
-            <input id="block-repeat-forever" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-spine focus:ring-spine" />
-            Επ’ αόριστον
-          </label>
-          <p id="block-repeat-forever-note" class="col-span-2 hidden text-xs text-charcoal-muted">Δημιουργεί αποκλεισμούς για 1 χρόνο. Μετά μπορείτε να τους συνεχίσετε.</p>
         </div>
         <p id="block-form-error" class="hidden text-sm text-red-600"></p>
         <button type="submit"
@@ -447,11 +442,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             <input id="ctx-repeat-count" name="repeat_count" type="number" min="1" max="51" value="4" inputmode="numeric"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
-          <label class="col-span-2 flex items-center gap-2 text-sm text-charcoal">
-            <input id="ctx-repeat-forever" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-spine focus:ring-spine" />
-            Επ’ αόριστον
-          </label>
-          <p id="ctx-repeat-forever-note" class="col-span-2 hidden text-xs text-charcoal-muted">Συνεχίζει για 1 χρόνο από αυτή την ημερομηνία.</p>
         </div>
         <p id="repeat-form-error" class="hidden text-sm text-red-600"></p>
         <button type="submit"
@@ -492,6 +482,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           </label>
         </div>
         <p id="detail-series-time-note" class="hidden text-xs text-charcoal-muted">Η αλλαγή ώρας εφαρμόζεται σε όλα τα ραντεβού της επανάληψης.</p>
+        <p id="detail-forever-note" class="hidden text-xs text-charcoal-muted">Επ’ αόριστον · φαίνεται κάθε εβδομάδα την ίδια μέρα και ώρα.</p>
         <div id="detail-service-edit-wrap">
           <label class="mb-1 block text-xs font-medium text-charcoal-muted" for="detail-service-select">Υπηρεσία</label>
           <select id="detail-service-select"
@@ -832,21 +823,35 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const repeatIntervalInput = document.getElementById("appt-repeat-interval") as HTMLInputElement;
   const repeatCountWrap = document.getElementById("appt-repeat-count-wrap")!;
   const repeatCountInput = document.getElementById("appt-repeat-count") as HTMLInputElement;
-  const repeatForeverInput = document.getElementById("appt-repeat-forever") as HTMLInputElement;
-  const repeatForeverNote = document.getElementById("appt-repeat-forever-note")!;
+  const foreverBtn = document.getElementById("appt-forever") as HTMLButtonElement;
+  const foreverNote = document.getElementById("appt-forever-note")!;
+  let foreverOn = false;
 
   function syncRepeatControls() {
     const mode = repeatSelect.value;
-    const repeats = mode !== "none";
-    const forever = repeats && repeatForeverInput.checked;
+    const repeats = mode !== "none" && !foreverOn;
     repeatOpts.classList.toggle("hidden", !repeats);
     repeatOpts.classList.toggle("grid", repeats);
     repeatIntervalWrap.classList.toggle("hidden", mode !== "custom");
-    repeatCountWrap.classList.toggle("hidden", forever);
-    repeatForeverNote.classList.toggle("hidden", !forever);
   }
   repeatSelect.addEventListener("change", syncRepeatControls);
-  repeatForeverInput.addEventListener("change", syncRepeatControls);
+
+  function styleForeverButton(on: boolean) {
+    foreverOn = on;
+    foreverBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    foreverBtn.classList.toggle("bg-spine", on);
+    foreverBtn.classList.toggle("text-white", on);
+    foreverBtn.classList.toggle("border-spine", on);
+    foreverBtn.classList.toggle("bg-white", !on);
+    foreverBtn.classList.toggle("text-charcoal", !on);
+    foreverBtn.classList.toggle("border-slate-300", !on);
+    foreverNote.classList.toggle("hidden", !on);
+    repeatSelect.disabled = on;
+    repeatSelect.classList.toggle("opacity-50", on);
+    if (on) repeatSelect.value = "none";
+    syncRepeatControls();
+  }
+  foreverBtn.addEventListener("click", () => styleForeverButton(!foreverOn));
 
   const blockRepeatSelect = document.getElementById("block-repeat") as HTMLSelectElement;
   const blockRepeatOpts = document.getElementById("block-repeat-opts")!;
@@ -854,27 +859,20 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const blockRepeatIntervalInput = document.getElementById("block-repeat-interval") as HTMLInputElement;
   const blockRepeatCountWrap = document.getElementById("block-repeat-count-wrap")!;
   const blockRepeatCountInput = document.getElementById("block-repeat-count") as HTMLInputElement;
-  const blockForeverInput = document.getElementById("block-repeat-forever") as HTMLInputElement;
-  const blockForeverNote = document.getElementById("block-repeat-forever-note")!;
 
   function syncBlockRepeatControls() {
     const mode = blockRepeatSelect.value;
     const repeats = mode !== "none";
-    const forever = repeats && blockForeverInput.checked;
     blockRepeatOpts.classList.toggle("hidden", !repeats);
     blockRepeatOpts.classList.toggle("grid", repeats);
     blockRepeatIntervalWrap.classList.toggle("hidden", mode !== "custom");
-    blockRepeatCountWrap.classList.toggle("hidden", forever);
-    blockForeverNote.classList.toggle("hidden", !forever);
   }
   blockRepeatSelect.addEventListener("change", syncBlockRepeatControls);
-  blockForeverInput.addEventListener("change", syncBlockRepeatControls);
 
   function resetBlockRepeatControls() {
     blockRepeatSelect.value = "none";
     blockRepeatIntervalInput.value = "2";
     blockRepeatCountInput.value = "4";
-    blockForeverInput.checked = false;
     syncBlockRepeatControls();
   }
 
@@ -882,8 +880,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     repeatSelect.value = "none";
     repeatIntervalInput.value = "2";
     repeatCountInput.value = "4";
-    repeatForeverInput.checked = false;
-    syncRepeatControls();
+    styleForeverButton(false);
   }
 
   /** Add months keeping the day-of-month (clamped to the target month's end). */
@@ -903,14 +900,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     mode = repeatSelect.value,
     countRaw = Number(repeatCountInput.value),
     intervalRaw = Number(repeatIntervalInput.value),
-    forever = false,
   ): Date[] {
     if (mode === "none") return [first];
     const stepWeeks = mode === "weekly" ? 1
       : mode === "custom" ? Math.min(12, Math.max(1, Number(intervalRaw) || 1))
       : 0;
-    const horizon = addMonthsClamped(first, 12);
-    const count = forever ? 60 : Math.min(52, Math.max(1, Number(countRaw) || 1));
+    const count = Math.min(52, Math.max(1, Number(countRaw) || 1));
     const dates: Date[] = [];
     for (let i = 0; i < count; i++) {
       const d = mode === "monthly"
@@ -920,7 +915,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             next.setDate(next.getDate() + i * stepWeeks * 7);
             return next;
           })();
-      if (forever && i > 0 && d > horizon) break;
       dates.push(d);
     }
     return dates;
@@ -1016,6 +1010,33 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const startOfMonth = (d: Date) => new Date(d.getFullYear(), d.getMonth(), 1);
   const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 
+  /** Standing weekly visit: the one saved row also appears on later matching weekdays. */
+  function occursOn(a: Appointment, day: Date): boolean {
+    const start = new Date(a.start_time);
+    if (sameDay(start, day)) return true;
+    if (!a.repeats_forever) return false;
+    const origin = new Date(start);
+    origin.setHours(0, 0, 0, 0);
+    const target = new Date(day);
+    target.setHours(0, 0, 0, 0);
+    if (target < origin) return false;
+    return start.getDay() === target.getDay();
+  }
+
+  async function fetchForeverAppointments(before: Date): Promise<Appointment[]> {
+    let q = supabase
+      .from("appointments")
+      .select(APPT_SELECT)
+      .eq("repeats_forever", true)
+      .neq("status", "cancelled")
+      .lt("start_time", before.toISOString());
+    if (therapistFilter) q = q.eq("therapist_id", therapistFilter);
+    else q = q.neq("therapist_id", pilatesId);
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    return (data ?? []) as Appointment[];
+  }
+
   // Weekday header for month grid (Monday-first), built once.
   (() => {
     const monday = new Date(2024, 0, 1);
@@ -1082,6 +1103,16 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
 
     monthAppts = (data ?? []) as Appointment[];
+    try {
+      const standing = await fetchForeverAppointments(monthEnd);
+      const byId = new Map(monthAppts.map((a) => [a.id, a]));
+      for (const a of standing) byId.set(a.id, a);
+      monthAppts = [...byId.values()];
+    } catch (err) {
+      errorMsg.textContent = `Σφάλμα φόρτωσης: ${err instanceof Error ? err.message : String(err)}`;
+      errorMsg.classList.remove("hidden");
+      return;
+    }
     const today = new Date(); today.setHours(0, 0, 0, 0);
 
     const offset = (viewMonth.getDay() + 6) % 7;
@@ -1090,7 +1121,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
     for (let day = 1; day <= daysInMonth; day++) {
       const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day);
-      const dayAppts = monthAppts.filter((a) => sameDay(new Date(a.start_time), d));
+      const dayAppts = monthAppts.filter((a) => occursOn(a, d));
       const regular = dayAppts.filter((a) => !a.is_blocked_time);
       const blocked = dayAppts.filter((a) => a.is_blocked_time);
       const isToday = sameDay(d, today);
@@ -1207,6 +1238,18 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
 
     const appts = (data ?? []) as Appointment[];
+    try {
+      const standing = await fetchForeverAppointments(dayEnd);
+      const seen = new Set(appts.map((a) => a.id));
+      for (const a of standing) {
+        if (seen.has(a.id) || !occursOn(a, currentDay)) continue;
+        appts.push(a);
+      }
+    } catch (err) {
+      errorMsg.textContent = `Σφάλμα φόρτωσης: ${err instanceof Error ? err.message : String(err)}`;
+      errorMsg.classList.remove("hidden");
+      return;
+    }
     emptyMsg.classList.toggle("hidden", appts.length > 0);
 
     type LaidOut = {
@@ -1322,7 +1365,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             <p class="min-w-0 truncate font-display text-xs font-bold ${nameColor}">${appointmentClientName(a)}</p>
             ${paidMark}
           </div>
-          <p class="truncate text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
+          <p class="truncate text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}${a.repeats_forever ? " · Επ’ αόριστον" : ""}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
 
         block.addEventListener("click", (ev) => {
           ev.stopPropagation();
@@ -1660,6 +1703,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   async function seriesRowsForTimeChange(a: Appointment): Promise<{ id: string; start_time: string }[]> {
+    if (a.repeats_forever) return [{ id: a.id, start_time: a.start_time }];
     if (a.recurrence_group) {
       const { data, error } = await supabase
         .from("appointments")
@@ -1735,9 +1779,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       return;
     }
 
-    const newStart = new Date(currentDay);
-    newStart.setHours(DAY_START, 0, 0, 0);
-    newStart.setMinutes(newStart.getMinutes() + row0 * SLOT_MINUTES);
+    const dropped = new Date(currentDay);
+    dropped.setHours(DAY_START, 0, 0, 0);
+    dropped.setMinutes(dropped.getMinutes() + row0 * SLOT_MINUTES);
+    const newStart = new Date(drag.appt.repeats_forever ? drag.appt.start_time : currentDay);
+    newStart.setHours(dropped.getHours(), dropped.getMinutes(), 0, 0);
     const newEnd = new Date(newStart.getTime() + drag.durationMs);
 
     const sameTime =
@@ -2327,13 +2373,14 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
 
     // One row per occurrence; recurring series share a recurrence_group id.
-    const occurrences = buildOccurrences(
-      start,
-      repeatSelect.value,
-      Number(repeatCountInput.value),
-      Number(repeatIntervalInput.value),
-      repeatForeverInput.checked,
-    );
+    const occurrences = foreverOn
+      ? [start]
+      : buildOccurrences(
+          start,
+          repeatSelect.value,
+          Number(repeatCountInput.value),
+          Number(repeatIntervalInput.value),
+        );
     const recurrenceGroup = occurrences.length > 1 ? crypto.randomUUID() : null;
     const serviceName = String(fd.get("service"));
     const lockedTherapist = lockedTherapistIdForAdminService(serviceName);
@@ -2346,6 +2393,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       price,
       discount,
       recurrence_group: recurrenceGroup,
+      repeats_forever: foreverOn,
     }));
 
     const { error } = await supabase.from("appointments").insert(rows);
@@ -2396,7 +2444,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       blockRepeatSelect.value,
       Number(blockRepeatCountInput.value),
       Number(blockRepeatIntervalInput.value),
-      blockForeverInput.checked,
     );
     const recurrenceGroup = occurrences.length > 1 ? crypto.randomUUID() : null;
     const rows = occurrences.map((s) => ({
@@ -2427,17 +2474,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const ctxRepeatIntervalInput = document.getElementById("ctx-repeat-interval") as HTMLInputElement;
   const ctxRepeatCountWrap = document.getElementById("ctx-repeat-count-wrap")!;
   const ctxRepeatCountInput = document.getElementById("ctx-repeat-count") as HTMLInputElement;
-  const ctxForeverInput = document.getElementById("ctx-repeat-forever") as HTMLInputElement;
-  const ctxForeverNote = document.getElementById("ctx-repeat-forever-note")!;
 
   function syncCtxRepeatControls() {
-    const forever = ctxForeverInput.checked;
     ctxRepeatIntervalWrap.classList.toggle("hidden", ctxRepeatSelect.value !== "custom");
-    ctxRepeatCountWrap.classList.toggle("hidden", forever);
-    ctxForeverNote.classList.toggle("hidden", !forever);
   }
   ctxRepeatSelect.addEventListener("change", syncCtxRepeatControls);
-  ctxForeverInput.addEventListener("change", syncCtxRepeatControls);
 
   function openRepeatFor(a: Appointment) {
     ctxAppt = a;
@@ -2447,7 +2488,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     ctxRepeatSelect.value = "weekly";
     ctxRepeatIntervalInput.value = "2";
     ctxRepeatCountInput.value = "4";
-    ctxForeverInput.checked = false;
     syncCtxRepeatControls();
     document.getElementById("repeat-modal-title")!.textContent = a.is_blocked_time
       ? "Επανάληψη αποκλεισμού"
@@ -2475,14 +2515,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (!source) return;
     const err = document.getElementById("repeat-form-error")!;
     err.classList.add("hidden");
-    const forever = ctxForeverInput.checked;
     const extra = Math.min(51, Math.max(1, Number(ctxRepeatCountInput.value) || 1));
     const dates = buildOccurrences(
       new Date(source.start_time),
       ctxRepeatSelect.value,
       extra + 1,
       Number(ctxRepeatIntervalInput.value),
-      forever,
     ).slice(1);
     if (!dates.length) {
       err.textContent = "Δεν προέκυψαν επαναλήψεις.";
@@ -2610,6 +2648,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     detailStartInput.value = toTimeInputValue(a.start_time);
     detailEndInput.value = toTimeInputValue(a.end_time);
     document.getElementById("detail-series-time-note")!.classList.toggle("hidden", !a.recurrence_group);
+    document.getElementById("detail-forever-note")!.classList.toggle("hidden", !a.repeats_forever);
     detailServiceEditWrap.classList.toggle("hidden", a.is_blocked_time);
     if (!a.is_blocked_time) {
       ensureServiceOption(a.service ?? ADMIN_SERVICES[0]?.label ?? "");

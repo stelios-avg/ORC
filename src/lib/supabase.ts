@@ -97,6 +97,8 @@ export interface Appointment {
   created_by: string | null;
   /** Shared id linking appointments created as a recurring series. */
   recurrence_group: string | null;
+  /** Standing weekly visit. One row is shown every week; no extra future rows. */
+  repeats_forever: boolean;
   /** Admin email that cancelled it (masters' cancelled-bookings list). */
   cancelled_by: string | null;
   cancelled_at: string | null;
