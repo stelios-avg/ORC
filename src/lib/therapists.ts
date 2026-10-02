@@ -33,15 +33,6 @@ export interface Therapist {
 
 export const THERAPISTS: Therapist[] = [
   {
-    id: "55555555-5555-4555-8555-555555555555",
-    slug: "pilates",
-    nameEl: "Πιλάτες",
-    nameEn: "Pilates",
-    specialty: "pilates",
-    accent: "amber",
-    anonymous: true,
-  },
-  {
     id: "44444444-4444-4444-8444-444444444444",
     slug: "constantina",
     nameEl: "Κωνσταντίνα",
@@ -72,6 +63,15 @@ export const THERAPISTS: Therapist[] = [
     nameEn: "Charalambos",
     specialty: "osteopathy",
     accent: "spine",
+  },
+  {
+    id: "55555555-5555-4555-8555-555555555555",
+    slug: "pilates",
+    nameEl: "Πιλάτες",
+    nameEn: "Pilates",
+    specialty: "pilates",
+    accent: "amber",
+    anonymous: true,
   },
 ];
 

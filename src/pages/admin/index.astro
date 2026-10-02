@@ -7,12 +7,10 @@ import { ADMIN_SERVICES, THERAPISTS } from "../../lib/therapists";
 const DAY_START = 6;   // 06:00
 const DAY_END = 22;    // last hour block starts 22:00 (grid runs to 23:00)
 const SLOT_MINUTES = 15;
-/** Visual grid “square” size (appointment cadence). */
-const MAJOR_MINUTES = 45;
-const ROWS_PER_MAJOR = MAJOR_MINUTES / SLOT_MINUTES; // 3
-// Round the day span up to a whole number of 45' squares.
-const TOTAL_DAY_MINUTES =
-  Math.ceil(((DAY_END - DAY_START + 1) * 60) / MAJOR_MINUTES) * MAJOR_MINUTES;
+/** Each calendar box is one hour; 15′ lines sit inside it. */
+const MAJOR_MINUTES = 60;
+const ROWS_PER_MAJOR = MAJOR_MINUTES / SLOT_MINUTES; // 4
+const TOTAL_DAY_MINUTES = (DAY_END - DAY_START + 1) * 60;
 const TOTAL_ROWS = TOTAL_DAY_MINUTES / SLOT_MINUTES;
 const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_, i) => {
   const mins = DAY_START * 60 + i * MAJOR_MINUTES;
@@ -26,7 +24,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
 <AdminLayout title="Πρόγραμμα" active="calendar" wide>
   {/* ── Date navigation + view toggle ── */}
-  <div class="mb-3 flex items-center justify-between gap-2">
+  <div id="cal-date-nav" class="mb-3 flex items-center justify-between gap-2">
     <button id="cal-prev" class="flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition active:bg-sand hover:border-spine hover:text-spine" aria-label="Προηγούμενο">
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 3L5 8l5 5"/></svg>
     </button>
@@ -117,10 +115,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         <div id="cal-hours" class="w-12 flex-none border-r border-slate-100 bg-white sm:w-14">
           <div class="h-10 border-b border-slate-100"></div>
           {majorSlots.map((slot) => (
-            <div class="cal-hour-slot relative" style={`height: calc(var(--cal-row, 22px) * ${ROWS_PER_MAJOR})`}>
+            <div class="cal-hour-slot relative border-b border-slate-300" style={`height: calc(var(--cal-row, 22px) * ${ROWS_PER_MAJOR})`}>
               <span class="absolute -top-2 right-1.5 text-[10px] font-medium text-charcoal-muted sm:right-2 sm:text-[11px]">
                 {slot.label}
               </span>
+              <span class="pointer-events-none absolute inset-x-0 top-1/4 border-t border-dashed border-slate-200"></span>
+              <span class="pointer-events-none absolute inset-x-0 top-1/2 border-t border-dashed border-slate-200"></span>
+              <span class="pointer-events-none absolute inset-x-0 top-3/4 border-t border-dashed border-slate-200"></span>
             </div>
           ))}
         </div>
@@ -187,7 +188,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       </div>
       <form id="appt-form" class="space-y-4">
         <div class="relative">
-          <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-patient-search">Πελάτης</label>
+          <div class="mb-1 flex items-center justify-between gap-2">
+            <label class="text-sm font-medium text-charcoal" for="appt-patient-search">Πελάτης</label>
+            <button type="button" id="appt-walkin" hidden aria-pressed="false"
+              class="rounded-full px-3 py-1 font-display text-xs font-semibold ring-1 ring-slate-300 transition">
+              Walk-in
+            </button>
+          </div>
           <input type="hidden" id="appt-patient" name="patient_id" value="" />
           <input
             id="appt-patient-search"
@@ -202,7 +209,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             role="listbox"
           ></div>
           <p id="appt-patient-selected" class="mt-1.5 hidden text-sm font-medium text-spine"></p>
-          <p class="mt-1 text-xs text-charcoal-muted">
+          <p id="appt-patient-hint" class="mt-1 text-xs text-charcoal-muted">
             Αναζήτηση υπάρχοντος, ή γράψτε όνομα νέου πελάτη και κλείστε το ραντεβού κατευθείαν.
           </p>
           <div id="appt-new-patient-fields" class="mt-3 hidden space-y-3 rounded-xl bg-sand px-3 py-3">
@@ -221,7 +228,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
               <option value={th.id}>{th.nameEl}</option>
             ))}
           </select>
-          <p id="appt-therapist-lock" class="mt-1 hidden text-xs text-charcoal-muted">Η οστεοπαθητική κλείνεται μόνο με τον Χαράλαμπο.</p>
+          <p id="appt-therapist-lock" class="mt-1 hidden text-xs text-charcoal-muted">Ο Χαράλαμπος έχει μόνο οστεοπαθητική.</p>
         </div>
         <div>
           <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-service">Υπηρεσία</label>
@@ -279,11 +286,16 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             <input id="appt-repeat-interval" name="repeat_interval" type="number" min="1" max="12" value="2" inputmode="numeric"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
-          <div>
+          <div id="appt-repeat-count-wrap">
             <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-repeat-count">Σύνολο επαναλήψεων</label>
             <input id="appt-repeat-count" name="repeat_count" type="number" min="2" max="52" value="4" inputmode="numeric"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
+          <label class="col-span-2 flex items-center gap-2 text-sm text-charcoal">
+            <input id="appt-repeat-forever" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-spine focus:ring-spine" />
+            Επ’ αόριστον
+          </label>
+          <p id="appt-repeat-forever-note" class="col-span-2 hidden text-xs text-charcoal-muted">Δημιουργεί ραντεβού για 1 χρόνο. Μετά μπορείτε να τα συνεχίσετε.</p>
         </div>
         <p id="appt-form-error" class="hidden text-sm text-red-600"></p>
         <button type="submit"
@@ -350,11 +362,16 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             <input id="block-repeat-interval" name="repeat_interval" type="number" min="1" max="12" value="2" inputmode="numeric"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
-          <div>
+          <div id="block-repeat-count-wrap">
             <label class="mb-1 block text-sm font-medium text-charcoal" for="block-repeat-count">Σύνολο επαναλήψεων</label>
             <input id="block-repeat-count" name="repeat_count" type="number" min="2" max="52" value="4" inputmode="numeric"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
+          <label class="col-span-2 flex items-center gap-2 text-sm text-charcoal">
+            <input id="block-repeat-forever" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-spine focus:ring-spine" />
+            Επ’ αόριστον
+          </label>
+          <p id="block-repeat-forever-note" class="col-span-2 hidden text-xs text-charcoal-muted">Δημιουργεί αποκλεισμούς για 1 χρόνο. Μετά μπορείτε να τους συνεχίσετε.</p>
         </div>
         <p id="block-form-error" class="hidden text-sm text-red-600"></p>
         <button type="submit"
@@ -423,11 +440,16 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             <input id="ctx-repeat-interval" name="repeat_interval" type="number" min="1" max="12" value="2" inputmode="numeric"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
-          <div>
+          <div id="ctx-repeat-count-wrap">
             <label class="mb-1 block text-sm font-medium text-charcoal" for="ctx-repeat-count">Πόσες φορές ακόμα</label>
             <input id="ctx-repeat-count" name="repeat_count" type="number" min="1" max="51" value="4" inputmode="numeric"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
+          <label class="col-span-2 flex items-center gap-2 text-sm text-charcoal">
+            <input id="ctx-repeat-forever" type="checkbox" class="h-4 w-4 rounded border-slate-300 text-spine focus:ring-spine" />
+            Επ’ αόριστον
+          </label>
+          <p id="ctx-repeat-forever-note" class="col-span-2 hidden text-xs text-charcoal-muted">Συνεχίζει για 1 χρόνο από αυτή την ημερομηνία.</p>
         </div>
         <p id="repeat-form-error" class="hidden text-sm text-red-600"></p>
         <button type="submit"
@@ -467,6 +489,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </label>
         </div>
+        <p id="detail-series-time-note" class="hidden text-xs text-charcoal-muted">Η αλλαγή ώρας εφαρμόζεται σε όλα τα ραντεβού της επανάληψης.</p>
         <div id="detail-service-edit-wrap">
           <label class="mb-1 block text-xs font-medium text-charcoal-muted" for="detail-service-select">Υπηρεσία</label>
           <select id="detail-service-select"
@@ -631,6 +654,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   .view-btn[data-active="false"]:hover {
     color: var(--color-charcoal);
   }
+  #cal-date-nav {
+    touch-action: pan-y;
+  }
   #cal-grid [data-appt] {
     touch-action: manipulation;
     -webkit-user-select: none;
@@ -692,7 +718,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const TOTAL_ROWS =
     Number(grid.dataset.totalRows) ||
     ((DAY_END - DAY_START + 1) * 60) / SLOT_MINUTES;
-  const MAJOR_SLOT_COUNT = TOTAL_ROWS / ROWS_PER_MAJOR;
   const dateLabel = document.getElementById("date-label")!;
   const emptyMsg = document.getElementById("cal-empty")!;
   const errorMsg = document.getElementById("cal-error")!;
@@ -712,6 +737,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const apptDurationSelect = document.getElementById("appt-duration") as HTMLSelectElement;
   const apptTherapistLock = document.getElementById("appt-therapist-lock")!;
 
+  const charalambosId = getTherapist("charalambos")!.id;
+
   function syncTherapistOptions(select: HTMLSelectElement, service: string, note?: HTMLElement) {
     const locked = lockedTherapistIdForAdminService(service);
     for (const opt of Array.from(select.options)) {
@@ -723,58 +750,95 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     note?.classList.toggle("hidden", !locked);
   }
 
+  /** Charalambos only sees osteopathy. Everyone else does not. */
+  function syncServiceOptions(select: HTMLSelectElement, therapistId: string, replaceDisallowed: boolean) {
+    const onlyOsteo = therapistId === charalambosId;
+    let firstAllowed = "";
+    const current = select.value;
+    for (const opt of Array.from(select.options)) {
+      const osteo = !!lockedTherapistIdForAdminService(opt.value);
+      const allowed = onlyOsteo ? osteo : !osteo;
+      const keep = !replaceDisallowed && opt.value === current;
+      opt.hidden = !allowed && !keep;
+      opt.disabled = !allowed && !keep;
+      if (allowed && !firstAllowed) firstAllowed = opt.value;
+    }
+    if (replaceDisallowed && select.selectedOptions[0]?.disabled && firstAllowed) {
+      select.value = firstAllowed;
+    }
+  }
+
   function applyServiceDefaults() {
     const price = defaultPriceForAdminService(apptServiceSelect.value);
     apptPriceInput.value = price != null ? String(price) : "";
     if (apptDiscountInput.value.trim() === "") apptDiscountInput.value = "0";
     const dur = String(durationForAdminService(apptServiceSelect.value));
     if ([...apptDurationSelect.options].some((o) => o.value === dur)) apptDurationSelect.value = dur;
-    syncTherapistOptions(apptTherapistSelect, apptServiceSelect.value, apptTherapistLock);
+  }
+
+  function syncNewApptForTherapist() {
+    syncServiceOptions(apptServiceSelect, apptTherapistSelect.value, true);
+    applyServiceDefaults();
+    apptTherapistLock.classList.toggle("hidden", apptTherapistSelect.value !== charalambosId);
   }
 
   apptServiceSelect.addEventListener("change", () => {
+    const therapistId = apptTherapistSelect.value;
     applyServiceDefaults();
-    if (!lockedTherapistIdForAdminService(apptServiceSelect.value)) {
-      const suggested = suggestTherapistIdForService(apptServiceSelect.value);
-      if (suggested && !therapistFilter) apptTherapistSelect.value = suggested;
-    }
+    apptTherapistSelect.value = therapistId;
   });
+  apptTherapistSelect.addEventListener("change", syncNewApptForTherapist);
 
   // ── Recurring appointment controls ──
   const repeatSelect = document.getElementById("appt-repeat") as HTMLSelectElement;
   const repeatOpts = document.getElementById("appt-repeat-opts")!;
   const repeatIntervalWrap = document.getElementById("appt-repeat-interval-wrap")!;
   const repeatIntervalInput = document.getElementById("appt-repeat-interval") as HTMLInputElement;
+  const repeatCountWrap = document.getElementById("appt-repeat-count-wrap")!;
   const repeatCountInput = document.getElementById("appt-repeat-count") as HTMLInputElement;
+  const repeatForeverInput = document.getElementById("appt-repeat-forever") as HTMLInputElement;
+  const repeatForeverNote = document.getElementById("appt-repeat-forever-note")!;
 
   function syncRepeatControls() {
     const mode = repeatSelect.value;
     const repeats = mode !== "none";
+    const forever = repeats && repeatForeverInput.checked;
     repeatOpts.classList.toggle("hidden", !repeats);
     repeatOpts.classList.toggle("grid", repeats);
     repeatIntervalWrap.classList.toggle("hidden", mode !== "custom");
+    repeatCountWrap.classList.toggle("hidden", forever);
+    repeatForeverNote.classList.toggle("hidden", !forever);
   }
   repeatSelect.addEventListener("change", syncRepeatControls);
+  repeatForeverInput.addEventListener("change", syncRepeatControls);
 
   const blockRepeatSelect = document.getElementById("block-repeat") as HTMLSelectElement;
   const blockRepeatOpts = document.getElementById("block-repeat-opts")!;
   const blockRepeatIntervalWrap = document.getElementById("block-repeat-interval-wrap")!;
   const blockRepeatIntervalInput = document.getElementById("block-repeat-interval") as HTMLInputElement;
+  const blockRepeatCountWrap = document.getElementById("block-repeat-count-wrap")!;
   const blockRepeatCountInput = document.getElementById("block-repeat-count") as HTMLInputElement;
+  const blockForeverInput = document.getElementById("block-repeat-forever") as HTMLInputElement;
+  const blockForeverNote = document.getElementById("block-repeat-forever-note")!;
 
   function syncBlockRepeatControls() {
     const mode = blockRepeatSelect.value;
     const repeats = mode !== "none";
+    const forever = repeats && blockForeverInput.checked;
     blockRepeatOpts.classList.toggle("hidden", !repeats);
     blockRepeatOpts.classList.toggle("grid", repeats);
     blockRepeatIntervalWrap.classList.toggle("hidden", mode !== "custom");
+    blockRepeatCountWrap.classList.toggle("hidden", forever);
+    blockForeverNote.classList.toggle("hidden", !forever);
   }
   blockRepeatSelect.addEventListener("change", syncBlockRepeatControls);
+  blockForeverInput.addEventListener("change", syncBlockRepeatControls);
 
   function resetBlockRepeatControls() {
     blockRepeatSelect.value = "none";
     blockRepeatIntervalInput.value = "2";
     blockRepeatCountInput.value = "4";
+    blockForeverInput.checked = false;
     syncBlockRepeatControls();
   }
 
@@ -782,6 +846,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     repeatSelect.value = "none";
     repeatIntervalInput.value = "2";
     repeatCountInput.value = "4";
+    repeatForeverInput.checked = false;
     syncRepeatControls();
   }
 
@@ -802,21 +867,25 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     mode = repeatSelect.value,
     countRaw = Number(repeatCountInput.value),
     intervalRaw = Number(repeatIntervalInput.value),
+    forever = false,
   ): Date[] {
     if (mode === "none") return [first];
-    const count = Math.min(52, Math.max(1, Number(countRaw) || 1));
     const stepWeeks = mode === "weekly" ? 1
       : mode === "custom" ? Math.min(12, Math.max(1, Number(intervalRaw) || 1))
       : 0;
+    const horizon = addMonthsClamped(first, 12);
+    const count = forever ? 60 : Math.min(52, Math.max(1, Number(countRaw) || 1));
     const dates: Date[] = [];
     for (let i = 0; i < count; i++) {
-      if (mode === "monthly") {
-        dates.push(addMonthsClamped(first, i));
-      } else {
-        const d = new Date(first);
-        d.setDate(d.getDate() + i * stepWeeks * 7);
-        dates.push(d);
-      }
+      const d = mode === "monthly"
+        ? addMonthsClamped(first, i)
+        : (() => {
+            const next = new Date(first);
+            next.setDate(next.getDate() + i * stepWeeks * 7);
+            return next;
+          })();
+      if (forever && i > 0 && d > horizon) break;
+      dates.push(d);
     }
     return dates;
   }
@@ -828,19 +897,28 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   let viewMonth = new Date(currentDay.getFullYear(), currentDay.getMonth(), 1);
   let viewMode: "day" | "month" = "day";
   /** null = show all therapists side by side; on phone default to one column */
-  let therapistFilter: string | null = isNarrow() ? DEFAULT_THERAPIST_ID : null;
+  /** Always start on «Όλοι», including phones. */
+  let therapistFilter: string | null = null;
   let patients: Patient[] = [];
   let selectedAppt: Appointment | null = null;
   let monthAppts: Appointment[] = [];
 
   const APPT_SELECT = "*, patients(id, name, phone), therapists(id, slug, name_el, name_en)";
 
+  const pilatesId = getTherapist("pilates")!.id;
+
   function visibleTherapists() {
+    const withoutPilates = THERAPISTS.filter((t) => t.id !== pilatesId);
     if (therapistFilter) {
       const one = THERAPISTS.find((t) => t.id === therapistFilter);
-      return one ? [one] : THERAPISTS;
+      return one ? [one] : withoutPilates;
     }
-    return THERAPISTS;
+    return withoutPilates;
+  }
+
+  function appointmentClientName(a: Pick<Appointment, "patient_id" | "patients">): string {
+    if (!a.patient_id) return "Walk-in";
+    return a.patients?.name ?? "—";
   }
 
   function therapistName(a: Appointment): string {
@@ -878,8 +956,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     });
   });
 
-  const fmtTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+  const fmtClock = (d: Date) =>
+    `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  const fmtTime = (iso: string) => fmtClock(new Date(iso));
 
   const initialsOf = (name: string) =>
     name.split(/\s+/).slice(0, 2).map((w) => w[0]?.toUpperCase() ?? "").join("");
@@ -956,6 +1035,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       .neq("status", "cancelled")
       .order("start_time");
     if (therapistFilter) q = q.eq("therapist_id", therapistFilter);
+    else q = q.neq("therapist_id", pilatesId);
 
     const { data, error } = await q;
 
@@ -997,7 +1077,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       btn.innerHTML = `
         <span class="font-display text-sm font-bold ${isToday ? "text-spine" : "text-charcoal"}">${day}</span>
         ${countLabel ? `<span class="mt-1 text-[10px] font-medium leading-tight text-charcoal-muted">${countLabel}</span>` : ""}
-        ${regular.length ? `<span class="mt-auto truncate text-[10px] text-spine">${regular.slice(0, 2).map((a) => a.patients?.name?.split(" ")[0] ?? "—").join(", ")}${regular.length > 2 ? "…" : ""}</span>` : ""}`;
+        ${regular.length ? `<span class="mt-auto truncate text-[10px] text-spine">${regular.slice(0, 2).map((a) => appointmentClientName(a).split(" ")[0]).join(", ")}${regular.length > 2 ? "…" : ""}</span>` : ""}`;
 
       btn.addEventListener("click", () => {
         currentDay = new Date(d);
@@ -1014,7 +1094,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       ? `repeat(${cols.length}, minmax(${colMin}px, 1fr))`
       : "minmax(0, 1fr)";
 
-    // Taller fine rows so each 45′ square stays easy to tap
     document.documentElement.style.setProperty("--cal-row", isNarrow() ? "22px" : "20px");
 
     // Columns need at least colMin each (horizontal scroll on phones), but
@@ -1036,11 +1115,14 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     hideApptPreview();
     hideCtxMenu();
 
-    for (let i = 0; i < MAJOR_SLOT_COUNT; i++) {
+    for (let row = 0; row < TOTAL_ROWS; row++) {
       const line = document.createElement("div");
       line.setAttribute("data-hour-line", "");
-      line.className = "pointer-events-none border-t border-slate-100";
-      line.style.gridRow = String(i * ROWS_PER_MAJOR + 1);
+      const onHour = row % ROWS_PER_MAJOR === 0;
+      line.className = onHour
+        ? "pointer-events-none border-t border-slate-300"
+        : "pointer-events-none border-t border-dashed border-slate-200";
+      line.style.gridRow = String(row + 1);
       line.style.gridColumn = "1 / -1";
       grid.appendChild(line);
     }
@@ -1070,6 +1152,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       .neq("status", "cancelled")
       .order("start_time");
     if (therapistFilter) q = q.eq("therapist_id", therapistFilter);
+    else q = q.neq("therapist_id", pilatesId);
 
     const { data, error } = await q;
 
@@ -1094,12 +1177,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       laneCount: number;
     };
 
-    const laid: LaidOut[] = appts.map((a) => {
+    const laid: LaidOut[] = appts.flatMap((a) => {
       const start = new Date(a.start_time);
       const end = new Date(a.end_time);
-      let colIdx = cols.findIndex((t) => t.id === a.therapist_id);
-      if (colIdx < 0) colIdx = 0;
-      return {
+      const colIdx = cols.findIndex((t) => t.id === a.therapist_id);
+      if (colIdx < 0) return [];
+      return [{
         a,
         startMs: start.getTime(),
         endMs: end.getTime(),
@@ -1108,7 +1191,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         colIdx,
         lane: 0,
         laneCount: 1,
-      };
+      }];
     });
 
     // Blocks stay full-width behind the column. Only real appointments share lanes
@@ -1193,7 +1276,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         const showTherapist = !therapistFilter;
         block.innerHTML = `
           <div class="flex items-center justify-between gap-1">
-            <p class="min-w-0 truncate font-display text-xs font-bold ${nameColor}">${a.patients?.name ?? "—"}</p>
+            <p class="min-w-0 truncate font-display text-xs font-bold ${nameColor}">${appointmentClientName(a)}</p>
             ${paidMark}
           </div>
           <p class="truncate text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
@@ -1364,7 +1447,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       previewPrice.textContent = "";
       return;
     }
-    const name = a.patients?.name ?? "Ραντεβού";
+    const name = appointmentClientName(a);
     previewStatus.textContent = a.is_paid ? "Πληρωμένο" : "Κλεισμένο";
     previewAvatar.textContent = initialsOf(name) || "?";
     previewName.textContent = name;
@@ -1506,6 +1589,66 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
   }
 
+  function clockMinutes(d: Date): number {
+    return d.getHours() * 60 + d.getMinutes();
+  }
+
+  /** Same calendar day as `iso`, with the clock from `clock`. */
+  function onSameClock(iso: string, clock: Date): Date {
+    const d = new Date(iso);
+    d.setHours(clock.getHours(), clock.getMinutes(), 0, 0);
+    return d;
+  }
+
+  async function seriesRowsForTimeChange(a: Appointment): Promise<{ id: string; start_time: string }[]> {
+    if (a.recurrence_group) {
+      const { data, error } = await supabase
+        .from("appointments")
+        .select("id, start_time")
+        .eq("recurrence_group", a.recurrence_group)
+        .neq("status", "cancelled");
+      if (error) throw new Error(error.message);
+      return (data ?? []) as { id: string; start_time: string }[];
+    }
+    const src = new Date(a.start_time);
+    let q = supabase
+      .from("appointments")
+      .select("id, start_time")
+      .eq("therapist_id", a.therapist_id ?? "")
+      .eq("is_blocked_time", a.is_blocked_time)
+      .neq("status", "cancelled");
+    if (!a.is_blocked_time) q = q.eq("patient_id", a.patient_id ?? "");
+    const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    return ((data ?? []) as { id: string; start_time: string }[]).filter((row) => {
+      const d = new Date(row.start_time);
+      return d.getDay() === src.getDay()
+        && d.getHours() === src.getHours()
+        && d.getMinutes() === src.getMinutes();
+    });
+  }
+
+  /** Sets the new clock on every date in the series. Returns applied=false for a single appointment. */
+  async function applyClockToSeries(
+    a: Appointment,
+    newStart: Date,
+    newEnd: Date,
+  ): Promise<{ applied: boolean; error: string | null }> {
+    const rows = await seriesRowsForTimeChange(a);
+    if (rows.length <= 1) return { applied: false, error: null };
+    const messages = await Promise.all(rows.map(async (row) => {
+      const start = onSameClock(row.start_time, newStart);
+      const end = onSameClock(row.start_time, newEnd);
+      if (end <= start) end.setDate(end.getDate() + 1);
+      const { error } = await supabase
+        .from("appointments")
+        .update({ start_time: start.toISOString(), end_time: end.toISOString() })
+        .eq("id", row.id);
+      return error?.message ?? null;
+    }));
+    return { applied: true, error: messages.find((msg) => msg) ?? null };
+  }
+
   async function finishApptDrag(clientX: number, clientY: number) {
     const drag = activeDrag;
     if (!drag) return;
@@ -1548,6 +1691,35 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
 
     skipNextApptClick = true;
+    const oldStart = new Date(drag.appt.start_time);
+    const oldEnd = new Date(drag.appt.end_time);
+    const clockChanged = clockMinutes(newStart) !== clockMinutes(oldStart)
+      || clockMinutes(newEnd) !== clockMinutes(oldEnd);
+    if (clockChanged) {
+      try {
+        const series = await applyClockToSeries(drag.appt, newStart, newEnd);
+        if (series.error) {
+          alert(`Αποτυχία μετακίνησης: ${series.error}`);
+          refresh();
+          return;
+        }
+        if (series.applied) {
+          if (!sameTherapist) {
+            const { error } = await supabase
+              .from("appointments")
+              .update({ therapist_id: therapistId })
+              .eq("id", drag.appt.id);
+            if (error) alert(`Αποτυχία μετακίνησης: ${error.message}`);
+          }
+          refresh();
+          return;
+        }
+      } catch (err) {
+        alert(`Αποτυχία μετακίνησης: ${err instanceof Error ? err.message : String(err)}`);
+        refresh();
+        return;
+      }
+    }
     const { error } = await supabase
       .from("appointments")
       .update({
@@ -1663,22 +1835,53 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   setInterval(positionNowLine, 60_000);
 
   // ── Date navigation ──
-  document.getElementById("cal-prev")!.addEventListener("click", () => {
+  function shiftCalendar(dir: number) {
     if (viewMode === "day") {
-      currentDay.setDate(currentDay.getDate() - 1);
+      currentDay.setDate(currentDay.getDate() + dir);
     } else {
-      viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+      viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + dir, 1);
     }
     refresh();
-  });
-  document.getElementById("cal-next")!.addEventListener("click", () => {
-    if (viewMode === "day") {
-      currentDay.setDate(currentDay.getDate() + 1);
-    } else {
-      viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
-    }
-    refresh();
-  });
+  }
+  document.getElementById("cal-prev")!.addEventListener("click", () => shiftCalendar(-1));
+  document.getElementById("cal-next")!.addEventListener("click", () => shiftCalendar(1));
+
+  /** Phone swipe: date bar always changes day; the grid does too once the therapist columns can't scroll further. */
+  function bindCalendarSwipe(el: HTMLElement, respectColumnScroll: boolean) {
+    const scroller = document.getElementById("cal-h-scroll");
+    let startX = 0;
+    let startY = 0;
+    let startScroll = 0;
+    let tracking = false;
+    el.addEventListener("touchstart", (e) => {
+      if (!isNarrow() || e.touches.length !== 1) {
+        tracking = false;
+        return;
+      }
+      tracking = true;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+      startScroll = scroller?.scrollLeft ?? 0;
+    }, { passive: true });
+    el.addEventListener("touchend", (e) => {
+      if (!tracking) return;
+      tracking = false;
+      if (activeDrag) return;
+      const t = e.changedTouches[0];
+      const dx = t.clientX - startX;
+      const dy = t.clientY - startY;
+      if (Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      if (respectColumnScroll && viewMode === "day" && scroller) {
+        const max = scroller.scrollWidth - scroller.clientWidth;
+        if (Math.abs(scroller.scrollLeft - startScroll) > 6) return;
+        if (dx < 0 && scroller.scrollLeft < max - 4) return;
+        if (dx > 0 && scroller.scrollLeft > 4) return;
+      }
+      shiftCalendar(dx < 0 ? 1 : -1);
+    }, { passive: true });
+  }
+  bindCalendarSwipe(document.getElementById("cal-date-nav")!, false);
+  bindCalendarSwipe(document.getElementById("day-view")!, true);
   document.getElementById("today-btn")!.addEventListener("click", () => {
     currentDay = new Date(); currentDay.setHours(0, 0, 0, 0);
     viewMonth = startOfMonth(currentDay);
@@ -1732,19 +1935,66 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const newPatientFields = document.getElementById("appt-new-patient-fields")!;
   const newPatientPhone = document.getElementById("appt-new-phone") as HTMLInputElement;
   const newPatientEmail = document.getElementById("appt-new-email") as HTMLInputElement;
+  const walkinBtn = document.getElementById("appt-walkin") as HTMLButtonElement;
   let forceNewPatient = false;
+  let walkInMode = false;
+
+  function styleWalkInButton(on: boolean) {
+    walkinBtn.setAttribute("aria-pressed", on ? "true" : "false");
+    walkinBtn.classList.toggle("bg-spine", on);
+    walkinBtn.classList.toggle("text-white", on);
+    walkinBtn.classList.toggle("ring-spine", on);
+    walkinBtn.classList.toggle("bg-white", !on);
+    walkinBtn.classList.toggle("text-charcoal", !on);
+    walkinBtn.classList.toggle("ring-slate-300", !on);
+  }
+
+  function setWalkInMode(on: boolean) {
+    walkInMode = on;
+    styleWalkInButton(on);
+    patientSearch.disabled = on;
+    patientSearch.classList.toggle("bg-sand", on);
+    if (on) {
+      forceNewPatient = false;
+      patientIdInput.value = "";
+      patientSearch.value = "";
+      newPatientPhone.value = "";
+      newPatientEmail.value = "";
+      patientResults.classList.add("hidden");
+      patientResults.innerHTML = "";
+      newPatientFields.classList.add("hidden");
+      patientSelected.textContent = "Walk-in · χωρίς καρτέλα πελάτη";
+      patientSelected.classList.remove("hidden");
+      document.getElementById("appt-patient-hint")!.classList.add("hidden");
+    } else {
+      patientSearch.disabled = false;
+      patientSearch.classList.remove("bg-sand");
+      document.getElementById("appt-patient-hint")!.classList.remove("hidden");
+      if (!patientIdInput.value) {
+        patientSelected.textContent = "";
+        patientSelected.classList.add("hidden");
+      }
+    }
+  }
+
+  walkinBtn.addEventListener("click", () => setWalkInMode(!walkInMode));
 
   function digitsOnly(s: string) {
     return s.replace(/\D/g, "");
   }
 
   function syncNewPatientFields() {
-    const creating = !patientIdInput.value;
+    const creating = !walkInMode && !patientIdInput.value;
     newPatientFields.classList.toggle("hidden", !creating);
   }
 
   function resetPatientPicker() {
     forceNewPatient = false;
+    walkInMode = false;
+    styleWalkInButton(false);
+    patientSearch.disabled = false;
+    patientSearch.classList.remove("bg-sand");
+    document.getElementById("appt-patient-hint")!.classList.remove("hidden");
     patientIdInput.value = "";
     patientSearch.value = "";
     newPatientPhone.value = "";
@@ -1758,6 +2008,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
   function selectPatient(p: Patient) {
     forceNewPatient = false;
+    if (walkInMode) setWalkInMode(false);
     patientIdInput.value = p.id;
     patientSearch.value = p.name;
     newPatientPhone.value = "";
@@ -1876,16 +2127,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       /* keep the last in-memory list */
     }
     resetPatientPicker();
+    await ensureAdminEmail();
+    walkinBtn.hidden = !isMasterAccount(adminEmail);
     setDefaultTherapistSelects();
     apptDiscountInput.value = "0";
     resetRepeatControls();
-    if (opts?.therapistId) {
-      apptTherapistSelect.value = opts.therapistId;
-    } else {
-      const suggested = suggestTherapistIdForService(apptServiceSelect.value);
-      if (suggested && !therapistFilter) apptTherapistSelect.value = suggested;
-    }
-    applyServiceDefaults();
+    if (opts?.therapistId) apptTherapistSelect.value = opts.therapistId;
+    syncNewApptForTherapist();
     const startInput = document.getElementById("appt-start") as HTMLInputElement;
     if (opts?.hours != null) {
       const hh = String(opts.hours).padStart(2, "0");
@@ -1941,7 +2189,15 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     err.classList.add("hidden");
 
     let patientId = String(fd.get("patient_id") || "").trim();
-    if (!patientId) {
+    if (walkInMode) {
+      await ensureAdminEmail();
+      if (!isMasterAccount(adminEmail)) {
+        err.textContent = "Το Walk-in είναι μόνο για τους super admins.";
+        err.classList.remove("hidden");
+        return;
+      }
+      patientId = "";
+    } else if (!patientId) {
       const newName = patientSearch.value.trim();
       if (newName.length < 2) {
         err.textContent = "Γράψτε το όνομα του πελάτη ή επιλέξτε από τη λίστα.";
@@ -1995,12 +2251,18 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
 
     // One row per occurrence; recurring series share a recurrence_group id.
-    const occurrences = buildOccurrences(start);
+    const occurrences = buildOccurrences(
+      start,
+      repeatSelect.value,
+      Number(repeatCountInput.value),
+      Number(repeatIntervalInput.value),
+      repeatForeverInput.checked,
+    );
     const recurrenceGroup = occurrences.length > 1 ? crypto.randomUUID() : null;
     const serviceName = String(fd.get("service"));
     const lockedTherapist = lockedTherapistIdForAdminService(serviceName);
     const rows = occurrences.map((s) => ({
-      patient_id: patientId,
+      patient_id: patientId || null,
       therapist_id: lockedTherapist ?? String(fd.get("therapist_id")),
       service: serviceName,
       start_time: s.toISOString(),
@@ -2021,7 +2283,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     resetPatientPicker();
     apptDiscountInput.value = "0";
     setDefaultTherapistSelects();
-    applyServiceDefaults();
+    syncNewApptForTherapist();
     resetRepeatControls();
     closeModal(apptModal);
     refresh();
@@ -2058,6 +2320,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       blockRepeatSelect.value,
       Number(blockRepeatCountInput.value),
       Number(blockRepeatIntervalInput.value),
+      blockForeverInput.checked,
     );
     const recurrenceGroup = occurrences.length > 1 ? crypto.randomUUID() : null;
     const rows = occurrences.map((s) => ({
@@ -2086,12 +2349,19 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const ctxRepeatSelect = document.getElementById("ctx-repeat") as HTMLSelectElement;
   const ctxRepeatIntervalWrap = document.getElementById("ctx-repeat-interval-wrap")!;
   const ctxRepeatIntervalInput = document.getElementById("ctx-repeat-interval") as HTMLInputElement;
+  const ctxRepeatCountWrap = document.getElementById("ctx-repeat-count-wrap")!;
   const ctxRepeatCountInput = document.getElementById("ctx-repeat-count") as HTMLInputElement;
+  const ctxForeverInput = document.getElementById("ctx-repeat-forever") as HTMLInputElement;
+  const ctxForeverNote = document.getElementById("ctx-repeat-forever-note")!;
 
   function syncCtxRepeatControls() {
+    const forever = ctxForeverInput.checked;
     ctxRepeatIntervalWrap.classList.toggle("hidden", ctxRepeatSelect.value !== "custom");
+    ctxRepeatCountWrap.classList.toggle("hidden", forever);
+    ctxForeverNote.classList.toggle("hidden", !forever);
   }
   ctxRepeatSelect.addEventListener("change", syncCtxRepeatControls);
+  ctxForeverInput.addEventListener("change", syncCtxRepeatControls);
 
   function openRepeatFor(a: Appointment) {
     ctxAppt = a;
@@ -2101,6 +2371,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     ctxRepeatSelect.value = "weekly";
     ctxRepeatIntervalInput.value = "2";
     ctxRepeatCountInput.value = "4";
+    ctxForeverInput.checked = false;
     syncCtxRepeatControls();
     document.getElementById("repeat-modal-title")!.textContent = a.is_blocked_time
       ? "Επανάληψη αποκλεισμού"
@@ -2129,12 +2400,14 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (!source) return;
     const err = document.getElementById("repeat-form-error")!;
     err.classList.add("hidden");
+    const forever = ctxForeverInput.checked;
     const extra = Math.min(51, Math.max(1, Number(ctxRepeatCountInput.value) || 1));
     const dates = buildOccurrences(
       new Date(source.start_time),
       ctxRepeatSelect.value,
       extra + 1,
       Number(ctxRepeatIntervalInput.value),
+      forever,
     ).slice(1);
     if (!dates.length) {
       err.textContent = "Δεν προέκυψαν επαναλήψεις.";
@@ -2254,11 +2527,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         `class="underline decoration-spine/40 underline-offset-4 transition hover:text-spine">` +
         `${escHtml(a.patients?.name ?? "Ραντεβού")}</a>`;
     } else {
-      detailTitle.textContent = a.is_blocked_time ? (a.service || "Κλειστό") : "Ραντεβού";
+      detailTitle.textContent = a.is_blocked_time ? (a.service || "Κλειστό") : "Walk-in";
     }
 
     detailStartInput.value = toTimeInputValue(a.start_time);
     detailEndInput.value = toTimeInputValue(a.end_time);
+    document.getElementById("detail-series-time-note")!.classList.toggle("hidden", !a.recurrence_group);
     detailServiceEditWrap.classList.toggle("hidden", a.is_blocked_time);
     if (!a.is_blocked_time) {
       ensureServiceOption(a.service ?? ADMIN_SERVICES[0]?.label ?? "");
@@ -2267,6 +2541,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     detailTherapistRow.classList.remove("hidden");
     detailTherapistSelect.value = a.therapist_id ?? DEFAULT_THERAPIST_ID;
     syncDetailTherapistLock(a.service ?? "");
+    if (!a.is_blocked_time) {
+      syncServiceOptions(detailServiceSelect, detailTherapistSelect.value, false);
+    }
 
     const phoneEl = document.getElementById("detail-phone") as HTMLAnchorElement;
     if (!a.is_blocked_time && a.patients?.phone) {
@@ -2489,6 +2766,19 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     return `${String(eh).padStart(2, "0")}:${String(em).padStart(2, "0")}`;
   }
 
+  let detailDurationMin = 45;
+  detailStartInput.addEventListener("focus", () => {
+    const [sh, sm] = detailStartInput.value.split(":").map(Number);
+    const [eh, em] = detailEndInput.value.split(":").map(Number);
+    if (![sh, sm, eh, em].every((n) => Number.isFinite(n))) return;
+    let mins = eh * 60 + em - (sh * 60 + sm);
+    if (mins <= 0) mins += 24 * 60;
+    detailDurationMin = mins;
+  });
+  detailStartInput.addEventListener("change", () => {
+    detailEndInput.value = endTimeAfter(detailStartInput.value, detailDurationMin);
+  });
+
   function syncDetailTherapistLock(service: string) {
     syncTherapistOptions(detailTherapistSelect, service, detailTherapistLock);
     const locked = !!lockedTherapistIdForAdminService(service);
@@ -2498,6 +2788,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   detailServiceSelect.addEventListener("change", () => {
     if (!selectedAppt || selectedAppt.is_blocked_time) return;
     syncDetailTherapistLock(detailServiceSelect.value);
+    syncServiceOptions(detailServiceSelect, detailTherapistSelect.value, false);
     detailEndInput.value = endTimeAfter(
       detailStartInput.value,
       durationForAdminService(detailServiceSelect.value),
@@ -2563,7 +2854,26 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       }
     }
 
+    const prevStart = new Date(selectedAppt.start_time);
+    const prevEnd = new Date(selectedAppt.end_time);
+    const clockChanged = clockMinutes(start) !== clockMinutes(prevStart)
+      || clockMinutes(end) !== clockMinutes(prevEnd);
+
     detailScheduleSaveBtn.disabled = true;
+    if (clockChanged) {
+      try {
+        const series = await applyClockToSeries(selectedAppt, start, end);
+        if (series.error) {
+          detailScheduleSaveBtn.disabled = false;
+          alert(`Αποτυχία αποθήκευσης: ${series.error}`);
+          return;
+        }
+      } catch (err) {
+        detailScheduleSaveBtn.disabled = false;
+        alert(`Αποτυχία αποθήκευσης: ${err instanceof Error ? err.message : String(err)}`);
+        return;
+      }
+    }
     const { error } = await supabase
       .from("appointments")
       .update(patch)
@@ -2618,6 +2928,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     selectedAppt.therapists = th
       ? { id: th.id, slug: th.slug, name_el: th.nameEl, name_en: th.nameEn }
       : null;
+    syncServiceOptions(detailServiceSelect, nextId, false);
     refresh();
   });
 
@@ -2880,7 +3191,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         const when =
           start.toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" }) +
           " · " +
-          start.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+          fmtClock(start);
         return `
         <li class="rounded-xl bg-white p-3.5 ring-1 ring-amber-100" data-request-id="${r.id}">
           <div class="flex items-start justify-between gap-2">
@@ -3041,7 +3352,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         const when =
           start.toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" }) +
           " · " +
-          start.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+          fmtClock(start);
         const who = a.cancelled_by
           ? (creatorDisplayName(a.cancelled_by) ?? a.cancelled_by)
           : null;
@@ -3063,7 +3374,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         return `
         <li class="flex items-center gap-2 rounded-xl bg-sand p-3" data-cancelled-id="${a.id}">
           <div class="min-w-0 flex-1">
-            <p class="truncate font-display text-sm font-bold text-charcoal">${escHtml(a.patients?.name ?? "—")}</p>
+            <p class="truncate font-display text-sm font-bold text-charcoal">${escHtml(appointmentClientName(a))}</p>
             <p class="mt-0.5 text-xs font-medium text-charcoal-muted">${when} · ${escHtml(therapistName(a))}${a.service ? ` · ${escHtml(a.service)}` : ""}</p>
             ${byLine}
           </div>
@@ -3079,7 +3390,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const id = btn.dataset.cancelledDelete;
     const row = cancelledAppts.find((a) => a.id === id);
     if (!id || !row) return;
-    const label = row.patients?.name ?? "αυτή την ακύρωση";
+    const label = appointmentClientName(row);
     if (!confirm(`Διαγραφή της ακύρωσης για ${label}; Δεν αναιρείται.`)) return;
     btn.disabled = true;
     const { error } = await supabase.from("appointments").delete().eq("id", id);

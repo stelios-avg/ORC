@@ -19,6 +19,24 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     </button>
   </div>
 
+  <div id="pay-period" class="mb-3 hidden flex rounded-full bg-white p-1 ring-1 ring-slate-200">
+    <button type="button" data-pay-period="day"
+      class="flex min-h-11 flex-1 items-center justify-center rounded-full px-3 py-2 font-display text-xs font-semibold transition data-[active=true]:bg-charcoal data-[active=true]:text-white data-[active=false]:text-charcoal-muted"
+      data-active="false" aria-pressed="false">
+      Ημέρα
+    </button>
+    <button type="button" data-pay-period="month"
+      class="flex min-h-11 flex-1 items-center justify-center rounded-full px-3 py-2 font-display text-xs font-semibold transition data-[active=true]:bg-charcoal data-[active=true]:text-white data-[active=false]:text-charcoal-muted"
+      data-active="true" aria-pressed="true">
+      Μήνας
+    </button>
+    <button type="button" data-pay-period="year"
+      class="flex min-h-11 flex-1 items-center justify-center rounded-full px-3 py-2 font-display text-xs font-semibold transition data-[active=true]:bg-charcoal data-[active=true]:text-white data-[active=false]:text-charcoal-muted"
+      data-active="false" aria-pressed="false">
+      Έτος
+    </button>
+  </div>
+
   <p id="pay-scope" class="mb-4 text-sm text-charcoal-muted"></p>
 
   <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -37,6 +55,11 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   </div>
 
   <p id="pay-count" class="mt-3 text-xs text-charcoal-muted"></p>
+
+  <div id="period-breakdown" class="mt-6 hidden">
+    <h2 id="period-breakdown-title" class="mb-3 font-display text-sm font-bold uppercase tracking-wide text-charcoal"></h2>
+    <ul id="period-breakdown-list" class="space-y-2"></ul>
+  </div>
 
   {/* Owner (Charalambos): per-admin payments + unpaid remainder per appointment */}
   <div id="owner-wrap" class="mt-6 hidden space-y-4"></div>
@@ -63,17 +86,22 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
   const supabase = getSupabase();
   const monthLabel = document.getElementById("pay-month-label")!;
+  const periodWrap = document.getElementById("pay-period")!;
   const scopeEl = document.getElementById("pay-scope")!;
   const errorEl = document.getElementById("pay-error")!;
   const emptyEl = document.getElementById("pay-empty")!;
   const ownerWrap = document.getElementById("owner-wrap")!;
   const byWrap = document.getElementById("by-therapist-wrap")!;
   const byList = document.getElementById("by-therapist")!;
+  const breakdownWrap = document.getElementById("period-breakdown")!;
+  const breakdownTitle = document.getElementById("period-breakdown-title")!;
+  const breakdownList = document.getElementById("period-breakdown-list")!;
 
+  type Period = "day" | "month" | "year";
   let adminEmail = "";
-  let viewMonth = new Date();
-  viewMonth.setDate(1);
-  viewMonth.setHours(0, 0, 0, 0);
+  let period: Period = "month";
+  let cursor = new Date();
+  cursor.setHours(0, 0, 0, 0);
 
   const METHOD_LABELS: Record<string, string> = {
     cash: "Μετρητά",
@@ -101,10 +129,92 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     return Math.max(0, Number(a.price) - Number(a.discount ?? 0));
   }
 
-  function monthBounds(d: Date) {
+  function periodBounds(p: Period, d: Date) {
+    if (p === "day") {
+      const start = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+      const end = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
+      return { start, end };
+    }
+    if (p === "year") {
+      const start = new Date(d.getFullYear(), 0, 1);
+      const end = new Date(d.getFullYear() + 1, 0, 1);
+      return { start, end };
+    }
     const start = new Date(d.getFullYear(), d.getMonth(), 1);
     const end = new Date(d.getFullYear(), d.getMonth() + 1, 1);
     return { start, end };
+  }
+
+  function periodLabel(p: Period, d: Date) {
+    if (p === "day") {
+      return d.toLocaleDateString("el-GR", {
+        weekday: "long",
+        day: "numeric",
+        month: "long",
+        year: "numeric",
+      });
+    }
+    if (p === "year") return String(d.getFullYear());
+    return d.toLocaleDateString("el-GR", { month: "long", year: "numeric" });
+  }
+
+  function shiftCursor(dir: number) {
+    if (period === "day") {
+      cursor = new Date(cursor.getFullYear(), cursor.getMonth(), cursor.getDate() + dir);
+    } else if (period === "year") {
+      cursor = new Date(cursor.getFullYear() + dir, cursor.getMonth(), cursor.getDate());
+    } else {
+      const day = cursor.getDate();
+      const next = new Date(cursor.getFullYear(), cursor.getMonth() + dir, 1);
+      const last = new Date(next.getFullYear(), next.getMonth() + 1, 0).getDate();
+      next.setDate(Math.min(day, last));
+      cursor = next;
+    }
+  }
+
+  function syncPeriodUi() {
+    document.querySelectorAll<HTMLButtonElement>("[data-pay-period]").forEach((b) => {
+      const on = b.dataset.payPeriod === period;
+      b.setAttribute("data-active", on ? "true" : "false");
+      b.setAttribute("aria-pressed", on ? "true" : "false");
+    });
+    const prev = document.getElementById("pay-prev")!;
+    const next = document.getElementById("pay-next")!;
+    if (period === "day") {
+      prev.setAttribute("aria-label", "Προηγούμενη ημέρα");
+      next.setAttribute("aria-label", "Επόμενη ημέρα");
+    } else if (period === "year") {
+      prev.setAttribute("aria-label", "Προηγούμενο έτος");
+      next.setAttribute("aria-label", "Επόμενο έτος");
+    } else {
+      prev.setAttribute("aria-label", "Προηγούμενος μήνας");
+      next.setAttribute("aria-label", "Επόμενος μήνας");
+    }
+  }
+
+  type Totals = { payable: number; paid: number; unpaid: number; count: number };
+
+  function emptyTotals(): Totals {
+    return { payable: 0, paid: 0, unpaid: 0, count: 0 };
+  }
+
+  function addTotals(t: Totals, amount: number, isPaid: boolean) {
+    t.payable += amount;
+    t.count += 1;
+    if (isPaid) t.paid += amount;
+    else t.unpaid += amount;
+  }
+
+  function dayKey(iso: string) {
+    const d = new Date(iso);
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${d.getFullYear()}-${m}-${day}`;
+  }
+
+  function monthKey(iso: string) {
+    const d = new Date(iso);
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   }
 
   type Row = Appointment & { amount: number };
@@ -136,7 +246,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
               .map((a) => `
                 <li class="flex items-start justify-between gap-3 border-t border-amber-100/80 py-2.5 first:border-t-0">
                   <div class="min-w-0">
-                    <p class="truncate font-display text-sm font-semibold text-charcoal">${esc(a.patients?.name ?? "—")}</p>
+                    <p class="truncate font-display text-sm font-semibold text-charcoal">${esc(a.patients?.name ?? (a.patient_id ? "—" : "Walk-in"))}</p>
                     <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)}${a.service ? ` · ${esc(a.service)}` : ""}</p>
                   </div>
                   <p class="flex-none font-display text-sm font-bold text-amber-700">${fmtEuro(a.amount)}</p>
@@ -152,7 +262,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                 return `
                 <li class="flex items-start justify-between gap-3 border-t border-slate-100 py-2 first:border-t-0">
                   <div class="min-w-0">
-                    <p class="truncate text-sm text-charcoal">${esc(a.patients?.name ?? "—")}</p>
+                    <p class="truncate text-sm text-charcoal">${esc(a.patients?.name ?? (a.patient_id ? "—" : "Walk-in"))}</p>
                     <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)}${method ? ` · ${method}` : ""}</p>
                   </div>
                   <p class="flex-none text-sm font-semibold text-emerald-600">${fmtEuro(a.amount)}</p>
@@ -193,16 +303,119 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       }).join("")}`;
   }
 
+  function renderTherapistTotals(buckets: Map<string, Bucket>) {
+    const order = THERAPISTS.map((t) => t.id);
+    const sorted = [...buckets.entries()].sort((a, b) => {
+      const ia = order.indexOf(a[0]);
+      const ib = order.indexOf(b[0]);
+      return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
+    });
+    byList.innerHTML = sorted
+      .map(
+        ([, b]) => `
+        <li class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+          <div class="flex items-baseline justify-between gap-3">
+            <p class="font-display text-sm font-bold text-charcoal">${esc(b.name)}</p>
+            <p class="font-display text-sm font-semibold text-charcoal">${fmtEuro(b.payable)}</p>
+          </div>
+          <p class="mt-1 text-xs text-charcoal-muted">
+            Εισπραγμένα ${fmtEuro(b.paid)} · Απλήρωτα ${fmtEuro(b.unpaid)} · ${b.count} ραντεβού
+          </p>
+        </li>`,
+      )
+      .join("");
+  }
+
+  function totalsRow(label: string, t: Totals, jump: string) {
+    return `
+      <li>
+        <button type="button" data-jump="${jump}"
+          class="flex w-full items-center justify-between gap-3 rounded-xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-100 transition active:bg-sand">
+          <div class="min-w-0">
+            <p class="font-display text-sm font-bold text-charcoal">${esc(label)}</p>
+            <p class="mt-1 text-xs text-charcoal-muted">
+              Εισπραγμένα ${fmtEuro(t.paid)} · Υπόλοιπο ${fmtEuro(t.unpaid)} · ${t.count} ραντεβού
+            </p>
+          </div>
+          <p class="flex-none font-display text-sm font-semibold text-charcoal">${fmtEuro(t.payable)}</p>
+        </button>
+      </li>`;
+  }
+
+  function renderBreakdown(
+    owner: boolean,
+    byDay: Map<string, Totals>,
+    byMonth: Map<string, Totals>,
+  ) {
+    breakdownWrap.classList.add("hidden");
+    breakdownList.innerHTML = "";
+    if (!owner || period === "day") return;
+
+    if (period === "month") {
+      const days = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
+      if (!days.length) return;
+      breakdownTitle.textContent = "Σύνολο ανά ημέρα · όλοι οι θεραπευτές";
+      breakdownList.innerHTML = days
+        .map(([key, t]) => {
+          const [y, m, d] = key.split("-").map(Number);
+          const label = new Date(y!, m! - 1, d).toLocaleDateString("el-GR", {
+            weekday: "short",
+            day: "numeric",
+            month: "short",
+          });
+          return totalsRow(label, t, key);
+        })
+        .join("");
+    } else {
+      breakdownTitle.textContent = "Σύνολο ανά μήνα · όλοι οι θεραπευτές";
+      const year = cursor.getFullYear();
+      const rows: string[] = [];
+      for (let m = 1; m <= 12; m++) {
+        const key = `${year}-${String(m).padStart(2, "0")}`;
+        const t = byMonth.get(key) ?? emptyTotals();
+        const label = ["Ιανουάριος", "Φεβρουάριος", "Μάρτιος", "Απρίλιος", "Μάιος", "Ιούνιος", "Ιούλιος", "Αύγουστος", "Σεπτέμβριος", "Οκτώβριος", "Νοέμβριος", "Δεκέμβριος"][m - 1]!;
+        rows.push(totalsRow(label, t, key));
+      }
+      breakdownList.innerHTML = rows.join("");
+    }
+    breakdownWrap.classList.remove("hidden");
+  }
+
+  async function fetchRows(start: Date, end: Date, filter: "all" | string[]) {
+    const pageSize = 1000;
+    const rows: Appointment[] = [];
+    for (let from = 0; ; from += pageSize) {
+      let q = supabase
+        .from("appointments")
+        .select("id, patient_id, therapist_id, price, discount, is_paid, is_blocked_time, payments_hidden, payment_method, status, start_time, service, patients(name)")
+        .neq("status", "cancelled")
+        .eq("is_blocked_time", false)
+        .eq("payments_hidden", false)
+        .gte("start_time", start.toISOString())
+        .lt("start_time", end.toISOString())
+        .order("start_time", { ascending: true })
+        .order("id", { ascending: true })
+        .range(from, from + pageSize - 1);
+      if (filter !== "all") q = q.in("therapist_id", filter);
+      const { data, error } = await q;
+      if (error) return { rows, error: error.message };
+      const chunk = (data ?? []) as Appointment[];
+      rows.push(...chunk);
+      if (chunk.length < pageSize) break;
+    }
+    return { rows, error: null as string | null };
+  }
+
   async function load() {
     errorEl.classList.add("hidden");
     emptyEl.classList.add("hidden");
     ownerWrap.classList.add("hidden");
     ownerWrap.innerHTML = "";
     byWrap.classList.add("hidden");
-    monthLabel.textContent = viewMonth.toLocaleDateString("el-GR", {
-      month: "long",
-      year: "numeric",
-    });
+    breakdownWrap.classList.add("hidden");
+    breakdownList.innerHTML = "";
+    monthLabel.textContent = periodLabel(period, cursor);
+    syncPeriodUi();
 
     const { data: { session } } = await supabase.auth.getSession();
     adminEmail = session?.user?.email ?? "";
@@ -210,9 +423,11 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     const master = isMasterAccount(adminEmail);
     const owner = isOwnerAccount(adminEmail);
     const ownSlug = therapistSlugForEmail(adminEmail);
+    periodWrap.classList.toggle("hidden", !owner);
 
     if (owner) {
-      scopeEl.textContent = "Βλέπετε όλες τις πληρωμές και τα υπόλοιπα όλων των θεραπευτών.";
+      const grain = period === "day" ? "την ημέρα" : period === "year" ? "τον χρόνο" : "τον μήνα";
+      scopeEl.textContent = `Σύνολο όλων των θεραπευτών για ${grain}.`;
     } else if (master) {
       scopeEl.textContent = "Βλέπετε τις πληρωμές όλων.";
     } else if (ownSlug) {
@@ -230,34 +445,21 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       return;
     }
 
-    const { start, end } = monthBounds(viewMonth);
-    let q = supabase
-      .from("appointments")
-      .select("id, therapist_id, price, discount, is_paid, is_blocked_time, payments_hidden, payment_method, status, start_time, service, patients(name)")
-      .neq("status", "cancelled")
-      .eq("is_blocked_time", false)
-      .eq("payments_hidden", false)
-      .gte("start_time", start.toISOString())
-      .lt("start_time", end.toISOString())
-      .order("start_time");
-
-    if (filter !== "all") {
-      q = q.in("therapist_id", filter);
-    }
-
-    const { data, error } = await q;
+    const { start, end } = periodBounds(period, cursor);
+    const { rows, error } = await fetchRows(start, end, filter);
     if (error) {
-      errorEl.textContent = `Σφάλμα: ${error.message}`;
+      errorEl.textContent = `Σφάλμα: ${error}`;
       errorEl.classList.remove("hidden");
       return;
     }
 
-    const rows = (data ?? []) as Appointment[];
     let payable = 0;
     let paid = 0;
     let unpaid = 0;
     let withPrice = 0;
     const buckets = new Map<string, Bucket>();
+    const byDay = new Map<string, Totals>();
+    const byMonth = new Map<string, Totals>();
 
     for (const a of rows) {
       if (a.payments_hidden) continue;
@@ -267,6 +469,17 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       payable += amount;
       if (a.is_paid) paid += amount;
       else unpaid += amount;
+
+      if (owner) {
+        const dk = dayKey(a.start_time);
+        const mk = monthKey(a.start_time);
+        const dayTotals = byDay.get(dk) ?? emptyTotals();
+        const monthTotals = byMonth.get(mk) ?? emptyTotals();
+        addTotals(dayTotals, amount, a.is_paid);
+        addTotals(monthTotals, amount, a.is_paid);
+        byDay.set(dk, dayTotals);
+        byMonth.set(mk, monthTotals);
+      }
 
       if (master || owner) {
         const tid = a.therapist_id ?? "none";
@@ -294,42 +507,55 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     document.getElementById("pay-count")!.textContent =
       withPrice ? `${withPrice} ραντεβού με τιμή` : "";
 
-    emptyEl.classList.toggle("hidden", withPrice > 0);
+    const emptyCopy =
+      period === "day"
+        ? "Καμία καταχώρηση με τιμή αυτή την ημέρα."
+        : period === "year"
+          ? "Καμία καταχώρηση με τιμή αυτόν τον χρόνο."
+          : "Καμία καταχώρηση με τιμή αυτόν τον μήνα.";
+    emptyEl.textContent = emptyCopy;
+    emptyEl.classList.toggle("hidden", withPrice > 0 || (owner && period === "year"));
 
-    if (owner && buckets.size) {
+    if (owner) renderBreakdown(owner, byDay, byMonth);
+
+    if (owner && period !== "year" && buckets.size) {
       ownerWrap.classList.remove("hidden");
       renderOwnerDashboard(buckets);
-    } else if (master && !owner && buckets.size) {
+    } else if ((owner && period === "year" && buckets.size) || (master && !owner && buckets.size)) {
       byWrap.classList.remove("hidden");
-      const order = THERAPISTS.map((t) => t.id);
-      const sorted = [...buckets.entries()].sort((a, b) => {
-        const ia = order.indexOf(a[0]);
-        const ib = order.indexOf(b[0]);
-        return (ia < 0 ? 999 : ia) - (ib < 0 ? 999 : ib);
-      });
-      byList.innerHTML = sorted
-        .map(
-          ([, b]) => `
-        <li class="rounded-xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-          <div class="flex items-baseline justify-between gap-3">
-            <p class="font-display text-sm font-bold text-charcoal">${esc(b.name)}</p>
-            <p class="font-display text-sm font-semibold text-charcoal">${fmtEuro(b.payable)}</p>
-          </div>
-          <p class="mt-1 text-xs text-charcoal-muted">
-            Εισπραγμένα ${fmtEuro(b.paid)} · Απλήρωτα ${fmtEuro(b.unpaid)} · ${b.count} ραντεβού
-          </p>
-        </li>`,
-        )
-        .join("");
+      renderTherapistTotals(buckets);
     }
   }
 
   document.getElementById("pay-prev")!.addEventListener("click", () => {
-    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() - 1, 1);
+    shiftCursor(-1);
     load();
   });
   document.getElementById("pay-next")!.addEventListener("click", () => {
-    viewMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+    shiftCursor(1);
+    load();
+  });
+  periodWrap.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-pay-period]");
+    const next = btn?.dataset.payPeriod;
+    if (next !== "day" && next !== "month" && next !== "year") return;
+    if (next === period) return;
+    period = next;
+    load();
+  });
+  breakdownList.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-jump]");
+    const jump = btn?.dataset.jump;
+    if (!jump) return;
+    const [y, m, d] = jump.split("-").map(Number);
+    if (!y || !m) return;
+    if (period === "year") {
+      period = "month";
+      cursor = new Date(y, m - 1, 1);
+    } else {
+      period = "day";
+      cursor = new Date(y, m - 1, d || 1);
+    }
     load();
   });
 

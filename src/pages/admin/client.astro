@@ -143,6 +143,10 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-charcoal-muted">Προηγούμενα</p>
       <ul id="past-list" class="space-y-2"></ul>
     </div>
+    <div id="cancelled-wrap" class="mt-4 hidden">
+      <p class="mb-2 text-xs font-semibold uppercase tracking-wide text-red-700">Ακυρωμένα</p>
+      <ul id="cancelled-list" class="space-y-2"></ul>
+    </div>
     <p id="history-empty" class="hidden text-center text-sm text-charcoal-muted">Κανένα ραντεβού ακόμη.</p>
   </div>
 
@@ -204,8 +208,10 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
   const fmtDate = (iso: string) =>
     new Date(iso).toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short", year: "numeric" });
-  const fmtTime = (iso: string) =>
-    new Date(iso).toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit" });
+  const fmtTime = (iso: string) => {
+    const d = new Date(iso);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  };
   const fmtEuro = (n: number) =>
     new Intl.NumberFormat("el-GR", { style: "currency", currency: "EUR" }).format(n);
 
@@ -218,7 +224,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   function clientDebt(appts: Appointment[]): number {
     let total = 0;
     for (const a of appts) {
-      if (a.is_blocked_time || a.is_paid) continue;
+      if (a.is_blocked_time || a.is_paid || a.status === "cancelled") continue;
       if (!canViewTherapistPayments(adminEmail, a.therapist_id)) continue;
       const amount = payableAmount(a);
       if (amount != null) total += amount;
@@ -287,21 +293,25 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   });
 
   function apptItem(a: Appointment): string {
-    const showPay =
+    const cancelled = a.status === "cancelled";
+    const canPay =
       canViewTherapistPayments(adminEmail, a.therapist_id) &&
       (!a.payments_hidden || isMasterAccount(adminEmail));
-    const amount = showPay ? payableAmount(a) : null;
+    const showPay = !cancelled && canPay;
+    const amount = canPay ? payableAmount(a) : null;
     const amountLabel =
       amount != null
-        ? `<span class="flex-none text-xs font-semibold ${a.is_paid ? "text-emerald-600" : "text-amber-700"}">${fmtEuro(amount)}</span>`
+        ? `<span class="flex-none text-xs font-semibold ${cancelled ? "text-charcoal-muted line-through" : a.is_paid ? "text-emerald-600" : "text-amber-700"}">${fmtEuro(amount)}</span>`
         : "";
     const methodLabel =
       a.is_paid && a.payment_method ? ` · ${METHOD_LABELS[a.payment_method] ?? ""}` : "";
-    const payBadge = !showPay
-      ? ""
-      : a.is_paid
-        ? `<span class="flex-none rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Πληρωμένο${methodLabel}</span>`
-        : '<span class="flex-none rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">Απλήρωτο</span>';
+    const payBadge = cancelled
+      ? '<span class="flex-none rounded-full bg-red-50 px-2.5 py-1 text-[11px] font-bold text-red-700">Ακυρώθηκε</span>'
+      : !showPay
+        ? ""
+        : a.is_paid
+          ? `<span class="flex-none rounded-full bg-emerald-100 px-2.5 py-1 text-[11px] font-bold text-emerald-700">Πληρωμένο${methodLabel}</span>`
+          : '<span class="flex-none rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-bold text-amber-700">Απλήρωτο</span>';
     // Tickable only when unpaid, priced, and this admin manages those payments
     const canBulk = showPay && !a.is_paid && !a.is_blocked_time && amount != null;
     const checkbox = canBulk
@@ -309,10 +319,10 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
           class="h-5 w-5 flex-none rounded border-slate-300 text-spine accent-[var(--color-spine)] focus:ring-spine/40" aria-label="Επιλογή για πληρωμή" />`
       : "";
     return `
-      <li class="flex items-center justify-between gap-3 rounded-xl bg-white p-3.5 shadow-sm ring-1 ring-slate-100">
+      <li class="flex items-center justify-between gap-3 rounded-xl bg-white p-3.5 shadow-sm ring-1 ${cancelled ? "ring-red-100" : "ring-slate-100"}">
         ${checkbox}
         <div class="min-w-0 flex-1">
-          <p class="truncate font-display text-sm font-semibold text-charcoal">${a.service ?? "Ραντεβού"}</p>
+          <p class="truncate font-display text-sm font-semibold ${cancelled ? "text-charcoal-muted line-through" : "text-charcoal"}">${a.service ?? "Ραντεβού"}</p>
           <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)} · ${fmtTime(a.start_time)}–${fmtTime(a.end_time)}</p>
         </div>
         <div class="flex flex-none flex-col items-end gap-1">
@@ -336,7 +346,6 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         .from("appointments")
         .select("*")
         .eq("patient_id", id)
-        .neq("status", "cancelled")
         .order("start_time", { ascending: false }),
       supabase
         .from("appointment_notes")
@@ -393,9 +402,15 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       document.getElementById("cl-balance-hint")!.textContent =
         debt > 0 ? "Άθροισμα απλήρωτων ραντεβού" : "Καμία ανοιχτή οφειλή";
 
+      document.getElementById("upcoming-wrap")!.classList.add("hidden");
+      document.getElementById("past-wrap")!.classList.add("hidden");
+      document.getElementById("cancelled-wrap")!.classList.add("hidden");
+
       const now = Date.now();
-      const upcoming = list.filter((a) => new Date(a.start_time).getTime() >= now).reverse();
-      const past = list.filter((a) => new Date(a.start_time).getTime() < now);
+      const active = list.filter((a) => a.status !== "cancelled");
+      const cancelled = list.filter((a) => a.status === "cancelled");
+      const upcoming = active.filter((a) => new Date(a.start_time).getTime() >= now).reverse();
+      const past = active.filter((a) => new Date(a.start_time).getTime() < now);
 
       if (upcoming.length) {
         document.getElementById("upcoming-wrap")!.classList.remove("hidden");
@@ -404,6 +419,10 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       if (past.length) {
         document.getElementById("past-wrap")!.classList.remove("hidden");
         document.getElementById("past-list")!.innerHTML = past.map(apptItem).join("");
+      }
+      if (cancelled.length) {
+        document.getElementById("cancelled-wrap")!.classList.remove("hidden");
+        document.getElementById("cancelled-list")!.innerHTML = cancelled.map(apptItem).join("");
       }
       document.getElementById("history-empty")!.classList.toggle("hidden", list.length > 0);
     }

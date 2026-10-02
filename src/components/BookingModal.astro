@@ -329,6 +329,8 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
   if (modal && form) {
     const ds = modal.dataset;
     const lang       = modal.dataset.lang === "en" ? "en-GB" : "el-GR";
+    const fmtClock = (d: Date) =>
+      `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
     const pageLang   = modal.dataset.lang === "en" ? "en" : "el";
     const freshaUrl  = modal.dataset.freshaUrl || "";
     const leadKey    = modal.dataset.leadKey   || "";
@@ -611,7 +613,7 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
           if (s.getTime() < now + MIN_LEAD_MS) continue;
           const opt = document.createElement("option");
           opt.value = String(s.getTime());
-          opt.textContent = s.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+          opt.textContent = fmtClock(s);
           requestTimeSelect.appendChild(opt);
         }
       }
@@ -712,7 +714,7 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
         btn.type = "button";
         btn.className =
           "rounded-full border border-slate-200 px-2 py-2 font-display text-sm font-semibold text-charcoal transition hover:border-spine hover:bg-spine-50 hover:text-spine";
-        btn.textContent = s.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" });
+        btn.textContent = fmtClock(s);
         btn.addEventListener("click", () => {
           selectedStart = s;
           fillConfirm();
@@ -734,7 +736,7 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
         : payload.serviceLabel;
       document.getElementById("confirm-when")!.textContent =
         `${selectedStart.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" })} · ` +
-        `${selectedStart.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}`;
+        `${fmtClock(selectedStart)}`;
       document.getElementById("confirm-contact")!.textContent = `${payload.phone} · ${payload.email}`;
       confirmErr.classList.add("hidden");
     }
@@ -779,7 +781,7 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
       sendPatientConfirmation(selectedStart);
       document.getElementById("success-when")!.textContent =
         `${selectedStart.toLocaleDateString(lang, { weekday: "long", day: "numeric", month: "long" })} · ` +
-        `${selectedStart.toLocaleTimeString(lang, { hour: "2-digit", minute: "2-digit" })}`;
+        `${fmtClock(selectedStart)}`;
       showStep(success);
     });
 
