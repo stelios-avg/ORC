@@ -110,8 +110,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   {/* ── Day view: sticky hours + horizontally scrollable therapist columns ── */}
   <div id="day-view">
     <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
-      <div class="flex">
-        {/* Sticky time gutter */}
+      <div id="cal-scroll" class="cal-scroll">
+      <div class="flex w-max min-w-full">
+        {/* Time gutter stays pinned while therapist columns scroll sideways */}
         <div id="cal-hours" class="w-12 flex-none border-r border-slate-100 bg-white sm:w-14">
           <div class="h-10 border-b border-slate-100"></div>
           {majorSlots.map((slot) => (
@@ -126,7 +127,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           ))}
         </div>
 
-        <div id="cal-h-scroll" class="admin-h-scroll min-w-0 flex-1 overflow-x-auto">
+        <div id="cal-h-scroll" class="min-w-0">
           <div id="cal-cols-wrap" class="min-w-full">
             <div id="cal-col-headers-inner" class="grid h-10 border-b border-slate-100"></div>
             <div
@@ -150,6 +151,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             </div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   </div>
@@ -657,8 +659,39 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   #cal-date-nav {
     touch-action: pan-y;
   }
+  /* One scroller for the day: vertical drag moves hours and appointments together.
+     The time gutter stays pinned on the left while columns move sideways. */
+  .cal-scroll {
+    overflow: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+    touch-action: pan-x pan-y;
+  }
+  @media (max-width: 767px) {
+    .cal-scroll {
+      max-height: calc(100dvh - 17rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+    }
+  }
+  #cal-hours {
+    position: sticky;
+    left: 0;
+    z-index: 30;
+    background: white;
+  }
+  #cal-col-headers-inner {
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    background: white;
+  }
+  #cal-hours > :first-child {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    background: white;
+  }
   #cal-grid [data-appt] {
-    touch-action: manipulation;
+    touch-action: pan-x pan-y;
     -webkit-user-select: none;
     user-select: none;
   }
@@ -1087,7 +1120,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
   }
 
+  let laidOutCols: typeof THERAPISTS | null = null;
+  let lastScrollW = -1;
+
   function setupDayColumns(cols: typeof THERAPISTS) {
+    laidOutCols = cols;
     const multi = cols.length > 1;
     const colMin = isNarrow() ? 152 : 168;
     const template = multi
@@ -1096,11 +1133,14 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
     document.documentElement.style.setProperty("--cal-row", isNarrow() ? "22px" : "20px");
 
-    // Columns need at least colMin each (horizontal scroll on phones), but
-    // stretch evenly to fill the container when there is room (desktop).
-    colsWrap.style.width = "";
-    colsWrap.style.minWidth = multi ? `max(${cols.length * colMin}px, 100%)` : "100%";
-    scrollHint.classList.toggle("hidden", !(multi && isNarrow()));
+    const scroll = document.getElementById("cal-scroll")!;
+    const hours = document.getElementById("cal-hours")!;
+    lastScrollW = scroll.clientWidth;
+    const available = Math.max(0, lastScrollW - hours.getBoundingClientRect().width);
+    const width = multi ? Math.max(cols.length * colMin, available) : Math.max(available, colMin);
+    colsWrap.style.width = `${width}px`;
+    colsWrap.style.minWidth = `${width}px`;
+    scrollHint.classList.toggle("hidden", !(multi && isNarrow() && width > available + 1));
 
     colHeadersInner.style.gridTemplateColumns = template;
     colHeadersInner.innerHTML = cols.map((th) => {
@@ -1527,10 +1567,15 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   document.addEventListener("keydown", (e) => {
     if (e.key === "Escape") hideCtxMenu();
   });
-  document.getElementById("cal-h-scroll")?.addEventListener("scroll", () => {
+  document.getElementById("cal-scroll")?.addEventListener("scroll", () => {
     hideCtxMenu();
     hideApptPreview();
   });
+  new ResizeObserver(() => {
+    const scroll = document.getElementById("cal-scroll");
+    if (!laidOutCols || !scroll || scroll.clientWidth === lastScrollW) return;
+    setupDayColumns(laidOutCols);
+  }).observe(document.getElementById("cal-scroll")!);
 
   function applyDragPreview(
     el: HTMLElement,
@@ -1846,29 +1891,27 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   document.getElementById("cal-prev")!.addEventListener("click", () => shiftCalendar(-1));
   document.getElementById("cal-next")!.addEventListener("click", () => shiftCalendar(1));
 
-  /** Phone swipe anywhere on the page changes day, except on the calendar and the therapist chips. */
-  function swipeChangesDay(target: EventTarget | null): boolean {
-    if (!(target instanceof Element)) return false;
-    if (target.closest("#day-view, #month-view, #therapist-tabs")) return false;
-    if (target.closest("input, textarea, select")) return false;
-    const sheet = target.closest("#appt-modal, #block-modal, #repeat-modal, #detail-sheet, #delete-modal");
-    if (sheet && !sheet.classList.contains("hidden")) return false;
-    return true;
-  }
-  {
+  /**
+   * Phone swipe changes the day on the date bar.
+   * On the calendar it does so only at the horizontal edge: last column → next day, first column → previous day.
+   */
+  function bindCalendarSwipe(el: HTMLElement, atColumnEdge: boolean) {
+    const scroller = document.getElementById("cal-scroll");
     let startX = 0;
     let startY = 0;
+    let startScroll = 0;
     let tracking = false;
-    document.addEventListener("touchstart", (e) => {
-      if (!isNarrow() || e.touches.length !== 1 || !swipeChangesDay(e.target)) {
+    el.addEventListener("touchstart", (e) => {
+      if (!isNarrow() || e.touches.length !== 1) {
         tracking = false;
         return;
       }
       tracking = true;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
+      startScroll = scroller?.scrollLeft ?? 0;
     }, { passive: true });
-    document.addEventListener("touchend", (e) => {
+    el.addEventListener("touchend", (e) => {
       if (!tracking) return;
       tracking = false;
       if (activeDrag) return;
@@ -1876,9 +1919,17 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
       if (Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
+      if (atColumnEdge && viewMode === "day" && scroller) {
+        const max = scroller.scrollWidth - scroller.clientWidth;
+        if (Math.abs(scroller.scrollLeft - startScroll) > 6) return;
+        if (dx < 0 && scroller.scrollLeft < max - 4) return;
+        if (dx > 0 && scroller.scrollLeft > 4) return;
+      }
       shiftCalendar(dx < 0 ? 1 : -1);
     }, { passive: true });
   }
+  bindCalendarSwipe(document.getElementById("cal-date-nav")!, false);
+  bindCalendarSwipe(document.getElementById("cal-scroll")!, true);
   document.getElementById("today-btn")!.addEventListener("click", () => {
     currentDay = new Date(); currentDay.setHours(0, 0, 0, 0);
     viewMonth = startOfMonth(currentDay);
