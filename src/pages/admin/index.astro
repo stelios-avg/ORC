@@ -92,7 +92,20 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       </span>
       <svg id="cancelled-chevron" class="h-4 w-4 text-charcoal-muted transition-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
     </button>
-    <ul id="cancelled-list" class="hidden space-y-2 border-t border-slate-100 p-3"></ul>
+    <div id="cancelled-body" class="hidden border-t border-slate-100">
+      <div id="cancelled-bulk" class="hidden flex-wrap items-center justify-between gap-2 px-3 pt-3">
+        <label class="flex min-h-11 items-center gap-2 text-sm font-medium text-charcoal">
+          <input id="cancelled-select-all" type="checkbox"
+            class="h-5 w-5 flex-none rounded border-slate-300 text-spine accent-[var(--color-spine)] focus:ring-spine/40" />
+          Επιλογή όλων
+        </label>
+        <button type="button" id="cancelled-delete-selected" disabled
+          class="min-h-11 rounded-full bg-red-600 px-4 py-2 font-display text-xs font-semibold text-white transition hover:bg-red-700 disabled:opacity-40">
+          Διαγραφή επιλεγμένων
+        </button>
+      </div>
+      <ul id="cancelled-list" class="space-y-2 p-3"></ul>
+    </div>
   </div>
 
   {/* ── Actions (day view only; FAB covers primary on phone) ── */}
@@ -659,8 +672,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
   @media (max-width: 767px) {
     .cal-scroll {
-      max-height: calc(100dvh - 17rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      /* Fallback until JS measures the space above the bottom nav. */
+      max-height: calc(100dvh - 17rem - 4.25rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
       overscroll-behavior: contain;
+    }
+    /* Room to scroll the last hour clear of the new-appointment button. */
+    .cal-scroll > .flex {
+      padding-bottom: calc(5rem + env(safe-area-inset-bottom));
     }
   }
   #cal-hours {
@@ -922,6 +940,27 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
   const isNarrow = () => window.matchMedia("(max-width: 767px)").matches;
 
+  /** Phone: keep the day scroller above the bottom nav, with room to scroll past the FAB. */
+  function fitCalendarScroll() {
+    const scroll = document.getElementById("cal-scroll");
+    if (!scroll) return;
+    const inner = scroll.firstElementChild as HTMLElement | null;
+    if (!isNarrow() || viewMode !== "day" || dayView.classList.contains("hidden")) {
+      scroll.style.maxHeight = "";
+      if (inner) inner.style.paddingBottom = "";
+      return;
+    }
+    const nav = document.querySelector("nav");
+    const navTop = nav?.getBoundingClientRect().top ?? window.innerHeight;
+    const available = Math.max(240, Math.floor(navTop - scroll.getBoundingClientRect().top - 8));
+    scroll.style.maxHeight = `${available}px`;
+    const fab = document.getElementById("fab-appt");
+    const fabShown = !!fab && getComputedStyle(fab).display !== "none";
+    const fabTop = fabShown ? fab!.getBoundingClientRect().top : navTop;
+    const cover = Math.max(16, Math.ceil(navTop - fabTop) + 16);
+    if (inner) inner.style.paddingBottom = `${cover}px`;
+  }
+
   let currentDay = new Date();
   currentDay.setHours(0, 0, 0, 0);
   let viewMonth = new Date(currentDay.getFullYear(), currentDay.getMonth(), 1);
@@ -1072,6 +1111,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
   function refresh() {
     updateNavLabel();
+    requestAnimationFrame(() => fitCalendarScroll());
     if (viewMode === "day") loadDay();
     else loadMonth();
   }
@@ -1625,8 +1665,17 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const atTop = el.scrollTop <= 0 && e.deltaY < 0;
     const atBottom = el.scrollTop >= maxY - 1 && e.deltaY > 0;
     if (canScroll && !atTop && !atBottom) return;
-    window.scrollBy(0, e.deltaY);
+    const root = document.scrollingElement || document.documentElement;
+    const maxPage = root.scrollHeight - root.clientHeight;
+    if ((root.scrollTop <= 0 && e.deltaY < 0) || (root.scrollTop >= maxPage - 1 && e.deltaY > 0)) return;
     e.preventDefault();
+    // Trackpads emit a burst of small deltas. scrollBy follows the page's smooth
+    // scroll and keeps restarting that animation, so the day barely moves.
+    const delta = e.deltaMode === 1 ? e.deltaY * 16
+      : e.deltaMode === 2 ? e.deltaY * window.innerHeight
+      : e.deltaY;
+    root.style.scrollBehavior = "auto";
+    root.scrollTop += delta;
   }, { passive: false });
   new ResizeObserver(() => {
     const scroll = document.getElementById("cal-scroll");
@@ -3300,6 +3349,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
     pendingRequests = (data ?? []) as BookingRequest[];
     requestsBanner.classList.toggle("hidden", pendingRequests.length === 0);
+    requestAnimationFrame(() => fitCalendarScroll());
     requestsCount.textContent = String(pendingRequests.length);
     requestsList.innerHTML = pendingRequests
       .map((r) => {
@@ -3411,14 +3461,35 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const cancelledBanner = document.getElementById("cancelled-banner")!;
   const cancelledToggle = document.getElementById("cancelled-toggle")!;
   const cancelledChevron = document.getElementById("cancelled-chevron")!;
+  const cancelledBody = document.getElementById("cancelled-body")!;
+  const cancelledBulk = document.getElementById("cancelled-bulk")!;
+  const cancelledSelectAll = document.getElementById("cancelled-select-all") as HTMLInputElement;
+  const cancelledDeleteSelected = document.getElementById("cancelled-delete-selected") as HTMLButtonElement;
   const cancelledList = document.getElementById("cancelled-list")!;
   const cancelledCount = document.getElementById("cancelled-count")!;
   const cancelledTitle = document.getElementById("cancelled-title")!;
 
   cancelledToggle.addEventListener("click", () => {
-    const open = cancelledList.classList.toggle("hidden");
+    const open = cancelledBody.classList.toggle("hidden");
     cancelledChevron.classList.toggle("rotate-180", !open);
   });
+
+  function selectedCancelledIds(): string[] {
+    return [...cancelledList.querySelectorAll<HTMLInputElement>("[data-cancelled-select]:checked")]
+      .map((box) => box.value)
+      .filter((id) => cancelledAppts.some((a) => a.id === id));
+  }
+
+  function syncCancelledSelection() {
+    const boxes = [...cancelledList.querySelectorAll<HTMLInputElement>("[data-cancelled-select]")];
+    const n = boxes.filter((box) => box.checked).length;
+    cancelledDeleteSelected.disabled = n === 0;
+    cancelledDeleteSelected.textContent = n
+      ? `Διαγραφή επιλεγμένων (${n})`
+      : "Διαγραφή επιλεγμένων";
+    cancelledSelectAll.checked = boxes.length > 0 && n === boxes.length;
+    cancelledSelectAll.indeterminate = n > 0 && n < boxes.length;
+  }
 
   let cancelledAppts: Appointment[] = [];
 
@@ -3460,8 +3531,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       ? `Ακυρωμένες · ${whoName}`
       : "Ακυρωμένες κρατήσεις";
     cancelledBanner.classList.toggle("hidden", cancelledAppts.length === 0);
+    requestAnimationFrame(() => fitCalendarScroll());
     cancelledCount.textContent = String(cancelledAppts.length);
     const canPurge = isMasterAccount(adminEmail);
+    cancelledBulk.classList.toggle("hidden", !canPurge);
+    cancelledBulk.classList.toggle("flex", canPurge);
+    cancelledSelectAll.checked = false;
+    cancelledSelectAll.indeterminate = false;
     cancelledList.innerHTML = cancelledAppts
       .map((a) => {
         const start = new Date(a.start_time);
@@ -3478,6 +3554,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         const byLine = who
           ? `<p class="mt-1 text-[11px] font-medium text-red-600">Ακύρωση από ${escHtml(who)}${at ? ` · ${at}` : ""}</p>`
           : "";
+        const pick = canPurge
+          ? `<input type="checkbox" data-cancelled-select value="${a.id}"
+              class="h-5 w-5 flex-none rounded border-slate-300 text-spine accent-[var(--color-spine)] focus:ring-spine/40" aria-label="Επιλογή για διαγραφή" />`
+          : "";
         const trash = canPurge
           ? `<button type="button" data-cancelled-delete="${a.id}" aria-label="Διαγραφή ακύρωσης"
               class="flex h-11 w-11 flex-none items-center justify-center rounded-full text-red-600 transition hover:bg-red-50 active:bg-red-100">
@@ -3489,6 +3569,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           : "";
         return `
         <li class="flex items-center gap-2 rounded-xl bg-sand p-3" data-cancelled-id="${a.id}">
+          ${pick}
           <div class="min-w-0 flex-1">
             <p class="truncate font-display text-sm font-bold text-charcoal">${escHtml(appointmentClientName(a))}</p>
             <p class="mt-0.5 text-xs font-medium text-charcoal-muted">${when} · ${escHtml(therapistName(a))}${a.service ? ` · ${escHtml(a.service)}` : ""}</p>
@@ -3498,7 +3579,40 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         </li>`;
       })
       .join("");
+    syncCancelledSelection();
   }
+
+  cancelledList.addEventListener("change", (e) => {
+    if ((e.target as HTMLElement).matches?.("[data-cancelled-select]")) syncCancelledSelection();
+  });
+
+  cancelledSelectAll.addEventListener("change", () => {
+    const on = cancelledSelectAll.checked;
+    cancelledList.querySelectorAll<HTMLInputElement>("[data-cancelled-select]").forEach((box) => {
+      box.checked = on;
+    });
+    syncCancelledSelection();
+  });
+
+  cancelledDeleteSelected.addEventListener("click", async () => {
+    if (!isMasterAccount(adminEmail)) return;
+    const ids = selectedCancelledIds();
+    if (!ids.length) return;
+    const noun = ids.length === 1 ? "ακυρωμένη κράτηση" : "ακυρωμένες κρατήσεις";
+    if (!confirm(`Διαγραφή ${ids.length} ${noun}; Δεν αναιρείται.`)) return;
+    cancelledDeleteSelected.disabled = true;
+    const { error } = await supabase
+      .from("appointments")
+      .delete()
+      .in("id", ids)
+      .eq("status", "cancelled");
+    if (error) {
+      syncCancelledSelection();
+      alert(`Αποτυχία διαγραφής: ${error.message}`);
+      return;
+    }
+    await loadCancelled();
+  });
 
   cancelledList.addEventListener("click", async (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-cancelled-delete]");
@@ -3517,6 +3631,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
     await loadCancelled();
   });
+
+  window.addEventListener("resize", fitCalendarScroll);
+  window.visualViewport?.addEventListener("resize", fitCalendarScroll);
+  window.matchMedia("(max-width: 767px)").addEventListener("change", fitCalendarScroll);
 
   ensureAdminEmail().then(() => {
     setViewMode("day");
