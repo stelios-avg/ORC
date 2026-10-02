@@ -1846,24 +1846,29 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   document.getElementById("cal-prev")!.addEventListener("click", () => shiftCalendar(-1));
   document.getElementById("cal-next")!.addEventListener("click", () => shiftCalendar(1));
 
-  /** Phone swipe: date bar always changes day; the grid does too once the therapist columns can't scroll further. */
-  function bindCalendarSwipe(el: HTMLElement, respectColumnScroll: boolean) {
-    const scroller = document.getElementById("cal-h-scroll");
+  /** Phone swipe anywhere on the page changes day, except on the calendar and the therapist chips. */
+  function swipeChangesDay(target: EventTarget | null): boolean {
+    if (!(target instanceof Element)) return false;
+    if (target.closest("#day-view, #month-view, #therapist-tabs")) return false;
+    if (target.closest("input, textarea, select")) return false;
+    const sheet = target.closest("#appt-modal, #block-modal, #repeat-modal, #detail-sheet, #delete-modal");
+    if (sheet && !sheet.classList.contains("hidden")) return false;
+    return true;
+  }
+  {
     let startX = 0;
     let startY = 0;
-    let startScroll = 0;
     let tracking = false;
-    el.addEventListener("touchstart", (e) => {
-      if (!isNarrow() || e.touches.length !== 1) {
+    document.addEventListener("touchstart", (e) => {
+      if (!isNarrow() || e.touches.length !== 1 || !swipeChangesDay(e.target)) {
         tracking = false;
         return;
       }
       tracking = true;
       startX = e.touches[0].clientX;
       startY = e.touches[0].clientY;
-      startScroll = scroller?.scrollLeft ?? 0;
     }, { passive: true });
-    el.addEventListener("touchend", (e) => {
+    document.addEventListener("touchend", (e) => {
       if (!tracking) return;
       tracking = false;
       if (activeDrag) return;
@@ -1871,17 +1876,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       const dx = t.clientX - startX;
       const dy = t.clientY - startY;
       if (Math.abs(dx) < 64 || Math.abs(dx) < Math.abs(dy) * 1.4) return;
-      if (respectColumnScroll && viewMode === "day" && scroller) {
-        const max = scroller.scrollWidth - scroller.clientWidth;
-        if (Math.abs(scroller.scrollLeft - startScroll) > 6) return;
-        if (dx < 0 && scroller.scrollLeft < max - 4) return;
-        if (dx > 0 && scroller.scrollLeft > 4) return;
-      }
       shiftCalendar(dx < 0 ? 1 : -1);
     }, { passive: true });
   }
-  bindCalendarSwipe(document.getElementById("cal-date-nav")!, false);
-  bindCalendarSwipe(document.getElementById("day-view")!, true);
   document.getElementById("today-btn")!.addEventListener("click", () => {
     currentDay = new Date(); currentDay.setHours(0, 0, 0, 0);
     viewMonth = startOfMonth(currentDay);
