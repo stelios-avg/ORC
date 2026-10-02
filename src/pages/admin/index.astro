@@ -664,12 +664,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   .cal-scroll {
     overflow: auto;
     -webkit-overflow-scrolling: touch;
-    overscroll-behavior: contain;
     touch-action: pan-x pan-y;
   }
   @media (max-width: 767px) {
     .cal-scroll {
       max-height: calc(100dvh - 17rem - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+      overscroll-behavior: contain;
     }
   }
   #cal-hours {
@@ -1571,6 +1571,17 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     hideCtxMenu();
     hideApptPreview();
   });
+  document.getElementById("cal-scroll")?.addEventListener("wheel", (e) => {
+    const el = e.currentTarget as HTMLElement;
+    const maxY = el.scrollHeight - el.clientHeight;
+    if (Math.abs(e.deltaY) < Math.abs(e.deltaX)) return;
+    const canScroll = maxY > 4;
+    const atTop = el.scrollTop <= 0 && e.deltaY < 0;
+    const atBottom = el.scrollTop >= maxY - 1 && e.deltaY > 0;
+    if (canScroll && !atTop && !atBottom) return;
+    window.scrollBy(0, e.deltaY);
+    e.preventDefault();
+  }, { passive: false });
   new ResizeObserver(() => {
     const scroll = document.getElementById("cal-scroll");
     if (!laidOutCols || !scroll || scroll.clientWidth === lastScrollW) return;
@@ -1972,7 +1983,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
   };
   document.querySelectorAll("[data-close-modal]").forEach((el) =>
-    el.addEventListener("click", () => allModals.forEach(closeModal)),
+    el.addEventListener("click", () => {
+      const modal = (el as HTMLElement).closest(".fixed.inset-0");
+      if (modal) closeModal(modal as HTMLElement);
+      else allModals.forEach(closeModal);
+    }),
   );
 
   // ── New appointment (patient search by name / phone) ──
@@ -2217,6 +2232,16 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (!cols.length) return;
     const colIdx = Math.min(cols.length - 1, Math.max(0, Math.floor((x / rect.width) * cols.length)));
     const row = Math.min(TOTAL_ROWS - 1, Math.max(0, Math.floor((y / rect.height) * TOTAL_ROWS)));
+    const row1 = row + 1;
+    const existing = [...grid.querySelectorAll<HTMLElement>("[data-appt]:not(.pointer-events-none)")].find((el) => {
+      if (Number(el.style.gridColumn) !== colIdx + 1) return false;
+      const [start, end] = el.style.gridRow.split("/").map((part) => Number(part.trim()));
+      return !!start && !!end && row1 >= start && row1 < end;
+    });
+    if (existing) {
+      existing.click();
+      return;
+    }
     const minsFromStart = row * SLOT_MINUTES;
     const hours = DAY_START + Math.floor(minsFromStart / 60);
     const minutes = minsFromStart % 60;
@@ -2425,7 +2450,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       ? "Επανάληψη αποκλεισμού"
       : "Επανάληψη ραντεβού";
     document.getElementById("repeat-open-detail")!.classList.toggle("hidden", !a.is_blocked_time);
-    closeModal(detailSheet);
     openModal(repeatModal);
   }
 
@@ -2486,6 +2510,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     btn.disabled = true;
     if (!source.recurrence_group) {
       await supabase.from("appointments").update({ recurrence_group: recurrenceGroup }).eq("id", source.id);
+      source.recurrence_group = recurrenceGroup;
     }
     const { error } = await supabase.from("appointments").insert(rows);
     btn.disabled = false;
@@ -2495,6 +2520,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       return;
     }
     closeModal(repeatModal);
+    if (selectedAppt?.id === source.id) openDetail(source);
     refresh();
   });
 
