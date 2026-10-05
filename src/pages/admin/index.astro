@@ -3236,6 +3236,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         : null;
     }
     updatePayablePreview();
+    closeModal(detailSheet);
     refresh();
   });
 
