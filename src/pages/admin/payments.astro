@@ -354,7 +354,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     if (period === "month") {
       const days = [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0]));
       if (!days.length) return;
-      breakdownTitle.textContent = "Σύνολο ανά ημέρα · όλοι οι θεραπευτές";
+      breakdownTitle.textContent = "Οι ημέρες αυτού του μήνα · όλοι οι θεραπευτές";
       breakdownList.innerHTML = days
         .map(([key, t]) => {
           const [y, m, d] = key.split("-").map(Number);
