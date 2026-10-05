@@ -181,7 +181,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   </button>
 
   {/* ── Month view: zoomed-out day grid ── */}
-  <div id="month-view" class="hidden overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
+  <div id="month-view" class="hidden touch-none overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
     <div id="month-weekdays" class="grid grid-cols-7 text-center text-[11px] font-semibold uppercase text-charcoal-muted"></div>
     <div id="month-days" class="mt-2 grid grid-cols-7 gap-1.5"></div>
   </div>
@@ -2035,6 +2035,60 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
   bindCalendarSwipe(document.getElementById("cal-date-nav")!, false);
   bindCalendarSwipe(document.getElementById("cal-scroll")!, true);
+
+  /**
+   * Month view: one vertical scroll or swipe shows the next or previous month.
+   * A trackpad or finger burst still moves a single month.
+   */
+  (() => {
+    const month = document.getElementById("month-view")!;
+    let startX = 0;
+    let startY = 0;
+    let tracking = false;
+    let wheelLock = 0;
+
+    function stepMonth(dir: number) {
+      if (viewMode !== "month" || document.body.classList.contains("no-scroll")) return;
+      shiftCalendar(dir);
+    }
+
+    month.addEventListener("touchstart", (e) => {
+      if (viewMode !== "month" || e.touches.length !== 1) {
+        tracking = false;
+        return;
+      }
+      tracking = true;
+      startX = e.touches[0].clientX;
+      startY = e.touches[0].clientY;
+    }, { passive: true });
+
+    month.addEventListener("touchmove", (e) => {
+      if (!tracking || viewMode !== "month") return;
+      const dy = e.touches[0].clientY - startY;
+      const dx = e.touches[0].clientX - startX;
+      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) e.preventDefault();
+    }, { passive: false });
+
+    month.addEventListener("touchend", (e) => {
+      if (!tracking) return;
+      tracking = false;
+      const t = e.changedTouches[0];
+      const dy = t.clientY - startY;
+      const dx = t.clientX - startX;
+      if (Math.abs(dy) < 48 || Math.abs(dy) < Math.abs(dx)) return;
+      stepMonth(dy < 0 ? 1 : -1);
+    }, { passive: true });
+
+    month.addEventListener("wheel", (e) => {
+      if (viewMode !== "month") return;
+      if (Math.abs(e.deltaY) < Math.abs(e.deltaX) || Math.abs(e.deltaY) < 8) return;
+      e.preventDefault();
+      const now = Date.now();
+      if (now < wheelLock) return;
+      wheelLock = now + 420;
+      stepMonth(e.deltaY > 0 ? 1 : -1);
+    }, { passive: false });
+  })();
   document.getElementById("today-btn")!.addEventListener("click", () => {
     currentDay = new Date(); currentDay.setHours(0, 0, 0, 0);
     viewMonth = startOfMonth(currentDay);
