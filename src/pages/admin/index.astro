@@ -180,10 +180,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     <svg class="h-7 w-7" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 5v14M5 12h14"/></svg>
   </button>
 
-  {/* ── Month view: zoomed-out day grid ── */}
-  <div id="month-view" class="hidden touch-none overflow-hidden rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100">
-    <div id="month-weekdays" class="grid grid-cols-7 text-center text-[11px] font-semibold uppercase text-charcoal-muted"></div>
-    <div id="month-days" class="mt-2 grid grid-cols-7 gap-1.5"></div>
+  {/* ── Month view: months stack downward so the page keeps scrolling ── */}
+  <div id="month-view" class="hidden">
+    <div id="month-weekdays" class="hidden grid grid-cols-7 text-center text-[11px] font-semibold uppercase text-charcoal-muted"></div>
+    <div id="month-stack" class="space-y-3"></div>
   </div>
 
   <p id="cal-empty" class="mt-6 hidden text-center text-sm text-charcoal-muted">
@@ -770,7 +770,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const dayView = document.getElementById("day-view")!;
   const monthView = document.getElementById("month-view")!;
   const dayActions = document.getElementById("day-actions")!;
-  const monthDays = document.getElementById("month-days")!;
+  const monthStack = document.getElementById("month-stack")!;
   const monthWeekdays = document.getElementById("month-weekdays")!;
   const viewDayBtn = document.getElementById("view-day-btn")!;
   const viewMonthBtn = document.getElementById("view-month-btn")!;
@@ -1123,14 +1123,23 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     else loadMonth();
   }
 
-  // ── Month overview (zoomed out) ──
-  async function loadMonth() {
-    monthDays.innerHTML = "";
-    errorMsg.classList.add("hidden");
+  // ── Month overview: months continue down the page, native scroll is left alone ──
+  let monthToken = 0;
+  let monthCursor: Date | null = null;
+  let monthAnchor = startOfMonth(new Date());
+  let monthAppending = false;
 
-    const monthStart = startOfMonth(viewMonth);
-    const monthEnd = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 1);
+  function scrollPageTop() {
+    const root = document.scrollingElement || document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    root.scrollTop = 0;
+    root.style.scrollBehavior = prev;
+  }
 
+  async function fetchMonthAppointments(month: Date): Promise<Appointment[]> {
+    const monthStart = startOfMonth(month);
+    const monthEnd = new Date(month.getFullYear(), month.getMonth() + 1, 1);
     let q = supabase
       .from("appointments")
       .select(APPT_SELECT)
@@ -1140,35 +1149,39 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       .order("start_time");
     if (therapistFilter) q = q.eq("therapist_id", therapistFilter);
     else q = q.neq("therapist_id", pilatesId);
-
     const { data, error } = await q;
+    if (error) throw new Error(error.message);
+    const rows = (data ?? []) as Appointment[];
+    const standing = await fetchForeverAppointments(monthEnd);
+    const byId = new Map(rows.map((a) => [a.id, a]));
+    for (const a of standing) byId.set(a.id, a);
+    return [...byId.values()];
+  }
 
-    if (error) {
-      errorMsg.textContent = `Σφάλμα φόρτωσης: ${error.message}`;
-      errorMsg.classList.remove("hidden");
-      return;
-    }
+  function buildMonthSection(month: Date, appts: Appointment[]): HTMLElement {
+    const section = document.createElement("section");
+    section.dataset.month = `${month.getFullYear()}-${month.getMonth()}`;
+    section.className = "rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-100";
 
-    monthAppts = (data ?? []) as Appointment[];
-    try {
-      const standing = await fetchForeverAppointments(monthEnd);
-      const byId = new Map(monthAppts.map((a) => [a.id, a]));
-      for (const a of standing) byId.set(a.id, a);
-      monthAppts = [...byId.values()];
-    } catch (err) {
-      errorMsg.textContent = `Σφάλμα φόρτωσης: ${err instanceof Error ? err.message : String(err)}`;
-      errorMsg.classList.remove("hidden");
-      return;
-    }
-    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const title = document.createElement("h2");
+    title.className = "mb-3 font-display text-base font-bold capitalize text-charcoal";
+    title.textContent = month.toLocaleDateString("el-GR", { month: "long", year: "numeric" });
 
-    const offset = (viewMonth.getDay() + 6) % 7;
-    for (let i = 0; i < offset; i++) monthDays.appendChild(document.createElement("span"));
+    const weekdays = monthWeekdays.cloneNode(true) as HTMLElement;
+    weekdays.removeAttribute("id");
+    weekdays.classList.remove("hidden");
 
-    const daysInMonth = new Date(viewMonth.getFullYear(), viewMonth.getMonth() + 1, 0).getDate();
+    const days = document.createElement("div");
+    days.className = "mt-2 grid grid-cols-7 gap-1.5";
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const offset = (month.getDay() + 6) % 7;
+    for (let i = 0; i < offset; i++) days.appendChild(document.createElement("span"));
+
+    const daysInMonth = new Date(month.getFullYear(), month.getMonth() + 1, 0).getDate();
     for (let day = 1; day <= daysInMonth; day++) {
-      const d = new Date(viewMonth.getFullYear(), viewMonth.getMonth(), day);
-      const dayAppts = monthAppts.filter((a) => occursOn(a, d));
+      const d = new Date(month.getFullYear(), month.getMonth(), day);
+      const dayAppts = appts.filter((a) => occursOn(a, d));
       const regular = dayAppts.filter((a) => !a.is_blocked_time);
       const blocked = dayAppts.filter((a) => a.is_blocked_time);
       const isToday = sameDay(d, today);
@@ -1197,9 +1210,96 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         currentDay = new Date(d);
         setViewMode("day");
       });
-      monthDays.appendChild(btn);
+      days.appendChild(btn);
+    }
+
+    section.append(title, weekdays, days);
+    return section;
+  }
+
+  function monthTooFar(cursor: Date): boolean {
+    const n = (cursor.getFullYear() - monthAnchor.getFullYear()) * 12
+      + (cursor.getMonth() - monthAnchor.getMonth());
+    return n >= 18;
+  }
+
+  /** Append the next month while the page still has room to keep scrolling. */
+  async function ensureMonthsBelow(token: number) {
+    if (monthAppending || token !== monthToken || !monthCursor || viewMode !== "month") return;
+    if (monthTooFar(monthCursor)) return;
+    const root = document.scrollingElement || document.documentElement;
+    const remaining = root.scrollHeight - root.scrollTop - window.innerHeight;
+    const count = monthStack.childElementCount;
+    // Several months sit on the page first, so a finger scroll keeps moving.
+    if (count >= 8 && root.scrollTop < 40) return;
+    if (count >= 4 && remaining > window.innerHeight * 2) return;
+
+    monthAppending = true;
+    const month = monthCursor;
+    try {
+      const appts = await fetchMonthAppointments(month);
+      if (token !== monthToken) return;
+      monthStack.appendChild(buildMonthSection(month, appts));
+      monthCursor = new Date(month.getFullYear(), month.getMonth() + 1, 1);
+    } catch (err) {
+      if (token !== monthToken) return;
+      errorMsg.textContent = `Σφάλμα φόρτωσης: ${err instanceof Error ? err.message : String(err)}`;
+      errorMsg.classList.remove("hidden");
+      return;
+    } finally {
+      monthAppending = false;
+    }
+    if (token === monthToken) void ensureMonthsBelow(token);
+  }
+
+  function syncMonthLabel() {
+    if (viewMode !== "month") return;
+    const sections = [...monthStack.querySelectorAll<HTMLElement>("[data-month]")];
+    if (!sections.length) return;
+    let visible = sections[0];
+    for (const section of sections) {
+      if (section.getBoundingClientRect().top <= 150) visible = section;
+    }
+    const [y, m] = (visible.dataset.month ?? "").split("-").map(Number);
+    if (!Number.isFinite(y) || !Number.isFinite(m)) return;
+    const next = new Date(y, m, 1);
+    if (next.getTime() === viewMonth.getTime()) return;
+    viewMonth = next;
+    dateLabel.textContent = next.toLocaleDateString("el-GR", { month: "long", year: "numeric" });
+  }
+
+  async function loadMonth() {
+    const token = ++monthToken;
+    monthAnchor = startOfMonth(viewMonth);
+    monthCursor = null;
+    monthStack.innerHTML = "";
+    errorMsg.classList.add("hidden");
+    scrollPageTop();
+    try {
+      const appts = await fetchMonthAppointments(monthAnchor);
+      if (token !== monthToken) return;
+      monthAppts = appts;
+      monthStack.appendChild(buildMonthSection(monthAnchor, appts));
+      monthCursor = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 1);
+      void ensureMonthsBelow(token);
+    } catch (err) {
+      if (token !== monthToken) return;
+      errorMsg.textContent = `Σφάλμα φόρτωσης: ${err instanceof Error ? err.message : String(err)}`;
+      errorMsg.classList.remove("hidden");
     }
   }
+
+  let monthScrollTick = false;
+  window.addEventListener("scroll", () => {
+    if (viewMode !== "month" || monthScrollTick) return;
+    monthScrollTick = true;
+    requestAnimationFrame(() => {
+      monthScrollTick = false;
+      if (viewMode !== "month") return;
+      syncMonthLabel();
+      void ensureMonthsBelow(monthToken);
+    });
+  }, { passive: true });
 
   let laidOutCols: typeof THERAPISTS | null = null;
   let lastScrollW = -1;
@@ -2035,60 +2135,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
   bindCalendarSwipe(document.getElementById("cal-date-nav")!, false);
   bindCalendarSwipe(document.getElementById("cal-scroll")!, true);
-
-  /**
-   * Month view: one vertical scroll or swipe shows the next or previous month.
-   * A trackpad or finger burst still moves a single month.
-   */
-  (() => {
-    const month = document.getElementById("month-view")!;
-    let startX = 0;
-    let startY = 0;
-    let tracking = false;
-    let wheelLock = 0;
-
-    function stepMonth(dir: number) {
-      if (viewMode !== "month" || document.body.classList.contains("no-scroll")) return;
-      shiftCalendar(dir);
-    }
-
-    month.addEventListener("touchstart", (e) => {
-      if (viewMode !== "month" || e.touches.length !== 1) {
-        tracking = false;
-        return;
-      }
-      tracking = true;
-      startX = e.touches[0].clientX;
-      startY = e.touches[0].clientY;
-    }, { passive: true });
-
-    month.addEventListener("touchmove", (e) => {
-      if (!tracking || viewMode !== "month") return;
-      const dy = e.touches[0].clientY - startY;
-      const dx = e.touches[0].clientX - startX;
-      if (Math.abs(dy) > 12 && Math.abs(dy) > Math.abs(dx)) e.preventDefault();
-    }, { passive: false });
-
-    month.addEventListener("touchend", (e) => {
-      if (!tracking) return;
-      tracking = false;
-      const t = e.changedTouches[0];
-      const dy = t.clientY - startY;
-      const dx = t.clientX - startX;
-      if (Math.abs(dy) < 48 || Math.abs(dy) < Math.abs(dx)) return;
-      stepMonth(dy < 0 ? 1 : -1);
-    }, { passive: true });
-
-    month.addEventListener("wheel", (e) => {
-      if (viewMode !== "month") return;
-      if (Math.abs(e.deltaY) < Math.abs(e.deltaX) || Math.abs(e.deltaY) < 8) return;
-      e.preventDefault();
-      const now = Date.now();
-      if (now < wheelLock) return;
-      wheelLock = now + 420;
-      stepMonth(e.deltaY > 0 ? 1 : -1);
-    }, { passive: false });
-  })();
   document.getElementById("today-btn")!.addEventListener("click", () => {
     currentDay = new Date(); currentDay.setHours(0, 0, 0, 0);
     viewMonth = startOfMonth(currentDay);
