@@ -727,6 +727,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     canViewTherapistPayments,
     canDeleteAppointment,
     isMasterAccount,
+    isOwnerAccount,
     creatorDisplayName,
     therapistIdForEmail,
   } from "../../lib/admin-access";
@@ -3771,6 +3772,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   window.matchMedia("(max-width: 767px)").addEventListener("change", fitCalendarScroll);
 
   ensureAdminEmail().then(() => {
+    if (isOwnerAccount(adminEmail)) {
+      const ownId = therapistIdForEmail(adminEmail);
+      if (ownId) therapistFilter = ownId;
+      syncTherapistTabs();
+      setDefaultTherapistSelects();
+    }
     setViewMode("day");
     void loadBookingRequests();
     void loadCancelled();

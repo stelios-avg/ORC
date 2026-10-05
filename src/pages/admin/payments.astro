@@ -19,7 +19,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     </button>
   </div>
 
-  <div id="pay-period" class="mb-3 hidden flex rounded-full bg-white p-1 ring-1 ring-slate-200">
+  <div id="pay-period" class="mb-3 hidden rounded-full bg-white p-1 ring-1 ring-slate-200">
     <button type="button" data-pay-period="day"
       class="flex min-h-11 flex-1 items-center justify-center rounded-full px-3 py-2 font-display text-xs font-semibold transition data-[active=true]:bg-charcoal data-[active=true]:text-white data-[active=false]:text-charcoal-muted"
       data-active="false" aria-pressed="false">
@@ -414,8 +414,6 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     byWrap.classList.add("hidden");
     breakdownWrap.classList.add("hidden");
     breakdownList.innerHTML = "";
-    monthLabel.textContent = periodLabel(period, cursor);
-    syncPeriodUi();
 
     const { data: { session } } = await supabase.auth.getSession();
     adminEmail = session?.user?.email ?? "";
@@ -423,7 +421,11 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     const master = isMasterAccount(adminEmail);
     const owner = isOwnerAccount(adminEmail);
     const ownSlug = therapistSlugForEmail(adminEmail);
+    if (!owner) period = "month";
     periodWrap.classList.toggle("hidden", !owner);
+    periodWrap.classList.toggle("flex", owner);
+    monthLabel.textContent = periodLabel(period, cursor);
+    syncPeriodUi();
 
     if (owner) {
       const grain = period === "day" ? "την ημέρα" : period === "year" ? "τον χρόνο" : "τον μήνα";
@@ -536,6 +538,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     load();
   });
   periodWrap.addEventListener("click", (e) => {
+    if (!isOwnerAccount(adminEmail)) return;
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-pay-period]");
     const next = btn?.dataset.payPeriod;
     if (next !== "day" && next !== "month" && next !== "year") return;
