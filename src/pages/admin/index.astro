@@ -480,6 +480,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
+      <button id="detail-replace-patient" type="button"
+        class="mt-3 hidden min-h-11 w-full rounded-full border border-slate-200 px-4 py-2 font-display text-sm font-semibold text-charcoal transition hover:bg-sand">
+        Αντικατάσταση πελάτη
+      </button>
       <div id="detail-repeat-top" class="mt-3 hidden space-y-3"></div>
       <div id="detail-schedule-row" class="mt-3 space-y-3">
         <div class="grid grid-cols-2 gap-3">
@@ -606,6 +610,24 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         class="mt-4 min-h-12 w-full rounded-full border border-red-200 px-6 py-3 font-display text-sm font-semibold text-red-600 transition active:bg-red-50 hover:bg-red-50">
         Διαγραφή
       </button>
+    </div>
+  </div>
+
+  {/* ══ Modal: replace the client on this appointment ══ */}
+  <div id="replace-patient-modal" class="fixed inset-0 z-[140] hidden items-end justify-center sm:items-center">
+    <div class="absolute inset-0 bg-spine-900/60 backdrop-blur-sm" data-close-modal></div>
+    <div class="admin-sheet relative z-10 w-full max-w-md rounded-t-2xl bg-white p-5 sm:rounded-2xl">
+      <div class="mb-3 flex items-center justify-between gap-3">
+        <h2 class="font-display text-lg font-bold text-charcoal">Αντικατάσταση πελάτη</h2>
+        <button data-close-modal type="button" class="rounded-full p-2 text-charcoal-muted transition hover:bg-slate-100" aria-label="Κλείσιμο">
+          <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+        </button>
+      </div>
+      <p id="replace-patient-current" class="mb-3 text-sm text-charcoal-muted"></p>
+      <input id="replace-patient-search" type="search" autocomplete="off" placeholder="Όνομα ή τηλέφωνο…"
+        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+      <p id="replace-patient-error" class="mt-2 hidden text-sm text-red-600"></p>
+      <div id="replace-patient-list" class="mt-3 max-h-72 space-y-1 overflow-y-auto" role="listbox"></div>
     </div>
   </div>
 
@@ -2181,7 +2203,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const detailSheet = document.getElementById("detail-sheet")!;
   const repeatModal = document.getElementById("repeat-modal")!;
   const deleteModal = document.getElementById("delete-modal")!;
-  const allModals = [apptModal, blockModal, detailSheet, repeatModal, deleteModal];
+  const replacePatientModal = document.getElementById("replace-patient-modal")!;
+  const allModals = [apptModal, blockModal, detailSheet, repeatModal, deleteModal, replacePatientModal];
   const openModal = (m: HTMLElement) => {
     m.classList.remove("hidden");
     m.classList.add("flex");
@@ -2828,13 +2851,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     detailServiceSelect.value = v;
   }
 
-  function openDetail(a: Appointment) {
-    hideApptPreview();
-    hideCtxMenu();
-    selectedAppt = a;
+  function paintDetailIdentity(a: Appointment) {
     const detailTitle = document.getElementById("detail-title")!;
     if (!a.is_blocked_time && a.patient_id) {
-      // Name links to the client profile (files, notes, history)
       detailTitle.innerHTML =
         `<a href="/admin/client?id=${a.patient_id}" ` +
         `class="underline decoration-spine/40 underline-offset-4 transition hover:text-spine">` +
@@ -2842,6 +2861,22 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     } else {
       detailTitle.textContent = a.is_blocked_time ? (a.service || "Κλειστό") : "Walk-in";
     }
+    const phoneEl = document.getElementById("detail-phone") as HTMLAnchorElement;
+    if (!a.is_blocked_time && a.patients?.phone) {
+      phoneEl.textContent = a.patients.phone;
+      phoneEl.href = `tel:${a.patients.phone}`;
+      phoneEl.classList.remove("hidden");
+    } else {
+      phoneEl.classList.add("hidden");
+    }
+  }
+
+  function openDetail(a: Appointment) {
+    hideApptPreview();
+    hideCtxMenu();
+    selectedAppt = a;
+    paintDetailIdentity(a);
+    document.getElementById("detail-replace-patient")!.classList.toggle("hidden", a.is_blocked_time);
 
     detailStartInput.value = toTimeInputValue(a.start_time);
     detailEndInput.value = toTimeInputValue(a.end_time);
@@ -2857,15 +2892,6 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     syncDetailTherapistLock(a.service ?? "");
     if (!a.is_blocked_time) {
       syncServiceOptions(detailServiceSelect, detailTherapistSelect.value, false);
-    }
-
-    const phoneEl = document.getElementById("detail-phone") as HTMLAnchorElement;
-    if (!a.is_blocked_time && a.patients?.phone) {
-      phoneEl.textContent = a.patients.phone;
-      phoneEl.href = `tel:${a.patients.phone}`;
-      phoneEl.classList.remove("hidden");
-    } else {
-      phoneEl.classList.add("hidden");
     }
 
     const notesRow = document.getElementById("detail-notes-row")!;
@@ -2922,6 +2948,85 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
     openModal(detailSheet);
   }
+
+  const replacePatientSearch = document.getElementById("replace-patient-search") as HTMLInputElement;
+  const replacePatientList = document.getElementById("replace-patient-list")!;
+  const replacePatientCurrent = document.getElementById("replace-patient-current")!;
+  const replacePatientError = document.getElementById("replace-patient-error")!;
+
+  function replacePatientMatches(q: string): Patient[] {
+    const current = selectedAppt?.patient_id;
+    const base = q.trim()
+      ? filterPatients(q)
+      : [...patients].sort((a, b) => a.name.localeCompare(b.name, "el"));
+    return base.filter((p) => p.id !== current).slice(0, 40);
+  }
+
+  function renderReplacePatients(q: string) {
+    const matches = replacePatientMatches(q);
+    if (!matches.length) {
+      replacePatientList.innerHTML =
+        '<p class="px-1 py-3 text-sm text-charcoal-muted">Κανένας πελάτης</p>';
+      return;
+    }
+    replacePatientList.innerHTML = matches
+      .map(
+        (p) => `
+        <button type="button" data-replace-patient="${p.id}"
+          class="flex w-full flex-col items-start gap-0.5 rounded-xl px-3 py-2.5 text-left transition hover:bg-spine-50">
+          <span class="font-display text-sm font-semibold text-charcoal">${escHtml(p.name)}</span>
+          <span class="text-xs text-charcoal-muted">${escHtml(p.phone || "χωρίς τηλέφωνο")}</span>
+        </button>`,
+      )
+      .join("");
+  }
+
+  async function openReplacePatient() {
+    if (!selectedAppt || selectedAppt.is_blocked_time) return;
+    replacePatientError.classList.add("hidden");
+    replacePatientSearch.value = "";
+    const who = selectedAppt.patients?.name ?? (selectedAppt.patient_id ? "αυτόν τον πελάτη" : "Walk-in");
+    replacePatientCurrent.textContent = `Αντικατάσταση του «${who}» σε αυτό το ραντεβού.`;
+    replacePatientList.innerHTML = '<p class="px-1 py-3 text-sm text-charcoal-muted">Φόρτωση…</p>';
+    openModal(replacePatientModal);
+    try {
+      patients = await fetchAllPatients(supabase);
+    } catch {
+      /* keep the last list */
+    }
+    renderReplacePatients("");
+    window.setTimeout(() => replacePatientSearch.focus(), 50);
+  }
+
+  document.getElementById("detail-replace-patient")!.addEventListener("click", () => {
+    void openReplacePatient();
+  });
+  replacePatientSearch.addEventListener("input", () => {
+    renderReplacePatients(replacePatientSearch.value);
+  });
+  replacePatientList.addEventListener("click", async (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-replace-patient]");
+    if (!btn || !selectedAppt) return;
+    const next = patients.find((p) => p.id === btn.dataset.replacePatient);
+    if (!next || next.id === selectedAppt.patient_id) return;
+    replacePatientError.classList.add("hidden");
+    replacePatientList.querySelectorAll("button").forEach((b) => (b.disabled = true));
+    const { error } = await supabase
+      .from("appointments")
+      .update({ patient_id: next.id })
+      .eq("id", selectedAppt.id);
+    if (error) {
+      replacePatientError.textContent = error.message;
+      replacePatientError.classList.remove("hidden");
+      replacePatientList.querySelectorAll("button").forEach((b) => (b.disabled = false));
+      return;
+    }
+    selectedAppt.patient_id = next.id;
+    selectedAppt.patients = { id: next.id, name: next.name, phone: next.phone };
+    paintDetailIdentity(selectedAppt);
+    closeModal(replacePatientModal);
+    refresh();
+  });
 
   // ── Staff notes on the appointment (mirrored on the client profile) ──
   const staffNotesWrap = document.getElementById("detail-staff-notes")!;
@@ -3664,6 +3769,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         const byLine = who
           ? `<p class="mt-1 text-[11px] font-medium text-red-600">Ακύρωση από ${escHtml(who)}${at ? ` · ${at}` : ""}</p>`
           : "";
+        const clientName = escHtml(appointmentClientName(a));
+        const nameHtml = a.patient_id
+          ? `<a href="/admin/client?id=${a.patient_id}" class="underline decoration-spine/40 underline-offset-4 transition hover:text-spine">${clientName}</a>`
+          : clientName;
         const pick = canPurge
           ? `<input type="checkbox" data-cancelled-select value="${a.id}"
               class="h-5 w-5 flex-none rounded border-slate-300 text-spine accent-[var(--color-spine)] focus:ring-spine/40" aria-label="Επιλογή για διαγραφή" />`
@@ -3681,7 +3790,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         <li class="flex items-center gap-2 rounded-xl bg-sand p-3" data-cancelled-id="${a.id}">
           ${pick}
           <div class="min-w-0 flex-1">
-            <p class="truncate font-display text-sm font-bold text-charcoal">${escHtml(appointmentClientName(a))}</p>
+            <p class="truncate font-display text-sm font-bold text-charcoal">${nameHtml}</p>
             <p class="mt-0.5 text-xs font-medium text-charcoal-muted">${when} · ${escHtml(therapistName(a))}${a.service ? ` · ${escHtml(a.service)}` : ""}</p>
             ${byLine}
           </div>
