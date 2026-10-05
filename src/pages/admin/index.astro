@@ -2875,6 +2875,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     hideApptPreview();
     hideCtxMenu();
     selectedAppt = a;
+    pendingPatient = null;
     paintDetailIdentity(a);
     document.getElementById("detail-replace-patient")!.classList.toggle("hidden", a.is_blocked_time);
 
@@ -2953,13 +2954,15 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const replacePatientList = document.getElementById("replace-patient-list")!;
   const replacePatientCurrent = document.getElementById("replace-patient-current")!;
   const replacePatientError = document.getElementById("replace-patient-error")!;
+  /** Chosen client. Written only when Αποθήκευση is pressed. */
+  let pendingPatient: Patient | null = null;
 
   function replacePatientMatches(q: string): Patient[] {
-    const current = selectedAppt?.patient_id;
+    const shownId = pendingPatient?.id ?? selectedAppt?.patient_id;
     const base = q.trim()
       ? filterPatients(q)
       : [...patients].sort((a, b) => a.name.localeCompare(b.name, "el"));
-    return base.filter((p) => p.id !== current).slice(0, 40);
+    return base.filter((p) => p.id !== shownId).slice(0, 40);
   }
 
   function renderReplacePatients(q: string) {
@@ -2985,8 +2988,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (!selectedAppt || selectedAppt.is_blocked_time) return;
     replacePatientError.classList.add("hidden");
     replacePatientSearch.value = "";
-    const who = selectedAppt.patients?.name ?? (selectedAppt.patient_id ? "αυτόν τον πελάτη" : "Walk-in");
-    replacePatientCurrent.textContent = `Αντικατάσταση του «${who}» σε αυτό το ραντεβού.`;
+    const who = pendingPatient?.name
+      ?? selectedAppt.patients?.name
+      ?? (selectedAppt.patient_id ? "αυτόν τον πελάτη" : "Walk-in");
+    replacePatientCurrent.textContent = `Ο «${who}» αλλάζει μόνο αν πατήσεις Αποθήκευση.`;
     replacePatientList.innerHTML = '<p class="px-1 py-3 text-sm text-charcoal-muted">Φόρτωση…</p>';
     openModal(replacePatientModal);
     try {
@@ -3004,28 +3009,27 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   replacePatientSearch.addEventListener("input", () => {
     renderReplacePatients(replacePatientSearch.value);
   });
-  replacePatientList.addEventListener("click", async (e) => {
+  function paintChosenPatient() {
+    if (!selectedAppt) return;
+    if (!pendingPatient || pendingPatient.id === selectedAppt.patient_id) {
+      paintDetailIdentity(selectedAppt);
+      return;
+    }
+    paintDetailIdentity({
+      ...selectedAppt,
+      patient_id: pendingPatient.id,
+      patients: { id: pendingPatient.id, name: pendingPatient.name, phone: pendingPatient.phone },
+    });
+  }
+
+  replacePatientList.addEventListener("click", (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-replace-patient]");
     if (!btn || !selectedAppt) return;
     const next = patients.find((p) => p.id === btn.dataset.replacePatient);
-    if (!next || next.id === selectedAppt.patient_id) return;
-    replacePatientError.classList.add("hidden");
-    replacePatientList.querySelectorAll("button").forEach((b) => (b.disabled = true));
-    const { error } = await supabase
-      .from("appointments")
-      .update({ patient_id: next.id })
-      .eq("id", selectedAppt.id);
-    if (error) {
-      replacePatientError.textContent = error.message;
-      replacePatientError.classList.remove("hidden");
-      replacePatientList.querySelectorAll("button").forEach((b) => (b.disabled = false));
-      return;
-    }
-    selectedAppt.patient_id = next.id;
-    selectedAppt.patients = { id: next.id, name: next.name, phone: next.phone };
-    paintDetailIdentity(selectedAppt);
+    if (!next) return;
+    pendingPatient = next.id === selectedAppt.patient_id ? null : next;
+    paintChosenPatient();
     closeModal(replacePatientModal);
-    refresh();
   });
 
   // ── Staff notes on the appointment (mirrored on the client profile) ──
@@ -3255,10 +3259,15 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       price?: number | null;
       discount?: number;
       therapist_id?: string;
+      patient_id?: string;
     } = {
       start_time: start.toISOString(),
       end_time: end.toISOString(),
     };
+
+    if (pendingPatient && pendingPatient.id !== selectedAppt.patient_id) {
+      patch.patient_id = pendingPatient.id;
+    }
 
     if (!selectedAppt.is_blocked_time) {
       const service = detailServiceSelect.value.trim();
@@ -3333,6 +3342,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (patch.service !== undefined) selectedAppt.service = patch.service;
     if (patch.price !== undefined) selectedAppt.price = patch.price;
     if (patch.discount !== undefined) selectedAppt.discount = patch.discount;
+    if (patch.patient_id && pendingPatient) {
+      selectedAppt.patient_id = pendingPatient.id;
+      selectedAppt.patients = { id: pendingPatient.id, name: pendingPatient.name, phone: pendingPatient.phone };
+      pendingPatient = null;
+    }
     if (patch.therapist_id) {
       selectedAppt.therapist_id = patch.therapist_id;
       const th = getTherapist(patch.therapist_id);
