@@ -50,6 +50,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     </button>
   </div>
 
+  <button id="next-gap" type="button"
+    class="mb-3 hidden w-full rounded-2xl bg-white px-4 py-3 text-left ring-1 ring-slate-200 transition hover:ring-spine">
+    <span class="block text-[11px] font-semibold uppercase tracking-wide text-charcoal-muted">Επόμενο κενό</span>
+    <span id="next-gap-when" class="mt-0.5 block font-display text-sm font-bold text-charcoal">—</span>
+  </button>
+
   {/* Therapist filter — sticky chips, scrollable on phone */}
   <div
     id="therapist-tabs"
@@ -480,6 +486,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
         </button>
       </div>
+      <p id="detail-new-client" class="mt-1 hidden font-display text-sm font-bold text-charcoal">Νέος πελάτης</p>
       <button id="detail-replace-patient" type="button"
         class="mt-3 hidden min-h-11 w-full rounded-full border border-slate-200 px-4 py-2 font-display text-sm font-semibold text-charcoal transition hover:bg-sand">
         Αντικατάσταση πελάτη
@@ -982,6 +989,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   currentDay.setHours(0, 0, 0, 0);
   let viewMonth = new Date(currentDay.getFullYear(), currentDay.getMonth(), 1);
   let viewMode: "day" | "month" = "day";
+  /** Set when the owner jumps to the next free slot; loadDay scrolls there. */
+  let pendingGapScroll: Date | null = null;
   /** null = show all therapists side by side; on phone default to one column */
   /** Always start on «Όλοι», including phones. */
   let therapistFilter: string | null = null;
@@ -1005,6 +1014,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   function appointmentClientName(a: Pick<Appointment, "patient_id" | "patients">): string {
     if (!a.patient_id) return "Walk-in";
     return a.patients?.name ?? "—";
+  }
+
+  /** Set only when this appointment registered the client. */
+  const NEW_CLIENT_NOTE = "Νέος πελάτης";
+
+  function isNewClientVisit(a: Pick<Appointment, "notes" | "is_blocked_time">): boolean {
+    return !a.is_blocked_time && a.notes?.trim() === NEW_CLIENT_NOTE;
   }
 
   /** Calendar label for a repeating visit. Forever and a counted series are separate. */
@@ -1117,6 +1133,160 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     return (data ?? []) as Appointment[];
   }
 
+  const GAP_MINUTES = 45;
+  const nextGapBtn = document.getElementById("next-gap") as HTMLButtonElement;
+  const nextGapWhen = document.getElementById("next-gap-when")!;
+
+  function ceilToQuarter(d: Date): Date {
+    const x = new Date(d);
+    x.setSeconds(0, 0);
+    const rem = x.getMinutes() % 15;
+    if (rem !== 0) x.setMinutes(x.getMinutes() + (15 - rem));
+    return x;
+  }
+
+  function busyOnDay(
+    rows: Pick<Appointment, "start_time" | "end_time" | "repeats_forever">[],
+    day: Date,
+  ): { start: number; end: number }[] {
+    const busy: { start: number; end: number }[] = [];
+    for (const a of rows) {
+      const start = new Date(a.start_time);
+      const end = new Date(a.end_time);
+      const duration = Math.max(0, end.getTime() - start.getTime());
+      if (!a.repeats_forever) {
+        if (!sameDay(start, day)) continue;
+        busy.push({ start: start.getTime(), end: end.getTime() });
+        continue;
+      }
+      if (!occursOn(a as Appointment, day)) continue;
+      const at = new Date(day);
+      at.setHours(start.getHours(), start.getMinutes(), 0, 0);
+      busy.push({ start: at.getTime(), end: at.getTime() + duration });
+    }
+    return busy;
+  }
+
+  /** First 45′ opening on Charalambos’s column, from now, ignoring online blocks. */
+  function findNextGap(
+    now: Date,
+    rows: Pick<Appointment, "start_time" | "end_time" | "repeats_forever">[],
+  ): Date | null {
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    for (let i = 0; i < 21; i++) {
+      const day = new Date(today);
+      day.setDate(today.getDate() + i);
+      const busy = busyOnDay(rows, day);
+      let cursor = new Date(day);
+      cursor.setHours(DAY_START, 0, 0, 0);
+      if (i === 0 && now > cursor) cursor = ceilToQuarter(now);
+      const close = new Date(day);
+      close.setHours(DAY_END + 1, 0, 0, 0);
+      while (cursor.getTime() + GAP_MINUTES * 60_000 <= close.getTime()) {
+        const start = cursor.getTime();
+        const end = start + GAP_MINUTES * 60_000;
+        if (!busy.some((b) => start < b.end && end > b.start)) return new Date(start);
+        cursor = new Date(start + 15 * 60_000);
+      }
+    }
+    return null;
+  }
+
+  function scrollCalendarTo(date: Date) {
+    const scroll = document.getElementById("cal-scroll");
+    if (!scroll) return;
+    const mins = (date.getHours() - DAY_START) * 60 + date.getMinutes();
+    const rowH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--cal-row"))
+      || (isNarrow() ? 22 : 20);
+    const y = 40 + (mins / SLOT_MINUTES) * rowH;
+    if (scroll.scrollHeight > scroll.clientHeight + 4) {
+      scroll.scrollTop = Math.max(0, y - 12);
+      return;
+    }
+    const root = document.scrollingElement || document.documentElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    root.scrollTop = Math.max(0, root.scrollTop + scroll.getBoundingClientRect().top + y - 88);
+    root.style.scrollBehavior = prev;
+  }
+
+  let gapToken = 0;
+  async function loadNextGap() {
+    const token = ++gapToken;
+    if (!isOwnerAccount(adminEmail)) {
+      nextGapBtn.classList.add("hidden");
+      return;
+    }
+    const therapistId = therapistIdForEmail(adminEmail);
+    if (!therapistId) return;
+    const from = new Date();
+    from.setHours(0, 0, 0, 0);
+    const until = new Date(from);
+    until.setDate(until.getDate() + 21);
+    const fromIso = from.toISOString();
+    const untilIso = until.toISOString();
+    const [{ data: upcoming, error: upcomingError }, { data: standing, error: standingError }] = await Promise.all([
+      supabase
+        .from("appointments")
+        .select("id, start_time, end_time, repeats_forever")
+        .eq("therapist_id", therapistId)
+        .eq("is_blocked_time", false)
+        .eq("repeats_forever", false)
+        .neq("status", "cancelled")
+        .gte("start_time", fromIso)
+        .lt("start_time", untilIso),
+      supabase
+        .from("appointments")
+        .select("id, start_time, end_time, repeats_forever")
+        .eq("therapist_id", therapistId)
+        .eq("is_blocked_time", false)
+        .eq("repeats_forever", true)
+        .neq("status", "cancelled")
+        .lt("start_time", untilIso),
+    ]);
+    if (token !== gapToken) return;
+    if (upcomingError || standingError) {
+      nextGapBtn.classList.add("hidden");
+      return;
+    }
+    const rows = [
+      ...((upcoming ?? []) as Pick<Appointment, "id" | "start_time" | "end_time" | "repeats_forever">[]),
+      ...((standing ?? []) as Pick<Appointment, "id" | "start_time" | "end_time" | "repeats_forever">[]),
+    ];
+    const slot = findNextGap(new Date(), rows);
+    nextGapBtn.classList.remove("hidden");
+    if (!slot) {
+      nextGapWhen.textContent = "Κανένα κενό 45′ τις επόμενες 3 εβδομάδες";
+      delete nextGapBtn.dataset.iso;
+      return;
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const day = new Date(slot);
+    day.setHours(0, 0, 0, 0);
+    const when = day.getTime() === today.getTime()
+      ? `Σήμερα · ${fmtClock(slot)}`
+      : `${slot.toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })} · ${fmtClock(slot)}`;
+    nextGapWhen.textContent = when;
+    nextGapBtn.dataset.iso = slot.toISOString();
+  }
+
+  nextGapBtn.addEventListener("click", () => {
+    const iso = nextGapBtn.dataset.iso;
+    if (!iso) return;
+    const when = new Date(iso);
+    const ownId = therapistIdForEmail(adminEmail);
+    if (ownId) {
+      therapistFilter = ownId;
+      syncTherapistTabs();
+    }
+    currentDay = new Date(when.getFullYear(), when.getMonth(), when.getDate());
+    viewMonth = startOfMonth(currentDay);
+    pendingGapScroll = when;
+    if (viewMode !== "day") setViewMode("day");
+    else refresh();
+  });
+
   // Weekday header for month grid (Monday-first), built once.
   (() => {
     const monday = new Date(2024, 0, 1);
@@ -1155,6 +1325,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     requestAnimationFrame(() => fitCalendarScroll());
     if (viewMode === "day") loadDay();
     else loadMonth();
+    if (isOwnerAccount(adminEmail)) void loadNextGap();
   }
 
   // ── Month overview: months continue down the page, native scroll is left alone ──
@@ -1541,12 +1712,15 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           ? '<span class="flex h-4 w-4 flex-none items-center justify-center rounded-full bg-emerald-500 text-[9px] font-bold text-white">✓</span>'
           : "";
         const showTherapist = !therapistFilter;
+        const newClient = isNewClientVisit(a)
+          ? `<span class="font-bold text-charcoal">Νέος πελάτης · </span>`
+          : "";
         block.innerHTML = `
           <div class="flex items-center justify-between gap-1">
             <p class="min-w-0 truncate font-display text-xs font-bold ${nameColor}">${appointmentClientName(a)}</p>
             ${paidMark}
           </div>
-          <p class="truncate text-[11px] text-charcoal-muted">${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}${repeatMarkHtml(a)}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
+          <p class="truncate text-[11px] text-charcoal-muted">${newClient}${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}${repeatMarkHtml(a)}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
 
         block.addEventListener("click", (ev) => {
           ev.stopPropagation();
@@ -1564,6 +1738,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     });
 
     positionNowLine();
+    if (pendingGapScroll && sameDay(pendingGapScroll, currentDay)) {
+      const target = pendingGapScroll;
+      pendingGapScroll = null;
+      requestAnimationFrame(() => scrollCalendarTo(target));
+    }
   }
 
   // ── Long-press drag to move appointment (mobile + desktop) ──
@@ -1718,7 +1897,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     previewStatus.textContent = a.is_paid ? "Πληρωμένο" : "Κλεισμένο";
     previewAvatar.textContent = initialsOf(name) || "?";
     previewName.textContent = name;
-    if (a.patients?.phone) {
+    previewPhone.className = "truncate text-xs text-charcoal-muted";
+    if (isNewClientVisit(a)) {
+      previewPhone.className = "truncate text-xs font-bold text-charcoal";
+      previewPhone.textContent = a.patients?.phone ? `${a.patients.phone} · Νέος πελάτης` : "Νέος πελάτης";
+      previewPhone.classList.remove("hidden");
+    } else if (a.patients?.phone) {
       previewPhone.textContent = a.patients.phone;
       previewPhone.classList.remove("hidden");
     } else {
@@ -2501,6 +2685,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     err.classList.add("hidden");
 
     let patientId = String(fd.get("patient_id") || "").trim();
+    let registeredNewPatient = false;
     if (walkInMode) {
       await ensureAdminEmail();
       if (!isMasterAccount(adminEmail)) {
@@ -2534,6 +2719,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
           });
           patients = [created, ...patients.filter((p) => p.id !== created.id)];
           patientId = created.id;
+          registeredNewPatient = true;
         } catch (createErr) {
           err.textContent =
             createErr instanceof Error ? createErr.message : String(createErr);
@@ -2584,6 +2770,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       discount,
       recurrence_group: recurrenceGroup,
       repeats_forever: foreverOn,
+      notes: registeredNewPatient ? NEW_CLIENT_NOTE : null,
     }));
 
     const { error } = await supabase.from("appointments").insert(rows);
@@ -2869,6 +3056,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     } else {
       phoneEl.classList.add("hidden");
     }
+    document.getElementById("detail-new-client")!.classList.toggle("hidden", !isNewClientVisit(a));
   }
 
   function openDetail(a: Appointment) {
@@ -2896,7 +3084,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
 
     const notesRow = document.getElementById("detail-notes-row")!;
-    const hasNotes = !a.is_blocked_time && !!a.notes?.trim();
+    const hasNotes = !a.is_blocked_time && !!a.notes?.trim() && !isNewClientVisit(a);
     notesRow.classList.toggle("hidden", !hasNotes);
     if (hasNotes) document.getElementById("detail-notes")!.textContent = a.notes!.trim();
 
@@ -3018,6 +3206,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     paintDetailIdentity({
       ...selectedAppt,
       patient_id: pendingPatient.id,
+      notes: selectedAppt.notes?.trim() === NEW_CLIENT_NOTE ? null : selectedAppt.notes,
       patients: { id: pendingPatient.id, name: pendingPatient.name, phone: pendingPatient.phone },
     });
   }
@@ -3260,6 +3449,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       discount?: number;
       therapist_id?: string;
       patient_id?: string;
+      notes?: string | null;
     } = {
       start_time: start.toISOString(),
       end_time: end.toISOString(),
@@ -3267,6 +3457,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
     if (pendingPatient && pendingPatient.id !== selectedAppt.patient_id) {
       patch.patient_id = pendingPatient.id;
+      if (selectedAppt.notes?.trim() === NEW_CLIENT_NOTE) patch.notes = null;
     }
 
     if (!selectedAppt.is_blocked_time) {
@@ -3345,6 +3536,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (patch.patient_id && pendingPatient) {
       selectedAppt.patient_id = pendingPatient.id;
       selectedAppt.patients = { id: pendingPatient.id, name: pendingPatient.name, phone: pendingPatient.phone };
+      if (patch.notes === null) selectedAppt.notes = null;
       pendingPatient = null;
     }
     if (patch.therapist_id) {
