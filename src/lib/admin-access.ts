@@ -2,10 +2,11 @@ import { getTherapist, type TherapistSlug } from "./therapists";
 
 /**
  * Master / secretary accounts — see and edit everyone’s payments.
- * Egly is secretary only: do NOT add her as a therapist on the schedule.
+ * Egly and Georgia are secretaries only: do NOT add them as therapists on the schedule.
  */
 export const MASTER_EMAILS = [
   "egly_mua@hotmail.com",
+  "georgiak10@gmail.com",
   "x.neocleous@hotmail.com",
   "stelios0102@gmail.com",
 ] as const;
@@ -90,6 +91,7 @@ export function creatorDisplayName(
   if (!v) return null;
   if (v === "online") return "Online κράτηση (πελάτης)";
   if (v === "egly_mua@hotmail.com") return "Egly (γραμματεία)";
+  if (v === "georgiak10@gmail.com") return "Γεωργία (γραμματεία)";
   if (v === "stelios0102@gmail.com") return "Στέλιος";
   const slug = THERAPIST_ACCOUNT_EMAILS[v];
   if (slug) {
