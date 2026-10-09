@@ -745,6 +745,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     defaultPriceForAdminService,
     durationForAdminService,
     lockedTherapistIdForAdminService,
+    serviceTextClass,
+    serviceBlockClass,
   } from "../../lib/therapists";
   import {
     canViewTherapistPayments,
@@ -1530,8 +1532,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
 
     colHeadersInner.style.gridTemplateColumns = template;
     colHeadersInner.innerHTML = cols.map((th) => {
-      const accent = therapistAccentClasses(th.accent).text;
-      return `<div class="flex items-center justify-center border-l border-slate-100 px-2 font-display text-[11px] font-bold leading-tight ${accent} sm:text-xs">${th.nameEl}</div>`;
+      return `<div class="flex items-center justify-center border-l border-slate-100 px-2 font-display text-[11px] font-bold leading-tight text-charcoal sm:text-xs">${th.nameEl}</div>`;
     }).join("");
 
     grid.style.gridTemplateColumns = template;
@@ -1702,10 +1703,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         block.style.width = `calc(${100 / laneCount}% - 4px)`;
         block.style.marginLeft = `calc(${(lane * 100) / laneCount}% + 2px)`;
         block.style.zIndex = "20";
-        block.className = accent.block.replace(/\bmx-0\.5\b/g, "").trim() + " relative z-20";
-        const nameColor = accent.text;
-        // Non-masters: hide € when payment is hidden from totals.
-        // Masters: keep € visible (muted) so they can find & restore it.
+        const serviceBlock = serviceBlockClass(a.service);
+        block.className = (serviceBlock || accent.block.replace(/\bmx-0\.5\b/g, "").trim()) + " relative z-20";
         const master = isMasterAccount(adminEmail);
         const showPay = canSeePayments(a) && (!a.payments_hidden || master);
         const paidMark = showPay && a.is_paid && !a.payments_hidden
@@ -1715,12 +1714,17 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         const newClient = isNewClientVisit(a)
           ? `<span class="font-bold text-charcoal">Νέος πελάτης · </span>`
           : "";
+        const serviceHtml = (() => {
+          const text = escHtml(a.service ?? "");
+          const color = serviceTextClass(a.service);
+          return color ? `<span class="${color}">${text}</span>` : text;
+        })();
         block.innerHTML = `
           <div class="flex items-center justify-between gap-1">
-            <p class="min-w-0 truncate font-display text-xs font-bold ${nameColor}">${appointmentClientName(a)}</p>
+            <p class="min-w-0 truncate font-display text-xs font-bold text-charcoal">${appointmentClientName(a)}</p>
             ${paidMark}
           </div>
-          <p class="truncate text-[11px] text-charcoal-muted">${newClient}${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${a.service ?? ""}${repeatMarkHtml(a)}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
+          <p class="truncate text-[11px] text-charcoal-muted">${newClient}${fmtTime(a.start_time)} – ${fmtTime(a.end_time)} · ${serviceHtml}${repeatMarkHtml(a)}${showTherapist ? ` · ${therapistName(a)}` : ""}</p>`;
 
         block.addEventListener("click", (ev) => {
           ev.stopPropagation();
@@ -1910,6 +1914,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       previewPhone.classList.add("hidden");
     }
     previewService.textContent = a.service ?? "";
+    previewService.className = `truncate text-sm ${serviceTextClass(a.service) || "text-charcoal"}`;
     setRepeatMeta(previewMeta, `${therapistName(a)} · ${mins}′`, a);
     const master = isMasterAccount(adminEmail);
     const showPay = canSeePayments(a) && (!a.payments_hidden || master);
@@ -3036,6 +3041,20 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       detailServiceSelect.appendChild(opt);
     }
     detailServiceSelect.value = v;
+    paintServiceSelect(v);
+  }
+
+  function paintServiceSelect(service: string | null | undefined) {
+    detailServiceSelect.classList.remove(
+      "text-charcoal",
+      "text-red-600",
+      "text-emerald-600",
+      "text-blue-600",
+      "font-semibold",
+    );
+    const color = serviceTextClass(service);
+    if (color) detailServiceSelect.classList.add(...color.split(" "));
+    else detailServiceSelect.classList.add("text-charcoal");
   }
 
   function paintDetailIdentity(a: Appointment) {
@@ -3396,6 +3415,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (!selectedAppt || selectedAppt.is_blocked_time) return;
     syncDetailTherapistLock(detailServiceSelect.value);
     syncServiceOptions(detailServiceSelect, detailTherapistSelect.value, false);
+    paintServiceSelect(detailServiceSelect.value);
     detailEndInput.value = endTimeAfter(
       detailStartInput.value,
       durationForAdminService(detailServiceSelect.value),

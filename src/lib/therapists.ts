@@ -174,6 +174,30 @@ function adminServiceByLabel(label: string) {
   return ADMIN_SERVICES.find((s) => s.label === resolved);
 }
 
+/** Calendar/detail color for the three physiotherapy services. */
+export function serviceTextClass(label: string | null | undefined): string {
+  const resolved = resolveAdminServiceLabel(label);
+  if (resolved === "Φυσιοθεραπεία εκτός ΓΕΣΥ") return "font-semibold text-red-600";
+  if (resolved === "Φυσιοθεραπεία με ΓΕΣΥ") return "font-semibold text-emerald-600";
+  if (resolved === "Φυσιοθεραπεία ΓΕΣΥ χωρίς συμπλήρωση") return "font-semibold text-blue-600";
+  return "";
+}
+
+/** Whole appointment card on the calendar, so the service is visible without opening it. */
+export function serviceBlockClass(label: string | null | undefined): string {
+  const resolved = resolveAdminServiceLabel(label);
+  const base = "z-20 my-px overflow-hidden rounded-lg border-l-4 px-2 py-1 text-left transition";
+  if (resolved === "Φυσιοθεραπεία εκτός ΓΕΣΥ") return `${base} border-red-500 bg-red-50 hover:bg-red-100`;
+  if (resolved === "Φυσιοθεραπεία με ΓΕΣΥ") return `${base} border-emerald-500 bg-emerald-50 hover:bg-emerald-100`;
+  if (resolved === "Φυσιοθεραπεία ΓΕΣΥ χωρίς συμπλήρωση") return `${base} border-blue-500 bg-blue-50 hover:bg-blue-100`;
+  return "";
+}
+
+function resolveAdminServiceLabel(label: string | null | undefined): string {
+  const trimmed = label?.trim() ?? "";
+  return ADMIN_SERVICE_PRICE_ALIASES[trimmed] ?? trimmed;
+}
+
 export function defaultPriceForAdminService(label: string): number | null {
   const hit = adminServiceByLabel(label);
   return hit ? hit.defaultPrice : null;
