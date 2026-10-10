@@ -11,8 +11,14 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       <input
         id="client-search" type="search" placeholder="Όνομα ή τηλέφωνο…"
         enterkeyhint="search"
-        class="w-full rounded-full border border-slate-300 bg-white py-3 pl-10 pr-4 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
+        class="client-search w-full rounded-full border border-slate-300 bg-white py-3 pl-10 pr-11 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
       />
+      <button id="client-search-clear" type="button" hidden aria-label="Καθαρισμός αναζήτησης"
+        class="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-charcoal-muted transition hover:bg-sand hover:text-charcoal">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M6 6l12 12M18 6L6 18"/>
+        </svg>
+      </button>
     </div>
     <button id="import-excel-btn" type="button"
       class="flex h-12 w-12 flex-none items-center justify-center rounded-full border border-slate-300 bg-white text-charcoal transition active:scale-95 hover:border-spine hover:text-spine"
@@ -69,6 +75,14 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   </div>
 </AdminLayout>
 
+<style>
+  .client-search::-webkit-search-cancel-button,
+  .client-search::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
+  }
+</style>
+
 <script>
   import { getSupabase, type Appointment, type Patient } from "../../lib/supabase";
   import { canViewTherapistPayments } from "../../lib/admin-access";
@@ -80,6 +94,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   const emptyMsg = document.getElementById("clients-empty")!;
   const errorMsg = document.getElementById("clients-error")!;
   const search = document.getElementById("client-search") as HTMLInputElement;
+  const searchClear = document.getElementById("client-search-clear") as HTMLButtonElement;
 
   let allPatients: Patient[] = [];
   let debtByPatient = new Map<string, number>();
@@ -154,6 +169,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   }
 
   search.addEventListener("input", () => {
+    searchClear.hidden = search.value.length === 0;
     const q = search.value.trim().toLowerCase();
     render(
       q
@@ -165,6 +181,11 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
           )
         : allPatients,
     );
+  });
+  searchClear.addEventListener("click", () => {
+    search.value = "";
+    search.dispatchEvent(new Event("input"));
+    search.focus();
   });
 
   // ── New client modal ──
