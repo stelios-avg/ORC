@@ -50,11 +50,14 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     </button>
   </div>
 
-  <button id="next-gap" type="button"
-    class="mb-3 hidden w-full rounded-2xl bg-white px-4 py-3 text-left ring-1 ring-slate-200 transition hover:ring-spine">
-    <span class="block text-[11px] font-semibold uppercase tracking-wide text-charcoal-muted">Επόμενο κενό</span>
-    <span id="next-gap-when" class="mt-0.5 block font-display text-sm font-bold text-charcoal">—</span>
-  </button>
+  <div id="next-gap-wrap" class="mb-3 hidden">
+    <button id="next-gap" type="button"
+      class="w-full rounded-2xl bg-white px-4 py-3 text-left ring-1 ring-slate-200 transition hover:ring-spine">
+      <span id="next-gap-label" class="block text-[11px] font-semibold uppercase tracking-wide text-charcoal-muted">Επόμενο κενό</span>
+      <span id="next-gap-when" class="mt-0.5 block font-display text-sm font-bold text-charcoal">—</span>
+    </button>
+    <div id="next-gap-list" class="mt-2 hidden max-h-80 space-y-3 overflow-y-auto rounded-2xl bg-white p-3 ring-1 ring-slate-200"></div>
+  </div>
 
   {/* Therapist filter — sticky chips, scrollable on phone */}
   <div
@@ -159,7 +162,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
               data-major-minutes={MAJOR_MINUTES}
               data-total-rows={TOTAL_ROWS}
             >
-              <div id="now-line" class="pointer-events-none absolute inset-x-0 z-10 hidden">
+              <div id="now-line" class="pointer-events-none absolute inset-x-0 hidden" style="z-index: 30">
                 <div class="relative border-t-2 border-red-400">
                   <span class="absolute -left-1 -top-[5px] h-2 w-2 rounded-full bg-red-400"></span>
                 </div>
@@ -276,7 +279,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="mb-1 block text-sm font-medium text-charcoal" for="appt-start">Ώρα έναρξης</label>
-            <input id="appt-start" name="start" type="time" required step="900" value="08:00"
+            <input id="appt-start" name="start" type="time" required step="60" value="08:00"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
           <div>
@@ -353,12 +356,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         <div class="grid grid-cols-2 gap-3">
           <div>
             <label class="mb-1 block text-sm font-medium text-charcoal" for="block-start">Από</label>
-            <input id="block-start" name="start" type="time" required step="900" value="13:00"
+            <input id="block-start" name="start" type="time" required step="60" value="13:00"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
           <div>
             <label class="mb-1 block text-sm font-medium text-charcoal" for="block-end">Έως</label>
-            <input id="block-end" name="end" type="time" required step="900" value="14:00"
+            <input id="block-end" name="end" type="time" required step="60" value="14:00"
               class="w-full rounded-lg border border-slate-300 px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </div>
         </div>
@@ -496,12 +499,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         <div class="grid grid-cols-2 gap-3">
           <label class="block">
             <span class="mb-1 block text-xs font-medium text-charcoal-muted">Από</span>
-            <input id="detail-start" type="time" step="900"
+            <input id="detail-start" type="time" step="60"
               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </label>
           <label class="block">
             <span class="mb-1 block text-xs font-medium text-charcoal-muted">Έως</span>
-            <input id="detail-end" type="time" step="900"
+            <input id="detail-end" type="time" step="60"
               class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
           </label>
         </div>
@@ -753,6 +756,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     canDeleteAppointment,
     isMasterAccount,
     isOwnerAccount,
+    isSecretaryAccount,
     creatorDisplayName,
     therapistIdForEmail,
   } from "../../lib/admin-access";
@@ -1136,8 +1140,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   const GAP_MINUTES = 45;
+  const nextGapWrap = document.getElementById("next-gap-wrap")!;
   const nextGapBtn = document.getElementById("next-gap") as HTMLButtonElement;
   const nextGapWhen = document.getElementById("next-gap-when")!;
+  const nextGapLabel = document.getElementById("next-gap-label")!;
+  const nextGapList = document.getElementById("next-gap-list")!;
+  let gapSlots: Date[] = [];
 
   function ceilToQuarter(d: Date): Date {
     const x = new Date(d);
@@ -1169,11 +1177,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     return busy;
   }
 
-  /** First 45′ opening on Charalambos’s column, from now, ignoring online blocks. */
-  function findNextGap(
+  /** Every 45′ opening on Charalambos’s column, from now, ignoring online blocks. */
+  function findGaps(
     now: Date,
     rows: Pick<Appointment, "start_time" | "end_time" | "repeats_forever">[],
-  ): Date | null {
+  ): Date[] {
+    const slots: Date[] = [];
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     for (let i = 0; i < 21; i++) {
       const day = new Date(today);
@@ -1187,11 +1196,42 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       while (cursor.getTime() + GAP_MINUTES * 60_000 <= close.getTime()) {
         const start = cursor.getTime();
         const end = start + GAP_MINUTES * 60_000;
-        if (!busy.some((b) => start < b.end && end > b.start)) return new Date(start);
+        if (!busy.some((b) => start < b.end && end > b.start)) slots.push(new Date(start));
         cursor = new Date(start + 15 * 60_000);
       }
     }
-    return null;
+    return slots;
+  }
+
+  function gapWhenLabel(slot: Date): string {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const day = new Date(slot);
+    day.setHours(0, 0, 0, 0);
+    return day.getTime() === today.getTime()
+      ? `Σήμερα · ${fmtClock(slot)}`
+      : `${slot.toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })} · ${fmtClock(slot)}`;
+  }
+
+  function renderGapList() {
+    if (!gapSlots.length) {
+      nextGapList.innerHTML = '<p class="text-sm text-charcoal-muted">Κανένα κενό 45′ τις επόμενες 3 εβδομάδες.</p>';
+      return;
+    }
+    const groups = new Map<string, Date[]>();
+    for (const slot of gapSlots) {
+      const key = slot.toDateString();
+      const list = groups.get(key) ?? [];
+      list.push(slot);
+      groups.set(key, list);
+    }
+    nextGapList.innerHTML = [...groups.values()].map((slots) => {
+      const heading = slots[0].toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
+      const times = slots.map((slot) =>
+        `<button type="button" data-gap-iso="${slot.toISOString()}" class="min-h-10 rounded-full bg-sand px-3 py-2 font-display text-sm font-semibold text-charcoal transition hover:bg-spine-50 hover:text-spine">${fmtClock(slot)}</button>`,
+      ).join("");
+      return `<section><p class="mb-2 font-display text-xs font-bold uppercase tracking-wide text-charcoal-muted">${heading}</p><div class="flex flex-wrap gap-2">${times}</div></section>`;
+    }).join("");
   }
 
   function scrollCalendarTo(date: Date) {
@@ -1202,25 +1242,25 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       || (isNarrow() ? 22 : 20);
     const y = 40 + (mins / SLOT_MINUTES) * rowH;
     if (scroll.scrollHeight > scroll.clientHeight + 4) {
-      scroll.scrollTop = Math.max(0, y - 12);
+      scroll.scrollTop = Math.max(0, y - scroll.clientHeight / 2);
       return;
     }
     const root = document.scrollingElement || document.documentElement;
     const prev = root.style.scrollBehavior;
     root.style.scrollBehavior = "auto";
-    root.scrollTop = Math.max(0, root.scrollTop + scroll.getBoundingClientRect().top + y - 88);
+    const top = scroll.getBoundingClientRect().top + root.scrollTop + y - window.innerHeight / 2;
+    root.scrollTop = Math.max(0, top);
     root.style.scrollBehavior = prev;
   }
 
   let gapToken = 0;
   async function loadNextGap() {
     const token = ++gapToken;
-    if (!isOwnerAccount(adminEmail)) {
-      nextGapBtn.classList.add("hidden");
+    if (!isOwnerAccount(adminEmail) && !isSecretaryAccount(adminEmail)) {
+      nextGapWrap.classList.add("hidden");
       return;
     }
-    const therapistId = therapistIdForEmail(adminEmail);
-    if (!therapistId) return;
+    const therapistId = getTherapist("charalambos")!.id;
     const from = new Date();
     from.setHours(0, 0, 0, 0);
     const until = new Date(from);
@@ -1248,45 +1288,55 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     ]);
     if (token !== gapToken) return;
     if (upcomingError || standingError) {
-      nextGapBtn.classList.add("hidden");
+      nextGapWrap.classList.add("hidden");
       return;
     }
     const rows = [
       ...((upcoming ?? []) as Pick<Appointment, "id" | "start_time" | "end_time" | "repeats_forever">[]),
       ...((standing ?? []) as Pick<Appointment, "id" | "start_time" | "end_time" | "repeats_forever">[]),
     ];
-    const slot = findNextGap(new Date(), rows);
-    nextGapBtn.classList.remove("hidden");
+    gapSlots = findGaps(new Date(), rows);
+    const slot = gapSlots[0] ?? null;
+    nextGapWrap.classList.remove("hidden");
+    nextGapLabel.textContent = isOwnerAccount(adminEmail)
+      ? "Επόμενο κενό"
+      : "Επόμενο κενό · Χαράλαμπος";
     if (!slot) {
       nextGapWhen.textContent = "Κανένα κενό 45′ τις επόμενες 3 εβδομάδες";
       delete nextGapBtn.dataset.iso;
+      renderGapList();
       return;
     }
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const day = new Date(slot);
-    day.setHours(0, 0, 0, 0);
-    const when = day.getTime() === today.getTime()
-      ? `Σήμερα · ${fmtClock(slot)}`
-      : `${slot.toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })} · ${fmtClock(slot)}`;
-    nextGapWhen.textContent = when;
+    nextGapWhen.textContent = gapWhenLabel(slot);
     nextGapBtn.dataset.iso = slot.toISOString();
+    renderGapList();
   }
 
-  nextGapBtn.addEventListener("click", () => {
-    const iso = nextGapBtn.dataset.iso;
-    if (!iso) return;
-    const when = new Date(iso);
-    const ownId = therapistIdForEmail(adminEmail);
-    if (ownId) {
-      therapistFilter = ownId;
-      syncTherapistTabs();
-    }
+  function goToCharalambosSlot(when: Date) {
+    therapistFilter = getTherapist("charalambos")!.id;
+    syncTherapistTabs();
+    setDefaultTherapistSelects();
     currentDay = new Date(when.getFullYear(), when.getMonth(), when.getDate());
     viewMonth = startOfMonth(currentDay);
     pendingGapScroll = when;
+    nextGapList.classList.add("hidden");
     if (viewMode !== "day") setViewMode("day");
     else refresh();
+  }
+
+  nextGapBtn.addEventListener("click", () => {
+    if (isSecretaryAccount(adminEmail)) {
+      nextGapList.classList.toggle("hidden");
+      return;
+    }
+    const iso = nextGapBtn.dataset.iso;
+    if (!iso) return;
+    goToCharalambosSlot(new Date(iso));
+  });
+  nextGapList.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-gap-iso]");
+    if (!btn?.dataset.gapIso) return;
+    goToCharalambosSlot(new Date(btn.dataset.gapIso));
   });
 
   // Weekday header for month grid (Monday-first), built once.
@@ -1327,7 +1377,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     requestAnimationFrame(() => fitCalendarScroll());
     if (viewMode === "day") loadDay();
     else loadMonth();
-    if (isOwnerAccount(adminEmail)) void loadNextGap();
+    if (isOwnerAccount(adminEmail) || isSecretaryAccount(adminEmail)) void loadNextGap();
   }
 
   // ── Month overview: months continue down the page, native scroll is left alone ──
@@ -2370,16 +2420,25 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     refresh();
   });
 
-  // "Σήμερα": jump to today's date in day view and scroll to the current time.
-  viewDayBtn.addEventListener("click", () => {
+  function jumpToNow() {
     currentDay = new Date();
     currentDay.setHours(0, 0, 0, 0);
     viewMonth = startOfMonth(currentDay);
-    setViewMode("day");
-    positionNowLine();
-    if (!nowLine.classList.contains("hidden")) {
-      nowLine.scrollIntoView({ block: "center", behavior: "smooth" });
-    }
+    pendingGapScroll = new Date();
+    if (viewMode !== "day") setViewMode("day");
+    else refresh();
+  }
+
+  document.querySelector('nav a[href="/admin"]')?.addEventListener("click", (e) => {
+    const path = location.pathname.replace(/\/$/, "");
+    if (path !== "/admin") return;
+    e.preventDefault();
+    jumpToNow();
+  });
+
+  // "Σήμερα": jump to today's date in day view and scroll to the current time.
+  viewDayBtn.addEventListener("click", () => {
+    jumpToNow();
   });
   viewMonthBtn.addEventListener("click", () => {
     viewMonth = startOfMonth(currentDay);
@@ -4082,11 +4141,27 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   window.matchMedia("(max-width: 767px)").addEventListener("change", fitCalendarScroll);
 
   ensureAdminEmail().then(() => {
-    if (isOwnerAccount(adminEmail)) {
+    const params = new URLSearchParams(location.search);
+    const at = params.get("at") ? new Date(params.get("at")!) : null;
+    const focusAt = at && !Number.isNaN(at.getTime()) ? at : null;
+    const focusTherapist = params.get("therapist");
+    if (focusTherapist) {
+      therapistFilter = focusTherapist;
+      syncTherapistTabs();
+      setDefaultTherapistSelects();
+    } else if (isOwnerAccount(adminEmail)) {
       const ownId = therapistIdForEmail(adminEmail);
       if (ownId) therapistFilter = ownId;
       syncTherapistTabs();
       setDefaultTherapistSelects();
+    }
+    if (focusAt) {
+      currentDay = new Date(focusAt.getFullYear(), focusAt.getMonth(), focusAt.getDate());
+      viewMonth = startOfMonth(currentDay);
+      pendingGapScroll = focusAt;
+      history.replaceState(null, "", "/admin");
+    } else {
+      pendingGapScroll = new Date();
     }
     setViewMode("day");
     void loadBookingRequests();

@@ -46,10 +46,10 @@ export const NAV_LINKS: NavLink[] = [
  * Vercel project settings.
  */
 /**
- * Public website booking. Flip to `true` when the clinic wants to take
- * online appointments again (and set public.public_booking_is_open() to true).
+ * Public website booking. Set to `false` to pause online appointments
+ * (and set public.public_booking_is_open() to false).
  */
-export const PUBLIC_BOOKING_ENABLED = false;
+export const PUBLIC_BOOKING_ENABLED = true;
 
 export const FRESHA_BOOKING_URL: string =
   import.meta.env.PUBLIC_FRESHA_BOOKING_URL ||

@@ -1,13 +1,12 @@
--- Pause online booking from the public website.
--- Flip public.public_booking_is_open() to true when the clinic wants it back.
--- Restore wrappers stay in place; only the helper needs to return true.
+-- Online booking from the public website.
+-- Flip public.public_booking_is_open() to false to pause it again.
 
 create or replace function public.public_booking_is_open()
 returns boolean
 language sql
 stable
 as $$
-  select false;
+  select true;
 $$;
 
 do $$

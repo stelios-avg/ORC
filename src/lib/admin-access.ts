@@ -37,6 +37,12 @@ export function isMasterAccount(email: string | null | undefined): boolean {
   return (MASTER_EMAILS as readonly string[]).includes(e);
 }
 
+/** Reception: Egly, and Georgia when Egly is away. */
+export function isSecretaryAccount(email: string | null | undefined): boolean {
+  const e = normalizeEmail(email);
+  return e === "egly_mua@hotmail.com" || e === "georgiak10@gmail.com";
+}
+
 /** Charalambos only — full clinic payment overview. */
 export function isOwnerAccount(email: string | null | undefined): boolean {
   return normalizeEmail(email) === OWNER_EMAIL;
