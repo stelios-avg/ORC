@@ -756,7 +756,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     canDeleteAppointment,
     isMasterAccount,
     isOwnerAccount,
-    isSecretaryAccount,
+    canSeeCharalambosGaps,
     creatorDisplayName,
     therapistIdForEmail,
   } from "../../lib/admin-access";
@@ -1329,7 +1329,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   let gapToken = 0;
   async function loadNextGap() {
     const token = ++gapToken;
-    if (!isOwnerAccount(adminEmail) && !isSecretaryAccount(adminEmail)) {
+    if (!canSeeCharalambosGaps(adminEmail)) {
       nextGapWrap.classList.add("hidden");
       return;
     }
@@ -1395,7 +1395,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   nextGapBtn.addEventListener("click", () => {
-    if (isSecretaryAccount(adminEmail)) {
+    if (!isOwnerAccount(adminEmail)) {
       nextGapList.classList.toggle("hidden");
       return;
     }
@@ -1447,7 +1447,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     requestAnimationFrame(() => fitCalendarScroll());
     if (viewMode === "day") loadDay();
     else loadMonth();
-    if (isOwnerAccount(adminEmail) || isSecretaryAccount(adminEmail)) void loadNextGap();
+    if (canSeeCharalambosGaps(adminEmail)) void loadNextGap();
   }
 
   // ── Month overview: months continue down the page, native scroll is left alone ──

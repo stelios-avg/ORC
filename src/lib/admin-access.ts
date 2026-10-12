@@ -43,6 +43,18 @@ export function isSecretaryAccount(email: string | null | undefined): boolean {
   return e === "egly_mua@hotmail.com" || e === "georgiak10@gmail.com";
 }
 
+/**
+ * Charalambos’s free-slot list. The owner jumps straight to the next opening.
+ * Secretaries and Stelios open the full list.
+ */
+export function canSeeCharalambosGaps(email: string | null | undefined): boolean {
+  return (
+    isOwnerAccount(email) ||
+    isSecretaryAccount(email) ||
+    normalizeEmail(email) === "stelios0102@gmail.com"
+  );
+}
+
 /** Charalambos only — full clinic payment overview. */
 export function isOwnerAccount(email: string | null | undefined): boolean {
   return normalizeEmail(email) === OWNER_EMAIL;
