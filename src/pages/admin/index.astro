@@ -56,7 +56,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       <span id="next-gap-label" class="block text-[11px] font-semibold uppercase tracking-wide text-charcoal-muted">Επόμενο κενό</span>
       <span id="next-gap-when" class="mt-0.5 block font-display text-sm font-bold text-charcoal">—</span>
     </button>
-    <div id="next-gap-list" class="mt-2 hidden max-h-80 space-y-3 overflow-y-auto rounded-2xl bg-white p-3 ring-1 ring-slate-200"></div>
+    <div id="next-gap-list" class="mt-2 hidden max-h-[70vh] space-y-3 overflow-y-auto rounded-2xl bg-white p-3 ring-1 ring-slate-200"></div>
   </div>
 
   {/* Therapist filter — sticky chips, scrollable on phone */}
@@ -977,7 +977,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const inner = scroll.firstElementChild as HTMLElement | null;
     if (!isNarrow() || viewMode !== "day" || dayView.classList.contains("hidden")) {
       scroll.style.maxHeight = "";
-      if (inner) inner.style.paddingBottom = "";
+      if (inner) {
+        const showDay = viewMode === "day" && !dayView.classList.contains("hidden");
+        const rowH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--cal-row")) || 20;
+        inner.style.paddingBottom = showDay ? `${Math.round(rowH * ROWS_PER_MAJOR)}px` : "";
+      }
       return;
     }
     const nav = document.querySelector("nav");
@@ -988,7 +992,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const fabShown = !!fab && getComputedStyle(fab).display !== "none";
     const fabTop = fabShown ? fab!.getBoundingClientRect().top : navTop;
     const cover = Math.max(16, Math.ceil(navTop - fabTop) + 16);
-    if (inner) inner.style.paddingBottom = `${cover}px`;
+    const rowH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--cal-row")) || 22;
+    // One extra hour so 22:00 and the time after it can scroll clear of the button.
+    if (inner) inner.style.paddingBottom = `${cover + Math.round(rowH * ROWS_PER_MAJOR)}px`;
   }
 
   let currentDay = new Date();
@@ -1140,12 +1146,36 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   const GAP_MINUTES = 45;
+  /** How far ahead the free-slot list looks. A full current month must not be the end of it. */
+  const GAP_MONTHS = 12;
+  /** Last start offered in the list. 20:00–20:45 still counts; nothing later does. */
+  const GAP_LAST_HOUR = 20;
+  /** A block this long means the whole day is closed, not a short hold. */
+  const CLOSED_DAY_MS = 6 * 60 * 60 * 1000;
   const nextGapWrap = document.getElementById("next-gap-wrap")!;
   const nextGapBtn = document.getElementById("next-gap") as HTMLButtonElement;
   const nextGapWhen = document.getElementById("next-gap-when")!;
   const nextGapLabel = document.getElementById("next-gap-label")!;
   const nextGapList = document.getElementById("next-gap-list")!;
   let gapSlots: Date[] = [];
+  /** Gap jumps keep the chosen time near the top so the hours through 22:00 stay visible. */
+  let pendingGapAlign: "center" | "start" = "center";
+
+  type GapRow = Pick<Appointment, "start_time" | "end_time" | "repeats_forever" | "is_blocked_time">;
+
+  function spanOnDay(a: GapRow, day: Date): { start: number; end: number } | null {
+    const start = new Date(a.start_time);
+    const end = new Date(a.end_time);
+    const duration = Math.max(0, end.getTime() - start.getTime());
+    if (!a.repeats_forever) {
+      if (!sameDay(start, day)) return null;
+      return { start: start.getTime(), end: end.getTime() };
+    }
+    if (!occursOn(a as Appointment, day)) return null;
+    const at = new Date(day);
+    at.setHours(start.getHours(), start.getMinutes(), 0, 0);
+    return { start: at.getTime(), end: at.getTime() + duration };
+  }
 
   function ceilToQuarter(d: Date): Date {
     const x = new Date(d);
@@ -1155,45 +1185,56 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     return x;
   }
 
-  function busyOnDay(
-    rows: Pick<Appointment, "start_time" | "end_time" | "repeats_forever">[],
-    day: Date,
-  ): { start: number; end: number }[] {
+  function busyOnDay(rows: GapRow[], day: Date): { start: number; end: number }[] {
     const busy: { start: number; end: number }[] = [];
     for (const a of rows) {
-      const start = new Date(a.start_time);
-      const end = new Date(a.end_time);
-      const duration = Math.max(0, end.getTime() - start.getTime());
-      if (!a.repeats_forever) {
-        if (!sameDay(start, day)) continue;
-        busy.push({ start: start.getTime(), end: end.getTime() });
-        continue;
-      }
-      if (!occursOn(a as Appointment, day)) continue;
-      const at = new Date(day);
-      at.setHours(start.getHours(), start.getMinutes(), 0, 0);
-      busy.push({ start: at.getTime(), end: at.getTime() + duration });
+      const span = spanOnDay(a, day);
+      if (span) busy.push(span);
     }
     return busy;
   }
 
-  /** Every 45′ opening on Charalambos’s column, from now, ignoring online blocks. */
-  function findGaps(
-    now: Date,
-    rows: Pick<Appointment, "start_time" | "end_time" | "repeats_forever">[],
-  ): Date[] {
+  /** Sunday, or a long block (Κλειστό / αργία) covering the working day. */
+  function isClosedGapDay(rows: GapRow[], day: Date): boolean {
+    if (day.getDay() === 0) return true;
+    return rows.some((a) => {
+      if (!a.is_blocked_time) return false;
+      const span = spanOnDay(a, day);
+      return !!span && span.end - span.start >= CLOSED_DAY_MS;
+    });
+  }
+
+  /** Every 45′ opening on Charalambos’s column, through the next year. Sundays and blocked days are left out. */
+  function findGaps(now: Date, rows: GapRow[]): Date[] {
+    const byDay = new Map<string, GapRow[]>();
+    const forever: GapRow[] = [];
+    for (const a of rows) {
+      if (a.repeats_forever) {
+        forever.push(a);
+        continue;
+      }
+      const key = new Date(a.start_time).toDateString();
+      const list = byDay.get(key) ?? [];
+      list.push(a);
+      byDay.set(key, list);
+    }
     const slots: Date[] = [];
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-    for (let i = 0; i < 21; i++) {
+    const horizon = new Date(today);
+    horizon.setMonth(horizon.getMonth() + GAP_MONTHS);
+    for (let i = 0; i < 400; i++) {
       const day = new Date(today);
       day.setDate(today.getDate() + i);
-      const busy = busyOnDay(rows, day);
+      if (day >= horizon) break;
+      const dayRows = (byDay.get(day.toDateString()) ?? []).concat(forever);
+      if (isClosedGapDay(dayRows, day)) continue;
+      const busy = busyOnDay(dayRows, day);
       let cursor = new Date(day);
       cursor.setHours(DAY_START, 0, 0, 0);
       if (i === 0 && now > cursor) cursor = ceilToQuarter(now);
-      const close = new Date(day);
-      close.setHours(DAY_END + 1, 0, 0, 0);
-      while (cursor.getTime() + GAP_MINUTES * 60_000 <= close.getTime()) {
+      const last = new Date(day);
+      last.setHours(GAP_LAST_HOUR, 0, 0, 0);
+      while (cursor.getTime() <= last.getTime()) {
         const start = cursor.getTime();
         const end = start + GAP_MINUTES * 60_000;
         if (!busy.some((b) => start < b.end && end > b.start)) slots.push(new Date(start));
@@ -1213,42 +1254,74 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       : `${slot.toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })} · ${fmtClock(slot)}`;
   }
 
-  function renderGapList() {
-    if (!gapSlots.length) {
-      nextGapList.innerHTML = '<p class="text-sm text-charcoal-muted">Κανένα κενό 45′ τις επόμενες 3 εβδομάδες.</p>';
-      return;
-    }
-    const groups = new Map<string, Date[]>();
-    for (const slot of gapSlots) {
-      const key = slot.toDateString();
-      const list = groups.get(key) ?? [];
-      list.push(slot);
-      groups.set(key, list);
-    }
-    nextGapList.innerHTML = [...groups.values()].map((slots) => {
-      const heading = slots[0].toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
-      const times = slots.map((slot) =>
-        `<button type="button" data-gap-iso="${slot.toISOString()}" class="min-h-10 rounded-full bg-sand px-3 py-2 font-display text-sm font-semibold text-charcoal transition hover:bg-spine-50 hover:text-spine">${fmtClock(slot)}</button>`,
-      ).join("");
-      return `<section><p class="mb-2 font-display text-xs font-bold uppercase tracking-wide text-charcoal-muted">${heading}</p><div class="flex flex-wrap gap-2">${times}</div></section>`;
-    }).join("");
+  function gapDaySection(slots: Date[]): string {
+    const heading = slots[0].toLocaleDateString("el-GR", { weekday: "long", day: "numeric", month: "long" });
+    const times = slots.map((slot) =>
+      `<button type="button" data-gap-iso="${slot.toISOString()}" class="min-h-10 rounded-full bg-sand px-3 py-2 font-display text-sm font-semibold text-charcoal transition hover:bg-spine-50 hover:text-spine">${fmtClock(slot)}</button>`,
+    ).join("");
+    return `<section><p class="mb-2 font-display text-xs font-bold uppercase tracking-wide text-charcoal-muted">${heading}</p><div class="flex flex-wrap gap-2">${times}</div></section>`;
   }
 
-  function scrollCalendarTo(date: Date) {
+  function renderGapList() {
+    if (!gapSlots.length) {
+      nextGapList.innerHTML = '<p class="text-sm text-charcoal-muted">Κανένα κενό 45′ τους επόμενους μήνες.</p>';
+      return;
+    }
+    const months = new Map<string, Date[][]>();
+    const days = new Map<string, Date[]>();
+    for (const slot of gapSlots) {
+      const key = slot.toDateString();
+      const list = days.get(key) ?? [];
+      list.push(slot);
+      days.set(key, list);
+    }
+    for (const slots of days.values()) {
+      const slot = slots[0];
+      const key = `${slot.getFullYear()}-${slot.getMonth()}`;
+      const list = months.get(key) ?? [];
+      list.push(slots);
+      months.set(key, list);
+    }
+    const grouped = [...months.values()];
+    nextGapList.innerHTML = grouped.map((monthDays, index) => {
+      const title = monthDays[0][0].toLocaleDateString("el-GR", { month: "long", year: "numeric" });
+      return `<details data-gap-month="${index}" ${index === 0 ? "open" : ""} class="border-b border-slate-100 pb-3 last:border-0">
+        <summary class="cursor-pointer py-1 font-display text-sm font-bold uppercase tracking-wide text-charcoal">${title}</summary>
+        <div class="mt-3 space-y-3" data-gap-body></div>
+      </details>`;
+    }).join("");
+    const fill = (el: HTMLDetailsElement) => {
+      const body = el.querySelector<HTMLElement>("[data-gap-body]");
+      if (!body || body.childElementCount) return;
+      const monthDays = grouped[Number(el.dataset.gapMonth)] ?? [];
+      body.innerHTML = monthDays.map((slots) => gapDaySection(slots)).join("");
+    };
+    nextGapList.querySelectorAll<HTMLDetailsElement>("details").forEach((el) => {
+      if (el.open) fill(el);
+      el.addEventListener("toggle", () => {
+        if (el.open) fill(el);
+      });
+    });
+  }
+
+  function scrollCalendarTo(date: Date, align: "center" | "start" = "center") {
     const scroll = document.getElementById("cal-scroll");
     if (!scroll) return;
     const mins = (date.getHours() - DAY_START) * 60 + date.getMinutes();
     const rowH = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--cal-row"))
       || (isNarrow() ? 22 : 20);
     const y = 40 + (mins / SLOT_MINUTES) * rowH;
+    const nearTop = 48;
     if (scroll.scrollHeight > scroll.clientHeight + 4) {
-      scroll.scrollTop = Math.max(0, y - scroll.clientHeight / 2);
+      const view = align === "start" ? nearTop : scroll.clientHeight / 2;
+      scroll.scrollTop = Math.max(0, y - view);
       return;
     }
     const root = document.scrollingElement || document.documentElement;
     const prev = root.style.scrollBehavior;
     root.style.scrollBehavior = "auto";
-    const top = scroll.getBoundingClientRect().top + root.scrollTop + y - window.innerHeight / 2;
+    const view = align === "start" ? nearTop : window.innerHeight / 2;
+    const top = scroll.getBoundingClientRect().top + root.scrollTop + y - view;
     root.scrollTop = Math.max(0, top);
     root.style.scrollBehavior = prev;
   }
@@ -1264,37 +1337,33 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const from = new Date();
     from.setHours(0, 0, 0, 0);
     const until = new Date(from);
-    until.setDate(until.getDate() + 21);
+    until.setMonth(until.getMonth() + GAP_MONTHS);
     const fromIso = from.toISOString();
     const untilIso = until.toISOString();
-    const [{ data: upcoming, error: upcomingError }, { data: standing, error: standingError }] = await Promise.all([
-      supabase
-        .from("appointments")
-        .select("id, start_time, end_time, repeats_forever")
-        .eq("therapist_id", therapistId)
-        .eq("is_blocked_time", false)
-        .eq("repeats_forever", false)
-        .neq("status", "cancelled")
-        .gte("start_time", fromIso)
-        .lt("start_time", untilIso),
-      supabase
-        .from("appointments")
-        .select("id, start_time, end_time, repeats_forever")
-        .eq("therapist_id", therapistId)
-        .eq("is_blocked_time", false)
-        .eq("repeats_forever", true)
-        .neq("status", "cancelled")
-        .lt("start_time", untilIso),
-    ]);
-    if (token !== gapToken) return;
-    if (upcomingError || standingError) {
-      nextGapWrap.classList.add("hidden");
-      return;
+    const rows: GapRow[] = [];
+    const page = 1000;
+    for (const forever of [false, true]) {
+      for (let start = 0; ; start += page) {
+        let q = supabase
+          .from("appointments")
+          .select("start_time, end_time, repeats_forever, is_blocked_time")
+          .eq("therapist_id", therapistId)
+          .eq("repeats_forever", forever)
+          .neq("status", "cancelled")
+          .order("start_time", { ascending: true })
+          .range(start, start + page - 1);
+        q = forever ? q.lt("start_time", untilIso) : q.gte("start_time", fromIso).lt("start_time", untilIso);
+        const { data, error } = await q;
+        if (token !== gapToken) return;
+        if (error) {
+          nextGapWrap.classList.add("hidden");
+          return;
+        }
+        const batch = (data ?? []) as GapRow[];
+        rows.push(...batch);
+        if (batch.length < page) break;
+      }
     }
-    const rows = [
-      ...((upcoming ?? []) as Pick<Appointment, "id" | "start_time" | "end_time" | "repeats_forever">[]),
-      ...((standing ?? []) as Pick<Appointment, "id" | "start_time" | "end_time" | "repeats_forever">[]),
-    ];
     gapSlots = findGaps(new Date(), rows);
     const slot = gapSlots[0] ?? null;
     nextGapWrap.classList.remove("hidden");
@@ -1302,7 +1371,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       ? "Επόμενο κενό"
       : "Επόμενο κενό · Χαράλαμπος";
     if (!slot) {
-      nextGapWhen.textContent = "Κανένα κενό 45′ τις επόμενες 3 εβδομάδες";
+      nextGapWhen.textContent = "Κανένα κενό 45′ τους επόμενους μήνες";
       delete nextGapBtn.dataset.iso;
       renderGapList();
       return;
@@ -1319,6 +1388,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     currentDay = new Date(when.getFullYear(), when.getMonth(), when.getDate());
     viewMonth = startOfMonth(currentDay);
     pendingGapScroll = when;
+    pendingGapAlign = "start";
     nextGapList.classList.add("hidden");
     if (viewMode !== "day") setViewMode("day");
     else refresh();
@@ -1794,8 +1864,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     positionNowLine();
     if (pendingGapScroll && sameDay(pendingGapScroll, currentDay)) {
       const target = pendingGapScroll;
+      const align = pendingGapAlign;
       pendingGapScroll = null;
-      requestAnimationFrame(() => scrollCalendarTo(target));
+      pendingGapAlign = "center";
+      requestAnimationFrame(() => scrollCalendarTo(target, align));
     }
   }
 
