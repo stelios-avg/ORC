@@ -1148,8 +1148,12 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   const GAP_MINUTES = 45;
   /** How far ahead the free-slot list looks. A full current month must not be the end of it. */
   const GAP_MONTHS = 12;
-  /** Last start offered in the list. 20:00–20:45 still counts; nothing later does. */
-  const GAP_LAST_HOUR = 20;
+  /** First start offered. Nothing before 06:45. */
+  const GAP_FIRST_MINUTES = 6 * 60 + 45;
+  /** Last start on Mon–Fri. 20:00–20:45 still counts. */
+  const GAP_LAST_WEEKDAY = 20 * 60;
+  /** Last start on Saturday. 15:00–15:45 still counts. */
+  const GAP_LAST_SATURDAY = 15 * 60;
   /** A block this long means the whole day is closed, not a short hold. */
   const CLOSED_DAY_MS = 6 * 60 * 60 * 1000;
   const nextGapWrap = document.getElementById("next-gap-wrap")!;
@@ -1229,11 +1233,14 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       const dayRows = (byDay.get(day.toDateString()) ?? []).concat(forever);
       if (isClosedGapDay(dayRows, day)) continue;
       const busy = busyOnDay(dayRows, day);
-      let cursor = new Date(day);
-      cursor.setHours(DAY_START, 0, 0, 0);
+      const open = new Date(day);
+      open.setHours(0, GAP_FIRST_MINUTES, 0, 0);
+      let cursor = new Date(open);
       if (i === 0 && now > cursor) cursor = ceilToQuarter(now);
+      if (cursor < open) cursor = new Date(open);
+      const lastMinutes = day.getDay() === 6 ? GAP_LAST_SATURDAY : GAP_LAST_WEEKDAY;
       const last = new Date(day);
-      last.setHours(GAP_LAST_HOUR, 0, 0, 0);
+      last.setHours(0, lastMinutes, 0, 0);
       while (cursor.getTime() <= last.getTime()) {
         const start = cursor.getTime();
         const end = start + GAP_MINUTES * 60_000;
