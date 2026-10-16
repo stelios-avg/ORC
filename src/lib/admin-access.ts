@@ -43,10 +43,7 @@ export function isSecretaryAccount(email: string | null | undefined): boolean {
   return e === "egly_mua@hotmail.com" || e === "georgiak10@gmail.com";
 }
 
-/**
- * Charalambos’s free-slot list. The owner jumps straight to the next opening.
- * Secretaries and Stelios open the full list.
- */
+/** Charalambos’s free-slot list: Charalambos, the secretaries, and Stelios. */
 export function canSeeCharalambosGaps(email: string | null | undefined): boolean {
   return (
     isOwnerAccount(email) ||

@@ -1402,13 +1402,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   nextGapBtn.addEventListener("click", () => {
-    if (!isOwnerAccount(adminEmail)) {
-      nextGapList.classList.toggle("hidden");
-      return;
-    }
-    const iso = nextGapBtn.dataset.iso;
-    if (!iso) return;
-    goToCharalambosSlot(new Date(iso));
+    nextGapList.classList.toggle("hidden");
   });
   nextGapList.addEventListener("click", (e) => {
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-gap-iso]");
