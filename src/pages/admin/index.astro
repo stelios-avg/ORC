@@ -1596,19 +1596,45 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     dateLabel.textContent = next.toLocaleDateString("el-GR", { month: "long", year: "numeric" });
   }
 
+  const monthsBetween = (from: Date, to: Date) =>
+    (to.getFullYear() - from.getFullYear()) * 12 + (to.getMonth() - from.getMonth());
+
+  /** Bring a month's section to the top, just under the sticky header and therapist chips. */
+  function scrollToMonthSection(month: Date) {
+    const section = monthStack.querySelector<HTMLElement>(`[data-month="${month.getFullYear()}-${month.getMonth()}"]`);
+    if (!section) return;
+    const header = document.querySelector("header")?.getBoundingClientRect().height ?? 0;
+    const chips = document.getElementById("therapist-tabs")?.getBoundingClientRect().height ?? 0;
+    const root = (document.scrollingElement || document.documentElement) as HTMLElement;
+    const prev = root.style.scrollBehavior;
+    root.style.scrollBehavior = "auto";
+    root.scrollTop = Math.max(0, section.getBoundingClientRect().top + root.scrollTop - header - chips - 12);
+    root.style.scrollBehavior = prev;
+  }
+
   async function loadMonth() {
     const token = ++monthToken;
-    monthAnchor = startOfMonth(viewMonth);
+    // Months start at the current one, so a later month opened from a day still has the recent ones above it.
+    const focus = startOfMonth(viewMonth);
+    const thisMonth = startOfMonth(new Date());
+    const ahead = monthsBetween(thisMonth, focus);
+    monthAnchor = ahead > 0 && ahead < 12 ? thisMonth : focus;
     monthCursor = null;
     monthStack.innerHTML = "";
     errorMsg.classList.add("hidden");
     scrollPageTop();
     try {
-      const appts = await fetchMonthAppointments(monthAnchor);
+      const months = Array.from({ length: monthsBetween(monthAnchor, focus) + 1 }, (_, i) =>
+        new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + i, 1),
+      );
+      const loaded = await Promise.all(months.map((m) => fetchMonthAppointments(m)));
       if (token !== monthToken) return;
-      monthAppts = appts;
-      monthStack.appendChild(buildMonthSection(monthAnchor, appts));
-      monthCursor = new Date(monthAnchor.getFullYear(), monthAnchor.getMonth() + 1, 1);
+      monthAppts = loaded[loaded.length - 1];
+      months.forEach((m, i) => monthStack.appendChild(buildMonthSection(m, loaded[i])));
+      monthCursor = new Date(focus.getFullYear(), focus.getMonth() + 1, 1);
+      viewMonth = focus;
+      updateNavLabel();
+      if (months.length > 1) requestAnimationFrame(() => scrollToMonthSection(focus));
       void ensureMonthsBelow(token);
     } catch (err) {
       if (token !== monthToken) return;
