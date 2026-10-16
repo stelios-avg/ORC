@@ -5,7 +5,7 @@ import "../styles/admin.css";
 interface Props {
   title?: string;
   /** current nav item for highlighting */
-  active?: "calendar" | "clients" | "payments";
+  active?: "calendar" | "clients" | "notes" | "payments";
   /** Wider container on desktop (used by the calendar page). */
   wide?: boolean;
 }
@@ -57,12 +57,44 @@ const containerWidth = wide ? "max-w-7xl" : "max-w-5xl";
           <img src="/orc-logo.png" alt="ORC" class="h-7 w-auto sm:h-8" />
           <span class="font-display text-sm font-bold text-charcoal">Admin</span>
         </a>
-        <button
-          id="logout-btn"
-          class="min-h-11 rounded-full border border-slate-300 px-4 py-2 font-display text-xs font-semibold text-charcoal-muted transition active:bg-slate-50 hover:border-spine hover:text-spine"
-        >
-          Έξοδος
-        </button>
+        <div class="flex items-center gap-2">
+          <div id="notif-wrap" class="relative hidden">
+            <button
+              id="notif-btn"
+              type="button"
+              aria-label="Online κρατήσεις"
+              aria-expanded="false"
+              class="relative flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 text-charcoal transition active:bg-slate-50 hover:border-spine hover:text-spine"
+            >
+              <svg class="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9" />
+                <path d="M13.73 21a2 2 0 0 1-3.46 0" />
+              </svg>
+              <span
+                id="notif-count"
+                hidden
+                class="absolute -right-1 -top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-red-600 px-1 text-[11px] font-bold leading-none text-white ring-2 ring-white"
+              ></span>
+            </button>
+            <div
+              id="notif-panel"
+              hidden
+              class="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200"
+            >
+              <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+                <p class="font-display text-sm font-bold text-charcoal">Online κρατήσεις</p>
+                <p class="text-[11px] text-charcoal-muted">τελευταίες 30 μέρες</p>
+              </div>
+              <ul id="notif-list" class="max-h-[60vh] divide-y divide-slate-100 overflow-y-auto"></ul>
+            </div>
+          </div>
+          <button
+            id="logout-btn"
+            class="min-h-11 rounded-full border border-slate-300 px-4 py-2 font-display text-xs font-semibold text-charcoal-muted transition active:bg-slate-50 hover:border-spine hover:text-spine"
+          >
+            Έξοδος
+          </button>
+        </div>
       </div>
     </header>
 
@@ -76,7 +108,7 @@ const containerWidth = wide ? "max-w-7xl" : "max-w-5xl";
       class="fixed inset-x-0 bottom-0 z-40 border-t border-slate-200 bg-white/95 backdrop-blur"
       style="padding-bottom: env(safe-area-inset-bottom)"
     >
-      <div class:list={["mx-auto grid h-[4.25rem] grid-cols-3", containerWidth]}>
+      <div id="admin-nav-grid" class:list={["mx-auto grid h-[4.25rem] grid-cols-3", containerWidth]}>
         <a
           href="/admin"
           class:list={[
@@ -105,6 +137,22 @@ const containerWidth = wide ? "max-w-7xl" : "max-w-5xl";
           Πελάτες
         </a>
         <a
+          id="nav-notes"
+          href="/admin/notes"
+          hidden
+          class:list={[
+            "flex flex-col items-center justify-center gap-0.5 font-display text-[11px] font-semibold transition active:bg-sand/80",
+            active === "notes" ? "text-spine" : "text-charcoal-muted",
+          ]}
+        >
+          <svg class="h-6 w-6" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M9 4h6a1 1 0 0 1 1 1v1H8V5a1 1 0 0 1 1-1z" />
+            <path d="M16 5h1.5A1.5 1.5 0 0 1 19 6.5v13a1.5 1.5 0 0 1-1.5 1.5h-11A1.5 1.5 0 0 1 5 19.5v-13A1.5 1.5 0 0 1 6.5 5H8" />
+            <path d="M9 12l2 2 4-4M9 17h6" />
+          </svg>
+          Notes
+        </a>
+        <a
           href="/admin/payments"
           class:list={[
             "flex flex-col items-center justify-center gap-0.5 font-display text-[11px] font-semibold transition active:bg-sand/80",
@@ -121,6 +169,7 @@ const containerWidth = wide ? "max-w-7xl" : "max-w-5xl";
 
     <script>
       import { getSupabase } from "../lib/supabase";
+      import { isMasterAccount, isOwnerAccount } from "../lib/admin-access";
 
       const supabase = getSupabase();
       const guard = document.getElementById("admin-guard");
@@ -134,14 +183,208 @@ const containerWidth = wide ? "max-w-7xl" : "max-w-5xl";
       supabase.auth.getSession().then(({ data: { session } }) => {
         if (!session) {
           window.location.replace("/admin/login");
-        } else {
-          guard?.remove();
+          return;
         }
+        if (isOwnerAccount(session.user.email)) {
+          document.getElementById("nav-notes")!.hidden = false;
+          const grid = document.getElementById("admin-nav-grid")!;
+          grid.classList.remove("grid-cols-3");
+          grid.classList.add("grid-cols-4");
+        }
+        guard?.remove();
       });
 
       document.getElementById("logout-btn")?.addEventListener("click", async () => {
         await supabase.auth.signOut();
         window.location.replace("/admin/login");
+      });
+
+      // ── Online bookings bell (super admins only) ──
+      const notifWrap = document.getElementById("notif-wrap")!;
+      const notifBtn = document.getElementById("notif-btn") as HTMLButtonElement;
+      const notifCount = document.getElementById("notif-count")!;
+      const notifPanel = document.getElementById("notif-panel")!;
+      const notifList = document.getElementById("notif-list")!;
+      const NOTIF_DAYS = 30;
+      const NOTIF_POLL_MS = 60_000;
+
+      interface NotifItem {
+        kind: "booking" | "request";
+        createdAt: string;
+        name: string;
+        phone: string | null;
+        service: string | null;
+        start: string;
+        status: string;
+        href: string;
+        therapist: string | null;
+      }
+
+      /** Last time this admin opened the bell. Kept on the account so phone and desktop agree. */
+      let seenAt = 0;
+      let items: NotifItem[] = [];
+
+      const escapeHtml = (s: string) =>
+        s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+      function ago(iso: string): string {
+        const mins = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 60_000));
+        if (mins < 1) return "μόλις τώρα";
+        if (mins < 60) return `πριν ${mins}′`;
+        const hours = Math.round(mins / 60);
+        if (hours < 24) return `πριν ${hours} ${hours === 1 ? "ώρα" : "ώρες"}`;
+        const days = Math.round(hours / 24);
+        return `πριν ${days} ${days === 1 ? "μέρα" : "μέρες"}`;
+      }
+
+      function when(iso: string): string {
+        const d = new Date(iso);
+        return `${d.toLocaleDateString("el-GR", { weekday: "short", day: "numeric", month: "short" })} · ${d.toLocaleTimeString("el-GR", { hour: "2-digit", minute: "2-digit", hour12: false })}`;
+      }
+
+      function statusLabel(item: NotifItem): string {
+        if (item.kind === "booking") return item.status === "cancelled" ? "Ακυρώθηκε" : "";
+        if (item.status === "approved") return "Εγκρίθηκε";
+        if (item.status === "rejected") return "Απορρίφθηκε";
+        return "Εκκρεμεί";
+      }
+
+      function unseenCount(): number {
+        return items.filter((i) => new Date(i.createdAt).getTime() > seenAt).length;
+      }
+
+      function paintCount() {
+        const n = unseenCount();
+        notifCount.hidden = n === 0;
+        notifCount.textContent = n > 9 ? "9+" : String(n);
+        notifBtn.setAttribute("aria-label", n ? `Online κρατήσεις · ${n} νέες` : "Online κρατήσεις");
+      }
+
+      function paintList() {
+        if (!items.length) {
+          notifList.innerHTML = '<li class="px-4 py-6 text-center text-sm text-charcoal-muted">Καμία online κράτηση τις τελευταίες 30 μέρες.</li>';
+          return;
+        }
+        notifList.innerHTML = items.map((item) => {
+          const fresh = new Date(item.createdAt).getTime() > seenAt;
+          const title = item.kind === "booking" ? "Νέα online κράτηση" : "Αίτημα για κλειστή μέρα";
+          const status = statusLabel(item);
+          const details = [item.service, item.therapist].filter(Boolean).map((s) => escapeHtml(s!)).join(" · ");
+          return `<li>
+            <a href="${item.href}" class="flex gap-3 px-4 py-3 transition hover:bg-sand ${fresh ? "bg-spine-50/60" : ""}">
+              <span class="mt-1.5 h-2 w-2 flex-none rounded-full ${fresh ? "bg-red-600" : "bg-transparent"}"></span>
+              <span class="min-w-0 flex-1">
+                <span class="flex items-baseline justify-between gap-2">
+                  <span class="text-[11px] font-semibold uppercase tracking-wide ${item.kind === "booking" ? "text-spine" : "text-amber-700"}">${title}</span>
+                  <span class="flex-none text-[11px] text-charcoal-muted">${ago(item.createdAt)}</span>
+                </span>
+                <span class="mt-0.5 block truncate text-sm font-semibold text-charcoal">${escapeHtml(item.name)}</span>
+                <span class="block text-xs text-charcoal-muted">${when(item.start)}${details ? ` · ${details}` : ""}</span>
+                ${item.phone ? `<span class="block text-xs text-charcoal-muted">${escapeHtml(item.phone)}</span>` : ""}
+                ${status ? `<span class="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-[11px] font-semibold text-charcoal-muted">${status}</span>` : ""}
+              </span>
+            </a>
+          </li>`;
+        }).join("");
+      }
+
+      async function loadNotifications() {
+        const since = new Date(Date.now() - NOTIF_DAYS * 24 * 60 * 60 * 1000).toISOString();
+        const [bookings, requests] = await Promise.all([
+          supabase
+            .from("appointments")
+            .select("id, start_time, service, status, therapist_id, created_at, patients(name, phone), therapists(name_el)")
+            .eq("created_by", "online")
+            .gte("created_at", since)
+            .order("created_at", { ascending: false })
+            .limit(50),
+          supabase
+            .from("booking_requests")
+            .select("id, name, phone, service, preferred_start, status, created_at")
+            .gte("created_at", since)
+            .order("created_at", { ascending: false })
+            .limit(50),
+        ]);
+        if (bookings.error && requests.error) return;
+        const next: NotifItem[] = [];
+        for (const a of (bookings.data ?? []) as any[]) {
+          const patient = Array.isArray(a.patients) ? a.patients[0] : a.patients;
+          const therapist = Array.isArray(a.therapists) ? a.therapists[0] : a.therapists;
+          const query = new URLSearchParams({ at: a.start_time });
+          if (a.therapist_id) query.set("therapist", a.therapist_id);
+          next.push({
+            kind: "booking",
+            createdAt: a.created_at,
+            name: patient?.name ?? "Πελάτης",
+            phone: patient?.phone ?? null,
+            service: a.service,
+            start: a.start_time,
+            status: a.status,
+            href: `/admin?${query.toString()}`,
+            therapist: therapist?.name_el ?? null,
+          });
+        }
+        for (const r of (requests.data ?? []) as any[]) {
+          next.push({
+            kind: "request",
+            createdAt: r.created_at,
+            name: r.name,
+            phone: r.phone,
+            service: r.service,
+            start: r.preferred_start,
+            status: r.status,
+            href: "/admin",
+            therapist: null,
+          });
+        }
+        next.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+        items = next;
+        paintCount();
+        if (!notifPanel.hidden) paintList();
+      }
+
+      async function markSeen() {
+        const newest = items[0] ? new Date(items[0].createdAt).getTime() : 0;
+        const stamp = Math.max(Date.now(), newest);
+        if (stamp <= seenAt) return;
+        seenAt = stamp;
+        paintCount();
+        await supabase.auth.updateUser({ data: { online_seen_at: new Date(stamp).toISOString() } });
+      }
+
+      function setPanel(open: boolean) {
+        notifPanel.hidden = !open;
+        notifBtn.setAttribute("aria-expanded", String(open));
+        if (open) {
+          paintList();
+          void markSeen();
+        }
+      }
+
+      notifBtn.addEventListener("click", (e) => {
+        e.stopPropagation();
+        setPanel(notifPanel.hidden);
+      });
+      document.addEventListener("click", (e) => {
+        if (notifPanel.hidden) return;
+        if (!notifWrap.contains(e.target as Node)) setPanel(false);
+      });
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape" && !notifPanel.hidden) setPanel(false);
+      });
+
+      supabase.auth.getSession().then(({ data: { session } }) => {
+        if (!session || !isMasterAccount(session.user.email)) return;
+        const saved = session.user.user_metadata?.online_seen_at;
+        seenAt = saved ? new Date(saved).getTime() || 0 : 0;
+        notifWrap.classList.remove("hidden");
+        void loadNotifications();
+        window.setInterval(() => {
+          if (document.visibilityState === "visible") void loadNotifications();
+        }, NOTIF_POLL_MS);
+        document.addEventListener("visibilitychange", () => {
+          if (document.visibilityState === "visible") void loadNotifications();
+        });
       });
     </script>
   </body>

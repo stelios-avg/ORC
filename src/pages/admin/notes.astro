@@ -1,0 +1,218 @@
+---
+import AdminLayout from "../../layouts/AdminLayout.astro";
+---
+
+<AdminLayout title="Notes" active="notes">
+  <form id="task-form" class="mb-4 flex items-end gap-2">
+    <label class="sr-only" for="task-input">Νέο task</label>
+    <textarea
+      id="task-input"
+      rows="1"
+      placeholder="Γράψε ένα task…"
+      enterkeyhint="done"
+      class="max-h-40 min-h-12 flex-1 resize-none rounded-3xl border border-slate-300 bg-white px-4 py-3 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
+    ></textarea>
+    <button
+      id="task-add"
+      type="submit"
+      disabled
+      aria-label="Προσθήκη task"
+      class="flex h-12 w-12 flex-none items-center justify-center rounded-full bg-spine text-white transition active:scale-95 hover:bg-spine-600 disabled:opacity-40"
+    >
+      <svg class="h-5 w-5" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 3v10M3 8h10"/></svg>
+    </button>
+  </form>
+  <p id="task-error" class="mb-3 hidden text-sm text-red-600"></p>
+
+  <section>
+    <h2 class="mb-2 font-display text-xs font-bold uppercase tracking-wide text-charcoal-muted">
+      Ανοιχτά <span id="open-count" class="font-semibold"></span>
+    </h2>
+    <ul id="open-list" class="space-y-2"></ul>
+    <p id="open-empty" class="hidden rounded-2xl bg-white px-4 py-6 text-center text-sm text-charcoal-muted ring-1 ring-slate-200">
+      Κανένα ανοιχτό task.
+    </p>
+  </section>
+
+  <section id="done-section" class="mt-6 hidden">
+    <button id="done-toggle" type="button" aria-expanded="false"
+      class="mb-2 flex min-h-11 items-center gap-2 font-display text-xs font-bold uppercase tracking-wide text-charcoal-muted">
+      <svg id="done-chevron" class="h-4 w-4 transition-transform" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 6l4 4 4-4"/></svg>
+      Ολοκληρωμένα <span id="done-count" class="font-semibold"></span>
+    </button>
+    <ul id="done-list" class="hidden space-y-2"></ul>
+  </section>
+</AdminLayout>
+
+<script>
+  import { getSupabase } from "../../lib/supabase";
+  import { isOwnerAccount } from "../../lib/admin-access";
+
+  interface Task {
+    id: string;
+    body: string;
+    done: boolean;
+    done_at: string | null;
+    created_at: string;
+  }
+
+  const supabase = getSupabase();
+  const form = document.getElementById("task-form") as HTMLFormElement;
+  const input = document.getElementById("task-input") as HTMLTextAreaElement;
+  const addBtn = document.getElementById("task-add") as HTMLButtonElement;
+  const errorMsg = document.getElementById("task-error")!;
+  const openList = document.getElementById("open-list")!;
+  const openEmpty = document.getElementById("open-empty")!;
+  const openCount = document.getElementById("open-count")!;
+  const doneSection = document.getElementById("done-section")!;
+  const doneToggle = document.getElementById("done-toggle")!;
+  const doneChevron = document.getElementById("done-chevron")!;
+  const doneList = document.getElementById("done-list")!;
+  const doneCount = document.getElementById("done-count")!;
+
+  let tasks: Task[] = [];
+
+  const escapeHtml = (s: string) =>
+    s.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]!);
+
+  const fmtDate = (iso: string) =>
+    new Date(iso).toLocaleDateString("el-GR", { day: "numeric", month: "short" });
+
+  function showError(message: string | null) {
+    errorMsg.textContent = message ?? "";
+    errorMsg.classList.toggle("hidden", !message);
+  }
+
+  function taskItem(t: Task): string {
+    const meta = t.done && t.done_at ? `Έγινε ${fmtDate(t.done_at)}` : fmtDate(t.created_at);
+    return `<li class="flex items-start gap-3 rounded-2xl bg-white px-3 py-3 ring-1 ring-slate-200">
+      <button type="button" data-toggle="${t.id}" aria-label="${t.done ? "Άνοιγμα ξανά" : "Ολοκληρώθηκε"}"
+        class="mt-0.5 flex h-7 w-7 flex-none items-center justify-center rounded-full border-2 transition ${t.done ? "border-spine bg-spine text-white" : "border-slate-300 text-transparent hover:border-spine"}">
+        <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M3.5 8.5l3 3 6-7"/></svg>
+      </button>
+      <span class="min-w-0 flex-1">
+        <span class="block whitespace-pre-wrap break-words text-sm ${t.done ? "text-charcoal-muted line-through" : "text-charcoal"}">${escapeHtml(t.body)}</span>
+        <span class="mt-0.5 block text-[11px] text-charcoal-muted">${meta}</span>
+      </span>
+      <button type="button" data-delete="${t.id}" aria-label="Διαγραφή"
+        class="flex h-8 w-8 flex-none items-center justify-center rounded-full text-charcoal-muted transition hover:bg-red-50 hover:text-red-600">
+        <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M6 6l12 12M18 6L6 18"/></svg>
+      </button>
+    </li>`;
+  }
+
+  function render() {
+    const open = tasks.filter((t) => !t.done);
+    const done = tasks
+      .filter((t) => t.done)
+      .sort((a, b) => new Date(b.done_at ?? b.created_at).getTime() - new Date(a.done_at ?? a.created_at).getTime());
+    openList.innerHTML = open.map(taskItem).join("");
+    openEmpty.classList.toggle("hidden", open.length > 0);
+    openCount.textContent = open.length ? `· ${open.length}` : "";
+    doneList.innerHTML = done.map(taskItem).join("");
+    doneCount.textContent = done.length ? `· ${done.length}` : "";
+    doneSection.classList.toggle("hidden", done.length === 0);
+  }
+
+  async function load() {
+    const { data, error } = await supabase
+      .from("admin_tasks")
+      .select("id, body, done, done_at, created_at")
+      .order("created_at", { ascending: false });
+    if (error) {
+      showError(`Αποτυχία φόρτωσης: ${error.message}`);
+      return;
+    }
+    tasks = (data ?? []) as Task[];
+    render();
+  }
+
+  function fitInput() {
+    input.style.height = "auto";
+    input.style.height = `${Math.min(input.scrollHeight, 160)}px`;
+    addBtn.disabled = input.value.trim().length === 0;
+  }
+
+  input.addEventListener("input", fitInput);
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter" && !e.shiftKey && !e.isComposing) {
+      e.preventDefault();
+      form.requestSubmit();
+    }
+  });
+
+  form.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const body = input.value.trim();
+    if (!body) return;
+    addBtn.disabled = true;
+    showError(null);
+    const { data, error } = await supabase
+      .from("admin_tasks")
+      .insert({ body })
+      .select("id, body, done, done_at, created_at")
+      .single();
+    if (error) {
+      showError(`Αποτυχία αποθήκευσης: ${error.message}`);
+      fitInput();
+      return;
+    }
+    tasks.unshift(data as Task);
+    input.value = "";
+    fitInput();
+    render();
+    input.focus();
+  });
+
+  async function onListClick(e: Event) {
+    const target = e.target as HTMLElement;
+    const toggle = target.closest<HTMLButtonElement>("[data-toggle]");
+    const remove = target.closest<HTMLButtonElement>("[data-delete]");
+    if (toggle) {
+      const task = tasks.find((t) => t.id === toggle.dataset.toggle);
+      if (!task) return;
+      const done = !task.done;
+      const done_at = done ? new Date().toISOString() : null;
+      const before = { ...task };
+      Object.assign(task, { done, done_at });
+      render();
+      const { error } = await supabase.from("admin_tasks").update({ done, done_at }).eq("id", task.id);
+      if (error) {
+        Object.assign(task, before);
+        render();
+        showError(`Αποτυχία αλλαγής: ${error.message}`);
+      }
+      return;
+    }
+    if (remove) {
+      const task = tasks.find((t) => t.id === remove.dataset.delete);
+      if (!task || !window.confirm("Διαγραφή αυτού του task;")) return;
+      const before = tasks;
+      tasks = tasks.filter((t) => t.id !== task.id);
+      render();
+      const { error } = await supabase.from("admin_tasks").delete().eq("id", task.id);
+      if (error) {
+        tasks = before;
+        render();
+        showError(`Αποτυχία διαγραφής: ${error.message}`);
+      }
+    }
+  }
+
+  openList.addEventListener("click", onListClick);
+  doneList.addEventListener("click", onListClick);
+  doneToggle.addEventListener("click", () => {
+    const open = doneList.classList.toggle("hidden") === false;
+    doneToggle.setAttribute("aria-expanded", String(open));
+    doneChevron.classList.toggle("rotate-180", open);
+  });
+
+  supabase.auth.getSession().then(({ data: { session } }) => {
+    if (!session) return;
+    if (!isOwnerAccount(session.user.email)) {
+      window.location.replace("/admin");
+      return;
+    }
+    void load();
+  });
+</script>
