@@ -67,7 +67,11 @@ values (
     'image/heif',
     'application/pdf',
     'application/msword',
-    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+    'application/vnd.ms-word',
+    'application/x-msword',
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+    'application/octet-stream',
+    'application/zip'
   ]
 )
 on conflict (id) do update set

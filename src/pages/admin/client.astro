@@ -100,7 +100,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       <svg class="h-4 w-4" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 3v10M3 8h10"/></svg>
       Προσθήκη αρχείων
       <input id="cl-files-input" type="file" class="absolute h-px w-px overflow-hidden opacity-0" multiple
-        accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif,application/pdf,.pdf,.doc,.docx,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document" />
+        accept=".doc,.docx,.pdf,.jpg,.jpeg,.png,.webp,.gif,.heic,.heif,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/pdf,image/*" />
     </label>
     <p id="files-error" class="mt-2 hidden text-sm text-red-600"></p>
     <ul id="files-photos" class="mt-4 hidden grid-cols-2 gap-2 sm:grid-cols-3"></ul>
@@ -652,8 +652,9 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   }
 
   function guessMime(file: File) {
-    if (file.type) return file.type;
     const n = file.name;
+    // Trust the extension. macOS often labels Word as octet-stream or zip,
+    // and the storage bucket rejects those even when the file is a .docx.
     if (/\.pdf$/i.test(n)) return "application/pdf";
     if (/\.png$/i.test(n)) return "image/png";
     if (/\.webp$/i.test(n)) return "image/webp";
@@ -665,6 +666,8 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       return "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     }
     if (/\.doc$/i.test(n)) return "application/msword";
+    const mime = (file.type || "").toLowerCase();
+    if (mime && mime !== "application/octet-stream" && mime !== "application/zip") return mime;
     return undefined;
   }
 
