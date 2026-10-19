@@ -220,13 +220,21 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
             </button>
           </div>
           <input type="hidden" id="appt-patient" name="patient_id" value="" />
-          <input
-            id="appt-patient-search"
-            type="search"
-            autocomplete="off"
-            placeholder="Όνομα ή τηλέφωνο…"
-            class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
-          />
+          <div class="relative">
+            <input
+              id="appt-patient-search"
+              type="search"
+              autocomplete="off"
+              placeholder="Όνομα ή τηλέφωνο…"
+              class="appt-search w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-3 pr-11 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30"
+            />
+            <button id="appt-patient-clear" type="button" hidden aria-label="Καθαρισμός"
+              class="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-charcoal-muted transition hover:bg-sand hover:text-charcoal">
+              <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+                <path d="M6 6l12 12M18 6L6 18"/>
+              </svg>
+            </button>
+          </div>
           <div
             id="appt-patient-results"
             class="absolute left-0 right-0 top-full z-20 mt-1 hidden max-h-48 overflow-y-auto rounded-xl border border-slate-200 bg-white py-1 shadow-lg"
@@ -634,8 +642,16 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         </button>
       </div>
       <p id="replace-patient-current" class="mb-3 text-sm text-charcoal-muted"></p>
-      <input id="replace-patient-search" type="search" autocomplete="off" placeholder="Όνομα ή τηλέφωνο…"
-        class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2.5 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+      <div class="relative">
+        <input id="replace-patient-search" type="search" autocomplete="off" placeholder="Όνομα ή τηλέφωνο…"
+          class="appt-search w-full rounded-lg border border-slate-300 bg-white py-2.5 pl-3 pr-11 text-charcoal focus:border-spine focus:outline-none focus:ring-2 focus:ring-spine/30" />
+        <button id="replace-patient-clear" type="button" hidden aria-label="Καθαρισμός"
+          class="absolute right-1.5 top-1/2 flex h-9 w-9 -translate-y-1/2 items-center justify-center rounded-full text-charcoal-muted transition hover:bg-sand hover:text-charcoal">
+          <svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <path d="M6 6l12 12M18 6L6 18"/>
+          </svg>
+        </button>
+      </div>
       <p id="replace-patient-error" class="mt-2 hidden text-sm text-red-600"></p>
       <div id="replace-patient-list" class="mt-3 max-h-72 space-y-1 overflow-y-auto" role="listbox"></div>
     </div>
@@ -732,6 +748,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     touch-action: pan-x pan-y;
     -webkit-user-select: none;
     user-select: none;
+  }
+  .appt-search::-webkit-search-cancel-button,
+  .appt-search::-webkit-search-decoration {
+    -webkit-appearance: none;
+    appearance: none;
   }
 </style>
 
@@ -2575,6 +2596,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   // ── New appointment (patient search by name / phone) ──
   const patientIdInput = document.getElementById("appt-patient") as HTMLInputElement;
   const patientSearch = document.getElementById("appt-patient-search") as HTMLInputElement;
+  const patientSearchClear = document.getElementById("appt-patient-clear") as HTMLButtonElement;
   const patientResults = document.getElementById("appt-patient-results")!;
   const patientSelected = document.getElementById("appt-patient-selected")!;
   const newPatientFields = document.getElementById("appt-new-patient-fields")!;
@@ -2603,6 +2625,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       forceNewPatient = false;
       patientIdInput.value = "";
       patientSearch.value = "";
+      patientSearchClear.hidden = true;
       newPatientPhone.value = "";
       newPatientEmail.value = "";
       patientResults.classList.add("hidden");
@@ -2642,6 +2665,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     document.getElementById("appt-patient-hint")!.classList.remove("hidden");
     patientIdInput.value = "";
     patientSearch.value = "";
+    patientSearchClear.hidden = true;
     newPatientPhone.value = "";
     newPatientEmail.value = "";
     patientSelected.textContent = "";
@@ -2656,6 +2680,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (walkInMode) setWalkInMode(false);
     patientIdInput.value = p.id;
     patientSearch.value = p.name;
+    patientSearchClear.hidden = false;
     newPatientPhone.value = "";
     newPatientEmail.value = "";
     patientSelected.textContent = p.phone ? `${p.name} · ${p.phone}` : p.name;
@@ -2669,6 +2694,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     forceNewPatient = true;
     patientIdInput.value = "";
     patientSearch.value = name;
+    patientSearchClear.hidden = false;
     patientSelected.textContent = `Νέος πελάτης · ${name}`;
     patientSelected.classList.remove("hidden");
     patientResults.classList.add("hidden");
@@ -2721,6 +2747,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   patientSearch.addEventListener("input", () => {
+    patientSearchClear.hidden = patientSearch.value.length === 0;
     // Typing clears a previous selection until they pick again.
     forceNewPatient = false;
     patientIdInput.value = "";
@@ -2733,6 +2760,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       return;
     }
     renderPatientResults(matches);
+  });
+  patientSearchClear.addEventListener("click", () => {
+    patientSearch.value = "";
+    patientSearch.dispatchEvent(new Event("input"));
+    patientSearch.focus();
   });
 
   patientSearch.addEventListener("focus", () => {
@@ -3316,6 +3348,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   const replacePatientSearch = document.getElementById("replace-patient-search") as HTMLInputElement;
+  const replacePatientClear = document.getElementById("replace-patient-clear") as HTMLButtonElement;
   const replacePatientList = document.getElementById("replace-patient-list")!;
   const replacePatientCurrent = document.getElementById("replace-patient-current")!;
   const replacePatientError = document.getElementById("replace-patient-error")!;
@@ -3353,6 +3386,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (!selectedAppt || selectedAppt.is_blocked_time) return;
     replacePatientError.classList.add("hidden");
     replacePatientSearch.value = "";
+    replacePatientClear.hidden = true;
     const who = pendingPatient?.name
       ?? selectedAppt.patients?.name
       ?? (selectedAppt.patient_id ? "αυτόν τον πελάτη" : "Walk-in");
@@ -3372,7 +3406,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     void openReplacePatient();
   });
   replacePatientSearch.addEventListener("input", () => {
+    replacePatientClear.hidden = replacePatientSearch.value.length === 0;
     renderReplacePatients(replacePatientSearch.value);
+  });
+  replacePatientClear.addEventListener("click", () => {
+    replacePatientSearch.value = "";
+    replacePatientSearch.dispatchEvent(new Event("input"));
+    replacePatientSearch.focus();
   });
   function paintChosenPatient() {
     if (!selectedAppt) return;
@@ -4118,13 +4158,17 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       .eq("status", "cancelled")
       .eq("is_blocked_time", false)
       .gte("start_time", since.toISOString())
-      .order("start_time", { ascending: false })
+      .order("cancelled_at", { ascending: false, nullsFirst: false })
       .limit(100);
     if (scope !== "all") q = q.eq("therapist_id", scope);
     const { data, error } = await q;
     if (error) return;
 
-    cancelledAppts = (data ?? []) as Appointment[];
+    cancelledAppts = ((data ?? []) as Appointment[]).sort((a, b) => {
+      const at = a.cancelled_at ? new Date(a.cancelled_at).getTime() : 0;
+      const bt = b.cancelled_at ? new Date(b.cancelled_at).getTime() : 0;
+      return bt - at;
+    });
     const whoName = scope === "all" ? null : (getTherapist(scope)?.nameEl ?? null);
     cancelledTitle.textContent = whoName
       ? `Ακυρωμένες · ${whoName}`
