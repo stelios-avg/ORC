@@ -1961,6 +1961,17 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     }
   }
 
+  // Once a drag has started, the finger must move the card, not scroll the page.
+  // iOS decides to pan on the first touchmove and then fires pointercancel, so
+  // that first move has to be prevented here (touch-action can't change mid-gesture).
+  document.addEventListener(
+    "touchmove",
+    (e) => {
+      if (activeDrag && e.cancelable) e.preventDefault();
+    },
+    { passive: false },
+  );
+
   function clientToGridCell(clientX: number, clientY: number) {
     const rect = grid.getBoundingClientRect();
     const x = clientX - rect.left;
