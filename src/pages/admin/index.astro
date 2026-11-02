@@ -711,6 +711,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     overflow: auto;
     -webkit-overflow-scrolling: touch;
     touch-action: pan-x pan-y;
+    /* Long-press moves an appointment; it must not start selecting text or show the iOS callout. */
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
   }
   @media (max-width: 767px) {
     .cal-scroll {
@@ -744,8 +748,14 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     z-index: 40;
     background: white;
   }
-  #cal-grid [data-appt] {
+  /* Appointment cards are built in JS, so they need :global() to pick up scoped styles. */
+  #cal-grid :global([data-appt]) {
     touch-action: pan-x pan-y;
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+  #cal-grid :global([data-appt] *) {
     -webkit-user-select: none;
     user-select: none;
   }
@@ -2222,6 +2232,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     };
     el.dataset.dragging = "true";
     grid.dataset.dragging = "true";
+    // If the browser already started a text selection, drop it so the card moves cleanly.
+    window.getSelection()?.removeAllRanges();
     hideHoverSlot();
     hideApptPreview();
     hideCtxMenu();
