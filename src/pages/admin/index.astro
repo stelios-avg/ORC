@@ -1743,11 +1743,25 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   }
 
   // ── Load & render the day ──
+  // The grid is only cleared and repainted once the data is here, in the same
+  // frame, so moving an appointment doesn't blank the whole day for a moment.
+  let dayToken = 0;
+  let lastDayAppts: Appointment[] = [];
+  let lastDayKey = "";
+
   async function loadDay() {
     updateNavLabel();
+    const token = ++dayToken;
     const dayEnd = new Date(currentDay); dayEnd.setDate(dayEnd.getDate() + 1);
     const cols = visibleTherapists();
-    setupDayColumns(cols);
+    // Navigating to another day/filter clears right away for instant feedback;
+    // reloading the same view keeps the cards until the fresh ones replace them.
+    const key = `${currentDay.toDateString()}|${cols.map((c) => c.id).join(",")}`;
+    if (key !== lastDayKey) {
+      lastDayKey = key;
+      lastDayAppts = [];
+      setupDayColumns(cols);
+    }
 
     let q = supabase
       .from("appointments")
@@ -1760,6 +1774,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     else q = q.neq("therapist_id", pilatesId);
 
     const { data, error } = await q;
+    if (token !== dayToken) return; // a newer load superseded this one
 
     errorMsg.classList.add("hidden");
     if (error) {
@@ -1771,6 +1786,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const appts = (data ?? []) as Appointment[];
     try {
       const standing = await fetchForeverAppointments(dayEnd);
+      if (token !== dayToken) return;
       const seen = new Set(appts.map((a) => a.id));
       for (const a of standing) {
         if (seen.has(a.id) || !occursOn(a, currentDay)) continue;
@@ -1781,6 +1797,13 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       errorMsg.classList.remove("hidden");
       return;
     }
+    if (viewMode !== "day") return;
+    lastDayAppts = appts;
+    paintDay(cols, appts);
+  }
+
+  function paintDay(cols: typeof THERAPISTS, appts: Appointment[]) {
+    setupDayColumns(cols);
     emptyMsg.classList.toggle("hidden", appts.length > 0);
 
     type LaidOut = {
@@ -2201,7 +2224,8 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
   new ResizeObserver(() => {
     const scroll = document.getElementById("cal-scroll");
     if (!laidOutCols || !scroll || scroll.clientWidth === lastScrollW) return;
-    setupDayColumns(laidOutCols);
+    if (viewMode === "day") paintDay(laidOutCols, lastDayAppts);
+    else setupDayColumns(laidOutCols);
   }).observe(document.getElementById("cal-scroll")!);
 
   function applyDragPreview(
