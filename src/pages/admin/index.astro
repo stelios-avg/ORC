@@ -781,6 +781,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     lockedTherapistIdForAdminService,
     serviceTextClass,
     serviceBlockClass,
+    isPhysiotherapyService,
   } from "../../lib/therapists";
   import {
     canViewTherapistPayments,
@@ -2247,21 +2248,62 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     return { start, end };
   }
 
-  /** Other real appointments of the same therapist that this drop would cover. Blocks don't count. */
+  /** Other real appointments of the same therapist that this drop would cover. Blocks don't count.
+   *  Physiotherapy may sit beside one other physiotherapy (two side by side). Nothing else may overlap. */
+  function appointmentsCoveredBy(
+    apptId: string,
+    therapistId: string,
+    row0: number,
+    rowSpan: number,
+  ): Appointment[] {
+    const startMin = DAY_START * 60 + row0 * SLOT_MINUTES;
+    const endMin = startMin + rowSpan * SLOT_MINUTES;
+    return lastDayAppts.filter((a) => {
+      if (a.id === apptId || a.is_blocked_time) return false;
+      if ((a.therapist_id ?? "") !== therapistId) return false;
+      const range = apptClockRange(a);
+      return range.start < endMin && range.end > startMin;
+    });
+  }
+
+  /** Highest number of these appointments present at the same minute. */
+  function maxAtOnce(appts: Appointment[], startMin: number, endMin: number): number {
+    const points: { t: number; d: number }[] = [];
+    for (const a of appts) {
+      const range = apptClockRange(a);
+      const s = Math.max(startMin, range.start);
+      const e = Math.min(endMin, range.end);
+      if (e <= s) continue;
+      points.push({ t: s, d: 1 }, { t: e, d: -1 });
+    }
+    points.sort((a, b) => a.t - b.t || a.d - b.d);
+    let current = 0;
+    let max = 0;
+    for (const point of points) {
+      current += point.d;
+      if (current > max) max = current;
+    }
+    return max;
+  }
+
   function dragConflictIds(
     apptId: string,
     therapistId: string,
     row0: number,
     rowSpan: number,
   ): string[] {
-    const startMin = DAY_START * 60 + row0 * SLOT_MINUTES;
-    const endMin = startMin + rowSpan * SLOT_MINUTES;
-    return lastDayAppts.flatMap((a) => {
-      if (a.id === apptId || a.is_blocked_time) return [];
-      if ((a.therapist_id ?? "") !== therapistId) return [];
-      const range = apptClockRange(a);
-      return range.start < endMin && range.end > startMin ? [a.id] : [];
-    });
+    const covered = appointmentsCoveredBy(apptId, therapistId, row0, rowSpan);
+    if (!covered.length) return [];
+    const dragged = lastDayAppts.find((a) => a.id === apptId) ?? activeDrag?.appt;
+    const physioPair = !!dragged
+      && isPhysiotherapyService(dragged.service)
+      && covered.every((a) => isPhysiotherapyService(a.service));
+    if (physioPair) {
+      const startMin = DAY_START * 60 + row0 * SLOT_MINUTES;
+      const endMin = startMin + rowSpan * SLOT_MINUTES;
+      if (maxAtOnce(covered, startMin, endMin) < 2) return [];
+    }
+    return covered.map((a) => a.id);
   }
 
   function clearDragMarks() {
@@ -2290,14 +2332,15 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     row0: number,
     rowSpan: number,
     colIdx: number,
+    beside: boolean,
   ) {
     const rowStart = clampDragRow0(row0, rowSpan) + 1;
     const rowEnd = rowStart + rowSpan;
     el.style.gridRow = `${rowStart} / ${rowEnd}`;
     el.style.gridColumn = String(colIdx + 1);
     el.style.justifySelf = "start";
-    el.style.width = "calc(100% - 4px)";
-    el.style.marginLeft = "2px";
+    el.style.width = beside ? "calc(50% - 4px)" : "calc(100% - 4px)";
+    el.style.marginLeft = beside ? "calc(50% + 2px)" : "2px";
   }
 
   /** Move the card only when the slot is free. Returns false when it would cover another appointment. */
@@ -2309,6 +2352,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (!activeDrag) return false;
     const row0 = clampDragRow0(cell.row, activeDrag.rowSpan);
     const therapistId = cell.cols[cell.colIdx]?.id ?? "";
+    const covered = appointmentsCoveredBy(activeDrag.appt.id, therapistId, row0, activeDrag.rowSpan);
     const conflicts = dragConflictIds(activeDrag.appt.id, therapistId, row0, activeDrag.rowSpan);
     const rect = activeDrag.el.getBoundingClientRect();
     const overSelf = clientX != null && clientY != null
@@ -2318,7 +2362,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     if (conflicts.length || !therapistId) return false;
     activeDrag.colIdx = cell.colIdx;
     activeDrag.row = row0;
-    applyDragPreview(activeDrag.el, row0, activeDrag.rowSpan, cell.colIdx);
+    applyDragPreview(activeDrag.el, row0, activeDrag.rowSpan, cell.colIdx, covered.length > 0);
     return true;
   }
 
@@ -2352,7 +2396,10 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     hideHoverSlot();
     hideApptPreview();
     hideCtxMenu();
-    if (!moveDragTo(cell, clientX, clientY)) applyDragPreview(el, originRow, rowSpan, originCol);
+    if (!moveDragTo(cell, clientX, clientY)) {
+      activeDrag.colIdx = originCol;
+      activeDrag.row = originRow;
+    }
     try {
       el.setPointerCapture(pointerId);
     } catch {

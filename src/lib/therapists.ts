@@ -191,6 +191,12 @@ function resolveAdminServiceLabel(label: string | null | undefined): string {
   return ADMIN_SERVICE_PRICE_ALIASES[trimmed] ?? trimmed;
 }
 
+/** The three physiotherapy labels, including older names and the online “Φυσιοθεραπεία”. */
+export function isPhysiotherapyService(label: string | null | undefined): boolean {
+  const resolved = resolveAdminServiceLabel(label);
+  return resolved.startsWith("Φυσιοθεραπεία") || resolved.toLowerCase().startsWith("physiotherapy");
+}
+
 export function defaultPriceForAdminService(label: string): number | null {
   const hit = adminServiceByLabel(label);
   return hit ? hit.defaultPrice : null;
