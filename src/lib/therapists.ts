@@ -3,7 +3,7 @@
  *
  * Online booking routing:
  *   Physiotherapy     → a free physio (capacity 2)
- *   Osteopathy        → Charalambos only (45′ session or 1h assessment)
+ *   Osteopathy        → Charalambos only (45′ session)
  *   Clinical Pilates  → not online; clients call. Staff still book it in admin.
  *
  * Antreas & Constantina are on the admin schedule (physiotherapy) but are not
@@ -13,7 +13,7 @@
  */
 
 export type TherapistSlug = "charalambos" | "rafaellos" | "antreas" | "constantina" | "pilates";
-export type BookableService = "osteopathy" | "osteopathy_assessment" | "physiotherapy";
+export type BookableService = "osteopathy" | "physiotherapy";
 export type TherapistAccent = "spine" | "sky" | "teal" | "rose" | "amber";
 
 export interface Therapist {
@@ -99,13 +99,6 @@ export const BOOKABLE_SERVICES: {
     labelEn: "Osteopathy",
     therapistSlug: "charalambos",
     durationMin: 45,
-  },
-  {
-    key: "osteopathy_assessment",
-    labelEl: "Οστεοπαθητική — Αξιολόγηση",
-    labelEn: "Osteopathy — Assessment",
-    therapistSlug: "charalambos",
-    durationMin: 60,
   },
 ];
 

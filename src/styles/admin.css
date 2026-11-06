@@ -66,6 +66,13 @@
   outline-offset: 1px;
   touch-action: none;
 }
+#cal-grid [data-appt][data-dragging="true"][data-drag-blocked="true"] {
+  outline-color: #dc2626;
+}
+#cal-grid [data-appt][data-drag-conflict="true"] {
+  outline: 2px solid #dc2626;
+  outline-offset: 1px;
+}
 
 /* Word preview inside the client file viewer */
 #file-lightbox-docx .docx-wrapper {
