@@ -1818,15 +1818,27 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       laneCount: number;
     };
 
+    // Lane math uses the clock on the day being shown. A standing weekly visit keeps
+    // its original date in the database, but on screen it sits on this day.
+    const shownOnThisDay = (a: Appointment) => {
+      const start = new Date(a.start_time);
+      const end = new Date(a.end_time);
+      const duration = Math.max(SLOT_MINUTES * 60_000, end.getTime() - start.getTime());
+      const shown = new Date(currentDay);
+      shown.setHours(start.getHours(), start.getMinutes(), 0, 0);
+      return { startMs: shown.getTime(), endMs: shown.getTime() + duration };
+    };
+
     const laid: LaidOut[] = appts.flatMap((a) => {
       const start = new Date(a.start_time);
       const end = new Date(a.end_time);
       const colIdx = cols.findIndex((t) => t.id === a.therapist_id);
       if (colIdx < 0) return [];
+      const shown = shownOnThisDay(a);
       return [{
         a,
-        startMs: start.getTime(),
-        endMs: end.getTime(),
+        startMs: shown.startMs,
+        endMs: shown.endMs,
         rowStart: Math.min(toRow(start), TOTAL_ROWS),
         rowEnd: Math.max(Math.min(toRow(start), TOTAL_ROWS) + 1, toRow(end)),
         colIdx,
@@ -1835,8 +1847,9 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
       }];
     });
 
-    // Blocks stay full-width behind the column. Only real appointments share lanes
-    // (so concurrent physio bookings both stay visible, Fresha-style).
+    // Blocks stay full-width behind the column. Real appointments that share a
+    // clock share the column, so none of them is painted on top of another.
+    const overlaps = (x: LaidOut, y: LaidOut) => x.startMs < y.endMs && y.startMs < x.endMs;
     for (let c = 0; c < cols.length; c++) {
       const group = laid
         .filter((x) => x.colIdx === c && !x.a.is_blocked_time)
@@ -1852,10 +1865,22 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         }
         item.lane = lane;
       }
-      for (const item of group) {
-        const peers = group.filter((o) => o.startMs < item.endMs && o.endMs > item.startMs);
-        item.laneCount = Math.max(1, ...peers.map((p) => p.lane + 1));
+      const parent = group.map((_, i) => i);
+      const find = (i: number): number => (parent[i] === i ? i : (parent[i] = find(parent[i])));
+      for (let i = 0; i < group.length; i++) {
+        for (let j = i + 1; j < group.length; j++) {
+          if (!overlaps(group[i], group[j])) continue;
+          parent[find(i)] = find(j);
+        }
       }
+      const lanesInCluster = new Map<number, number>();
+      group.forEach((item, i) => {
+        const root = find(i);
+        lanesInCluster.set(root, Math.max(lanesInCluster.get(root) ?? 1, item.lane + 1));
+      });
+      group.forEach((item, i) => {
+        item.laneCount = lanesInCluster.get(find(i)) ?? 1;
+      });
     }
 
     // Paint blocks first so staff appointments sit on top and stay tappable.
@@ -1904,7 +1929,7 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
         block.type = "button";
         block.style.width = `calc(${100 / laneCount}% - 4px)`;
         block.style.marginLeft = `calc(${(lane * 100) / laneCount}% + 2px)`;
-        block.style.zIndex = "20";
+        block.style.zIndex = String(20 + lane);
         const serviceBlock = serviceBlockClass(a.service);
         block.className = (serviceBlock || accent.block.replace(/\bmx-0\.5\b/g, "").trim()) + " relative z-20";
         const master = isMasterAccount(adminEmail);
