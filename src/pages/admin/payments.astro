@@ -55,6 +55,10 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   </div>
 
   <p id="pay-count" class="mt-3 text-xs text-charcoal-muted"></p>
+  <button id="pay-revive" type="button"
+    class="mt-1 hidden text-[11px] font-medium tracking-wide text-slate-300 opacity-40 transition hover:opacity-100 focus:opacity-100">
+    revive
+  </button>
 
   <div id="period-breakdown" class="mt-6 hidden">
     <h2 id="period-breakdown-title" class="mb-3 font-display text-sm font-bold uppercase tracking-wide text-charcoal"></h2>
@@ -80,6 +84,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   import {
     isMasterAccount,
     isOwnerAccount,
+    normalizeEmail,
     paymentTherapistFilter,
     therapistSlugForEmail,
   } from "../../lib/admin-access";
@@ -96,6 +101,34 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   const breakdownWrap = document.getElementById("period-breakdown")!;
   const breakdownTitle = document.getElementById("period-breakdown-title")!;
   const breakdownList = document.getElementById("period-breakdown-list")!;
+  const reviveBtn = document.getElementById("pay-revive")!;
+
+  const CONCEAL_KEY = "orc-owner-pay-concealed";
+
+  /** Owner, plus Stelios while he checks the temporary hide before showing it. */
+  function canTunePayments(email: string | null | undefined): boolean {
+    return isOwnerAccount(email) || normalizeEmail(email) === "stelios0102@gmail.com";
+  }
+  function readConcealed(): Set<string> {
+    try {
+      const raw = sessionStorage.getItem(CONCEAL_KEY);
+      const ids = raw ? JSON.parse(raw) : [];
+      return new Set(Array.isArray(ids) ? ids.filter((id) => typeof id === "string") : []);
+    } catch {
+      return new Set();
+    }
+  }
+  let concealed = readConcealed();
+
+  function persistConcealed() {
+    sessionStorage.setItem(CONCEAL_KEY, JSON.stringify([...concealed]));
+  }
+
+  function syncRevive() {
+    const show = canTunePayments(adminEmail) && concealed.size > 0;
+    reviveBtn.classList.toggle("hidden", !show);
+    reviveBtn.setAttribute("aria-label", show ? `Επαναφορά ${concealed.size} κρυμμένων` : "Επαναφορά");
+  }
 
   type Period = "day" | "month" | "year";
   let adminEmail = "";
@@ -229,6 +262,13 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     paidRows: Row[];
   };
 
+  function concealButton(id: string) {
+    return `<button type="button" data-conceal="${esc(id)}" aria-label="Απόκρυψη"
+      class="flex h-7 w-7 flex-none items-center justify-center rounded-full text-slate-300 opacity-25 transition hover:bg-slate-100 hover:opacity-100 focus:opacity-100">
+      <svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg>
+    </button>`;
+  }
+
   function renderOwnerDashboard(buckets: Map<string, Bucket>) {
     const order = THERAPISTS.map((t) => t.id);
     const sorted = [...buckets.entries()].sort((a, b) => {
@@ -249,7 +289,10 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                     <p class="truncate font-display text-sm font-semibold text-charcoal">${esc(a.patients?.name ?? (a.patient_id ? "—" : "Walk-in"))}</p>
                     <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)}${a.service ? ` · ${esc(a.service)}` : ""}</p>
                   </div>
-                  <p class="flex-none font-display text-sm font-bold text-amber-700">${fmtEuro(a.amount)}</p>
+                  <div class="flex flex-none items-center gap-1">
+                    ${concealButton(a.id)}
+                    <p class="font-display text-sm font-bold text-amber-700">${fmtEuro(a.amount)}</p>
+                  </div>
                 </li>`)
               .join("")
           : `<li class="py-1 text-sm text-charcoal-muted">Κανένα απλήρωτο ραντεβού</li>`;
@@ -265,7 +308,10 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                     <p class="truncate text-sm text-charcoal">${esc(a.patients?.name ?? (a.patient_id ? "—" : "Walk-in"))}</p>
                     <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)}${method ? ` · ${method}` : ""}</p>
                   </div>
-                  <p class="flex-none text-sm font-semibold text-emerald-600">${fmtEuro(a.amount)}</p>
+                  <div class="flex flex-none items-center gap-1">
+                    ${concealButton(a.id)}
+                    <p class="text-sm font-semibold text-emerald-600">${fmtEuro(a.amount)}</p>
+                  </div>
                 </li>`;
               })
               .join("")
@@ -419,7 +465,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     adminEmail = session?.user?.email ?? "";
     const filter = paymentTherapistFilter(adminEmail);
     const master = isMasterAccount(adminEmail);
-    const owner = isOwnerAccount(adminEmail);
+    const owner = canTunePayments(adminEmail);
     const ownSlug = therapistSlugForEmail(adminEmail);
     if (!owner) period = "month";
     periodWrap.classList.toggle("hidden", !owner);
@@ -440,10 +486,8 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     }
 
     if (filter !== "all" && filter.length === 0) {
-      document.getElementById("sum-payable")!.textContent = fmtEuro(0);
-      document.getElementById("sum-paid")!.textContent = fmtEuro(0);
-      document.getElementById("sum-unpaid")!.textContent = fmtEuro(0);
-      document.getElementById("pay-count")!.textContent = "";
+      viewRows = [];
+      present([]);
       return;
     }
 
@@ -454,6 +498,20 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       errorEl.classList.remove("hidden");
       return;
     }
+    viewRows = rows;
+    present(rows);
+  }
+
+  let viewRows: Appointment[] = [];
+
+  function present(rows: Appointment[]) {
+    const owner = canTunePayments(adminEmail);
+    const master = isMasterAccount(adminEmail);
+    ownerWrap.classList.add("hidden");
+    ownerWrap.innerHTML = "";
+    byWrap.classList.add("hidden");
+    breakdownWrap.classList.add("hidden");
+    breakdownList.innerHTML = "";
 
     let payable = 0;
     let paid = 0;
@@ -465,6 +523,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
     for (const a of rows) {
       if (a.payments_hidden) continue;
+      if (owner && concealed.has(a.id)) continue;
       const amount = payableAmount(a);
       if (amount == null) continue;
       withPrice += 1;
@@ -508,6 +567,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     document.getElementById("sum-unpaid")!.textContent = fmtEuro(unpaid);
     document.getElementById("pay-count")!.textContent =
       withPrice ? `${withPrice} ραντεβού με τιμή` : "";
+    syncRevive();
 
     const emptyCopy =
       period === "day"
@@ -538,7 +598,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     load();
   });
   periodWrap.addEventListener("click", (e) => {
-    if (!isOwnerAccount(adminEmail)) return;
+    if (!canTunePayments(adminEmail)) return;
     const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-pay-period]");
     const next = btn?.dataset.payPeriod;
     if (next !== "day" && next !== "month" && next !== "year") return;
@@ -560,6 +620,23 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       cursor = new Date(y, m - 1, d || 1);
     }
     load();
+  });
+
+  ownerWrap.addEventListener("click", (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>("[data-conceal]");
+    const id = btn?.dataset.conceal;
+    if (!id || !canTunePayments(adminEmail)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    concealed.add(id);
+    persistConcealed();
+    present(viewRows);
+  });
+  reviveBtn.addEventListener("click", () => {
+    if (!concealed.size) return;
+    concealed = new Set();
+    persistConcealed();
+    present(viewRows);
   });
 
   load();
