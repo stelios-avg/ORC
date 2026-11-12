@@ -2,7 +2,7 @@
  * Clinic therapists — IDs must match the seed in supabase/add-therapists.sql
  *
  * Online booking routing:
- *   Physiotherapy     → a free physio (capacity 2)
+ *   Physiotherapy     → whichever physiotherapist is free at that time
  *   Osteopathy        → Charalambos only (45′ session)
  *   Clinical Pilates  → not online; clients call. Staff still book it in admin.
  *
@@ -133,7 +133,7 @@ export function serviceLabel(service: BookableService, lang: "el" | "en"): strin
   return lang === "en" ? s.labelEn : s.labelEl;
 }
 
-/** Concurrent online bookings allowed for a bookable service at the same time. */
+/** Osteopathy allows one booking at a time. Physiotherapy is handled per therapist. */
 export function slotCapacityForService(service: BookableService | string): number {
   return service === "physiotherapy" ? 2 : 1;
 }

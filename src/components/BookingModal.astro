@@ -319,7 +319,7 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
 
 <script>
   import { getSupabase } from "../lib/supabase";
-  import { slotCapacityForService } from "../lib/therapists";
+  import { slotCapacityForService, THERAPISTS } from "../lib/therapists";
 
   type FieldName = "fullName" | "email" | "phone" | "concern" | "service";
 
@@ -669,12 +669,14 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
         return;
       }
 
-      const busy = (data ?? []).map((b: { busy_start: string; busy_end: string; is_block?: boolean }) => ({
+      const busy = (data ?? []).map((b: { busy_start: string; busy_end: string; is_block?: boolean; therapist_id?: string }) => ({
         start: new Date(b.busy_start).getTime(),
         end: new Date(b.busy_end).getTime(),
         block: !!b.is_block,
+        therapistId: b.therapist_id ?? "",
       }));
       const capacity = slotCapacityForService(payload.serviceKey);
+      const physioIds = THERAPISTS.filter((t) => t.specialty === "physiotherapy").map((t) => t.id);
 
       const now = Date.now();
       const slots: Date[] = [];
@@ -686,10 +688,15 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
           const hits = busy.filter(
             (b: { start: number; end: number }) => b.start < e && b.end > s.getTime(),
           );
-          // Blocked time on the calendar closes the slot completely,
-          // no matter how many therapists would otherwise be free.
-          if (hits.some((b: { block: boolean }) => b.block)) continue;
-          if (hits.length >= capacity) continue;
+          if (payload.serviceKey === "physiotherapy") {
+            // Each physiotherapist is their own column. A block or a visit
+            // only takes that person; the slot stays open while anyone is free.
+            const taken = new Set(hits.map((b: { therapistId: string }) => b.therapistId));
+            if (physioIds.every((id) => taken.has(id))) continue;
+          } else {
+            if (hits.some((b: { block: boolean }) => b.block)) continue;
+            if (hits.length >= capacity) continue;
+          }
           slots.push(s);
         }
       }
