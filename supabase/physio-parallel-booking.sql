@@ -113,9 +113,8 @@ begin
     end if;
     p_therapist_id := v_assigned;
   else
-    -- Osteopathy packs against Charalambos's existing day: 45 minutes
-    -- flush before or after what is already there, and only when the
-    -- gap is a whole number of sessions so nothing is left over.
+    -- Osteopathy online is 08:00–18:00. Slots stay on a 45-minute
+    -- step that meets the existing day, across the whole window.
     if p_end <> p_start + interval '45 minutes' then
       raise exception 'slot_taken';
     end if;
@@ -135,7 +134,7 @@ begin
     v_day_start := v_day::timestamp at time zone 'Europe/Nicosia';
     v_day_end := (v_day + 1)::timestamp at time zone 'Europe/Nicosia';
     v_open := v_day_start + interval '8 hours';
-    v_close := v_day_start + interval '19 hours';
+    v_close := v_day_start + interval '18 hours';
 
     if p_start < v_open or p_end > v_close then
       raise exception 'slot_taken';
@@ -149,7 +148,7 @@ begin
       and a.end_time > v_day_start;
 
     if v_busy = 0 then
-      if p_start <> v_open then
+      if mod(extract(epoch from (p_start - v_open))::bigint, 2700) <> 0 then
         raise exception 'slot_taken';
       end if;
     else
@@ -160,7 +159,10 @@ begin
           and a.therapist_id = p_therapist_id
           and a.start_time < v_day_end
           and a.end_time > v_day_start
-          and (a.end_time = p_start or a.start_time = p_end)
+          and (
+            mod(abs(extract(epoch from (p_start - a.start_time)))::bigint, 2700) = 0
+            or mod(abs(extract(epoch from (p_start - a.end_time)))::bigint, 2700) = 0
+          )
       ) then
         raise exception 'slot_taken';
       end if;

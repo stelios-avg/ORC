@@ -203,7 +203,12 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     "image/heif",
     "application/pdf",
     "application/msword",
+    "application/vnd.ms-word",
+    "application/x-msword",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "application/x-zip-compressed",
+    "application/zip",
+    "application/octet-stream",
   ]);
 
   const fmtDate = (iso: string) =>
@@ -679,7 +684,22 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
   function safeFileName(name: string) {
     const trimmed = name.trim() || "file";
-    return trimmed.replace(/[^\w.\-Α-Ωα-ωΆ-Ώά-ώ]+/g, "_").slice(0, 80);
+    const ext = (trimmed.match(/\.([a-z0-9]{1,8})$/i)?.[1] ?? "bin").toLowerCase();
+    const base = trimmed
+      .replace(/\.[^.]+$/, "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-zA-Z0-9_-]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 40) || "file";
+    return `${base}.${ext}`;
+  }
+
+  /** Storage reads the file's own type, not the contentType option. */
+  function fileForUpload(file: File) {
+    const mime = guessMime(file) || "application/octet-stream";
+    if (file.type === mime) return { body: file, mime };
+    return { body: new File([file], safeFileName(file.name), { type: mime }), mime };
   }
 
   function fmtBytes(n: number | null | undefined) {
@@ -804,8 +824,9 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       const file = ready[i]!;
       filesStatus.textContent = `Ανέβασμα ${i + 1}/${ready.length}…`;
       const path = `${id}/${crypto.randomUUID()}-${safeFileName(file.name)}`;
-      const { error: upErr } = await supabase.storage.from(FILES_BUCKET).upload(path, file, {
-        contentType: guessMime(file),
+      const { body, mime } = fileForUpload(file);
+      const { error: upErr } = await supabase.storage.from(FILES_BUCKET).upload(path, body, {
+        contentType: mime,
         upsert: false,
       });
       if (upErr) {
@@ -817,7 +838,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         patient_id: id,
         storage_path: path,
         file_name: file.name,
-        mime_type: guessMime(file) || file.type || null,
+        mime_type: mime,
         size_bytes: file.size,
         uploaded_by: adminEmail || null,
       });

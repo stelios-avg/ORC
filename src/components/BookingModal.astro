@@ -682,8 +682,8 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
       const now = Date.now();
       const slots: Date[] = [];
       if (payload.serviceKey === "osteopathy") {
-        // Pack Charalambos's day: only the 45 minutes flush against
-        // something already on his calendar, so a booking can't open a hole.
+        // Online osteopathy is only 08:00–18:00. Slots stay on a 45-minute
+        // step that meets whatever is already booked, so nothing is left over.
         const merged: { start: number; end: number }[] = [];
         for (const iv of [...busy].sort((a, b) => a.start - b.start || a.end - b.end)) {
           const last = merged[merged.length - 1];
@@ -691,29 +691,51 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
           else merged.push({ start: iv.start, end: iv.end });
         }
         const winStart = new Date(day); winStart.setHours(8, 0, 0, 0);
-        const winEnd = new Date(day); winEnd.setHours(19, 0, 0, 0);
+        const winEnd = new Date(day); winEnd.setHours(18, 0, 0, 0);
         const chosen = new Set<number>();
         const consider = (start: number) => {
           const end = start + sessionMs;
           if (start < now + MIN_LEAD_MS) return;
           if (start < winStart.getTime() || end > winEnd.getTime()) return;
           if (merged.some((b) => b.start < end && b.end > start)) return;
-          let prevEnd: number | null = null;
-          let nextStart: number | null = null;
-          for (const b of merged) {
-            if (b.end <= start) prevEnd = b.end;
-            if (b.start >= end && nextStart == null) nextStart = b.start;
-          }
-          // A gap between two bookings must be a whole number of sessions,
-          // otherwise the leftover minutes can never be filled.
-          if (prevEnd != null && nextStart != null && (nextStart - prevEnd) % sessionMs !== 0) return;
           chosen.add(start);
         };
-        if (!merged.length) consider(winStart.getTime());
-        else {
+        const gaps: { from: number; to: number; openStart: boolean; openEnd: boolean }[] = [];
+        if (!merged.length) {
+          gaps.push({ from: winStart.getTime(), to: winEnd.getTime(), openStart: true, openEnd: true });
+        } else {
+          let cursor = winStart.getTime();
           for (const b of merged) {
-            consider(b.end);
-            consider(b.start - sessionMs);
+            const from = Math.max(cursor, winStart.getTime());
+            const to = Math.min(b.start, winEnd.getTime());
+            if (to > from) {
+              gaps.push({
+                from,
+                to,
+                openStart: from === winStart.getTime() && cursor <= winStart.getTime(),
+                openEnd: false,
+              });
+            }
+            cursor = Math.max(cursor, b.end);
+          }
+          if (cursor < winEnd.getTime()) {
+            gaps.push({
+              from: Math.max(cursor, winStart.getTime()),
+              to: winEnd.getTime(),
+              openStart: false,
+              openEnd: true,
+            });
+          }
+        }
+        for (const gap of gaps) {
+          const openEnded = gap.openStart || gap.openEnd;
+          if (!openEnded && (gap.to - gap.from) % sessionMs !== 0) continue;
+          if (gap.openStart && gap.openEnd) {
+            for (let start = gap.from; start + sessionMs <= gap.to; start += sessionMs) consider(start);
+          } else if (gap.openEnd) {
+            for (let start = gap.from; start + sessionMs <= gap.to; start += sessionMs) consider(start);
+          } else {
+            for (let start = gap.to - sessionMs; start >= gap.from; start -= sessionMs) consider(start);
           }
         }
         for (const start of [...chosen].sort((a, b) => a - b)) slots.push(new Date(start));
