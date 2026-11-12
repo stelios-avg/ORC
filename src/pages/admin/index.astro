@@ -3048,7 +3048,11 @@ const majorSlots = Array.from({ length: TOTAL_DAY_MINUTES / MAJOR_MINUTES }, (_,
     const existing = [...grid.querySelectorAll<HTMLElement>("[data-appt]:not(.pointer-events-none)")].find((el) => {
       if (Number(el.style.gridColumn) !== colIdx + 1) return false;
       const [start, end] = el.style.gridRow.split("/").map((part) => Number(part.trim()));
-      return !!start && !!end && row1 >= start && row1 < end;
+      if (!start || !end || row1 < start || row1 >= end) return false;
+      // Side-by-side cards only fill part of the column. A tap on the empty
+      // part of that time must start a new appointment, not open the neighbour.
+      const box = el.getBoundingClientRect();
+      return e.clientX >= box.left && e.clientX <= box.right;
     });
     if (existing) {
       existing.click();

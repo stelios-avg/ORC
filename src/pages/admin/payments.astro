@@ -254,9 +254,21 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     paid: number;
     unpaid: number;
     count: number;
+    byMethod: Record<string, number>;
     unpaidRows: Row[];
     paidRows: Row[];
   };
+
+  function methodSummary(byMethod: Record<string, number>): string {
+    const order = ["cash", "card", "other", "none"];
+    const parts = order
+      .filter((key) => (byMethod[key] ?? 0) > 0)
+      .map((key) => {
+        const label = key === "none" ? "Χωρίς τρόπο" : (METHOD_LABELS[key] ?? key);
+        return `${label} ${fmtEuro(byMethod[key] ?? 0)}`;
+      });
+    return parts.join(" · ");
+  }
 
   function concealButton(id: string) {
     return `<button type="button" data-conceal="${esc(id)}" aria-label="Απόκρυψη"
@@ -311,12 +323,16 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
               .join("")
           : `<li class="py-1 text-sm text-charcoal-muted">Καμία είσπραξη αυτόν τον μήνα</li>`;
 
+        const methods = period === "day" ? methodSummary(b.byMethod) : "";
         return `
           <section class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-slate-100">
             <header class="border-b border-slate-100 px-4 py-3">
               <div class="flex items-baseline justify-between gap-3">
-                <h3 class="font-display text-base font-bold text-charcoal">${esc(b.name)}</h3>
-                <p class="font-display text-sm font-semibold text-charcoal">${fmtEuro(b.payable)}</p>
+                <div class="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+                  <h3 class="font-display text-base font-bold text-charcoal">${esc(b.name)}</h3>
+                  ${methods ? `<p class="text-xs font-medium text-charcoal-muted">${esc(methods)}</p>` : ""}
+                </div>
+                <p class="flex-none font-display text-sm font-semibold text-charcoal">${fmtEuro(b.payable)}</p>
               </div>
               <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
                 <p class="rounded-lg bg-emerald-50 px-2.5 py-1.5 font-medium text-emerald-700">
@@ -537,13 +553,15 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       const tid = a.therapist_id ?? "none";
       const name = getTherapist(a.therapist_id)?.nameEl ?? "—";
       const b = buckets.get(tid) ?? {
-        name, payable: 0, paid: 0, unpaid: 0, count: 0, unpaidRows: [], paidRows: [],
+        name, payable: 0, paid: 0, unpaid: 0, count: 0, byMethod: {}, unpaidRows: [], paidRows: [],
       };
       b.payable += amount;
       b.count += 1;
       const row: Row = { ...a, amount };
       if (a.is_paid) {
         b.paid += amount;
+        const methodKey = a.payment_method || "none";
+        b.byMethod[methodKey] = (b.byMethod[methodKey] ?? 0) + amount;
         b.paidRows.push(row);
       } else {
         b.unpaid += amount;
