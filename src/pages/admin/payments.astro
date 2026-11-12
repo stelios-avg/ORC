@@ -80,9 +80,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
   import { getSupabase, type Appointment } from "../../lib/supabase";
   import { THERAPISTS, getTherapist } from "../../lib/therapists";
   import {
-    isMasterAccount,
     isOwnerAccount,
-    normalizeEmail,
     paymentTherapistFilter,
     therapistSlugForEmail,
   } from "../../lib/admin-access";
@@ -103,9 +101,9 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
   const CONCEAL_KEY = "orc-owner-pay-concealed";
 
-  /** Owner, plus Stelios while he checks the temporary hide before showing it. */
+  /** Temporary hide controls stay on Charalambos’s full payments view only. */
   function canTunePayments(email: string | null | undefined): boolean {
-    return isOwnerAccount(email) || normalizeEmail(email) === "stelios0102@gmail.com";
+    return isOwnerAccount(email);
   }
   function readConcealed(): Set<string> {
     try {
@@ -265,7 +263,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
       class="h-11 w-11 flex-none bg-transparent"></button>`;
   }
 
-  function renderOwnerDashboard(buckets: Map<string, Bucket>) {
+  function renderOwnerDashboard(buckets: Map<string, Bucket>, conceal: boolean) {
     const order = THERAPISTS.map((t) => t.id);
     const sorted = [...buckets.entries()].sort((a, b) => {
       const ia = order.indexOf(a[0]);
@@ -286,7 +284,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                     <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)}${a.service ? ` · ${esc(a.service)}` : ""}</p>
                   </div>
                   <div class="flex flex-none items-center gap-1">
-                    ${concealButton(a.id)}
+                    ${conceal ? concealButton(a.id) : ""}
                     <p class="font-display text-sm font-bold text-amber-700">${fmtEuro(a.amount)}</p>
                   </div>
                 </li>`)
@@ -305,7 +303,7 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
                     <p class="text-xs text-charcoal-muted">${fmtDate(a.start_time)}${method ? ` · ${method}` : ""}</p>
                   </div>
                   <div class="flex flex-none items-center gap-1">
-                    ${concealButton(a.id)}
+                    ${conceal ? concealButton(a.id) : ""}
                     <p class="text-sm font-semibold text-emerald-600">${fmtEuro(a.amount)}</p>
                   </div>
                 </li>`;
@@ -462,7 +460,6 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     const { data: { session } } = await supabase.auth.getSession();
     adminEmail = session?.user?.email ?? "";
     const filter = paymentTherapistFilter(adminEmail);
-    const master = isMasterAccount(adminEmail);
     const owner = canTunePayments(adminEmail);
     const ownSlug = therapistSlugForEmail(adminEmail);
     if (!owner) period = "month";
@@ -474,8 +471,6 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
     if (owner) {
       const grain = period === "day" ? "την ημέρα" : period === "year" ? "τον χρόνο" : "τον μήνα";
       scopeEl.textContent = `Σύνολο όλων των θεραπευτών για ${grain}.`;
-    } else if (master) {
-      scopeEl.textContent = "Βλέπετε τις πληρωμές όλων.";
     } else if (ownSlug) {
       const th = getTherapist(ownSlug);
       scopeEl.textContent = `Βλέπετε μόνο τις πληρωμές σας (${th?.nameEl ?? ""}).`;
@@ -504,7 +499,6 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
   function present(rows: Appointment[]) {
     const owner = canTunePayments(adminEmail);
-    const master = isMasterAccount(adminEmail);
     ownerWrap.classList.add("hidden");
     ownerWrap.innerHTML = "";
     byWrap.classList.add("hidden");
@@ -540,24 +534,22 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
         byMonth.set(mk, monthTotals);
       }
 
-      if (master || owner) {
-        const tid = a.therapist_id ?? "none";
-        const name = getTherapist(a.therapist_id)?.nameEl ?? "—";
-        const b = buckets.get(tid) ?? {
-          name, payable: 0, paid: 0, unpaid: 0, count: 0, unpaidRows: [], paidRows: [],
-        };
-        b.payable += amount;
-        b.count += 1;
-        const row: Row = { ...a, amount };
-        if (a.is_paid) {
-          b.paid += amount;
-          b.paidRows.push(row);
-        } else {
-          b.unpaid += amount;
-          b.unpaidRows.push(row);
-        }
-        buckets.set(tid, b);
+      const tid = a.therapist_id ?? "none";
+      const name = getTherapist(a.therapist_id)?.nameEl ?? "—";
+      const b = buckets.get(tid) ?? {
+        name, payable: 0, paid: 0, unpaid: 0, count: 0, unpaidRows: [], paidRows: [],
+      };
+      b.payable += amount;
+      b.count += 1;
+      const row: Row = { ...a, amount };
+      if (a.is_paid) {
+        b.paid += amount;
+        b.paidRows.push(row);
+      } else {
+        b.unpaid += amount;
+        b.unpaidRows.push(row);
       }
+      buckets.set(tid, b);
     }
 
     document.getElementById("sum-payable")!.textContent = fmtEuro(payable);
@@ -580,8 +572,11 @@ import AdminLayout from "../../layouts/AdminLayout.astro";
 
     if (owner && period !== "year" && buckets.size) {
       ownerWrap.classList.remove("hidden");
-      renderOwnerDashboard(buckets);
-    } else if ((owner && period === "year" && buckets.size) || (master && !owner && buckets.size)) {
+      renderOwnerDashboard(buckets, true);
+    } else if (!owner && buckets.size) {
+      ownerWrap.classList.remove("hidden");
+      renderOwnerDashboard(buckets, false);
+    } else if (owner && period === "year" && buckets.size) {
       byWrap.classList.remove("hidden");
       renderTherapistTotals(buckets);
     }

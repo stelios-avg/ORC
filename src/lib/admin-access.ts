@@ -116,11 +116,11 @@ export function creatorDisplayName(
   return v;
 }
 
-/** Therapist IDs whose payment fields this account may read/aggregate. */
+/** Owner: every therapist. Therapist accounts: only their own. Everyone else: none. */
 export function paymentTherapistFilter(
   email: string | null | undefined,
 ): "all" | string[] {
-  if (isMasterAccount(email)) return "all";
+  if (isOwnerAccount(email)) return "all";
   const ownId = therapistIdForEmail(email);
   return ownId ? [ownId] : [];
 }
