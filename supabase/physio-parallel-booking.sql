@@ -57,6 +57,14 @@ declare
   v_overlaps   int;
   v_preferred  uuid;
   v_assigned   uuid;
+  v_day        date;
+  v_day_start  timestamptz;
+  v_day_end    timestamptz;
+  v_open       timestamptz;
+  v_close      timestamptz;
+  v_prev_end   timestamptz;
+  v_next_start timestamptz;
+  v_busy       int;
 begin
   if p_name is null or length(trim(p_name)) < 2 then
     raise exception 'invalid_name';
@@ -105,6 +113,13 @@ begin
     end if;
     p_therapist_id := v_assigned;
   else
+    -- Osteopathy packs against Charalambos's existing day: 45 minutes
+    -- flush before or after what is already there, and only when the
+    -- gap is a whole number of sessions so nothing is left over.
+    if p_end <> p_start + interval '45 minutes' then
+      raise exception 'slot_taken';
+    end if;
+
     select count(*)::int into v_overlaps
     from public.appointments a
     where a.status <> 'cancelled'
@@ -114,6 +129,60 @@ begin
 
     if v_overlaps >= 1 then
       raise exception 'slot_taken';
+    end if;
+
+    v_day := (p_start at time zone 'Europe/Nicosia')::date;
+    v_day_start := v_day::timestamp at time zone 'Europe/Nicosia';
+    v_day_end := (v_day + 1)::timestamp at time zone 'Europe/Nicosia';
+    v_open := v_day_start + interval '8 hours';
+    v_close := v_day_start + interval '19 hours';
+
+    if p_start < v_open or p_end > v_close then
+      raise exception 'slot_taken';
+    end if;
+
+    select count(*)::int into v_busy
+    from public.appointments a
+    where a.status <> 'cancelled'
+      and a.therapist_id = p_therapist_id
+      and a.start_time < v_day_end
+      and a.end_time > v_day_start;
+
+    if v_busy = 0 then
+      if p_start <> v_open then
+        raise exception 'slot_taken';
+      end if;
+    else
+      if not exists (
+        select 1
+        from public.appointments a
+        where a.status <> 'cancelled'
+          and a.therapist_id = p_therapist_id
+          and a.start_time < v_day_end
+          and a.end_time > v_day_start
+          and (a.end_time = p_start or a.start_time = p_end)
+      ) then
+        raise exception 'slot_taken';
+      end if;
+
+      select max(a.end_time) into v_prev_end
+      from public.appointments a
+      where a.status <> 'cancelled'
+        and a.therapist_id = p_therapist_id
+        and a.end_time <= p_start
+        and a.end_time > v_day_start;
+
+      select min(a.start_time) into v_next_start
+      from public.appointments a
+      where a.status <> 'cancelled'
+        and a.therapist_id = p_therapist_id
+        and a.start_time >= p_end
+        and a.start_time < v_day_end;
+
+      if v_prev_end is not null and v_next_start is not null
+         and mod(extract(epoch from (v_next_start - v_prev_end))::bigint, 2700) <> 0 then
+        raise exception 'slot_taken';
+      end if;
     end if;
   end if;
 

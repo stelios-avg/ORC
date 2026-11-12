@@ -677,27 +677,66 @@ const phoneOnly = PHONE_ONLY_SERVICES.map((s) => ({
       }));
       const capacity = slotCapacityForService(payload.serviceKey);
       const physioIds = THERAPISTS.filter((t) => t.specialty === "physiotherapy").map((t) => t.id);
+      const sessionMs = sessionMin * 60_000;
 
       const now = Date.now();
       const slots: Date[] = [];
-      for (const [winStart, winEnd] of WINDOWS) {
-        for (let m = winStart; m + sessionMin <= winEnd; m += sessionMin) {
-          const s = new Date(day); s.setHours(Math.floor(m / 60), m % 60, 0, 0);
-          const e = s.getTime() + sessionMin * 60_000;
-          if (s.getTime() < now + MIN_LEAD_MS) continue;
-          const hits = busy.filter(
-            (b: { start: number; end: number }) => b.start < e && b.end > s.getTime(),
-          );
-          if (payload.serviceKey === "physiotherapy") {
-            // Each physiotherapist is their own column. A block or a visit
-            // only takes that person; the slot stays open while anyone is free.
-            const taken = new Set(hits.map((b: { therapistId: string }) => b.therapistId));
-            if (physioIds.every((id) => taken.has(id))) continue;
-          } else {
-            if (hits.some((b: { block: boolean }) => b.block)) continue;
-            if (hits.length >= capacity) continue;
+      if (payload.serviceKey === "osteopathy") {
+        // Pack Charalambos's day: only the 45 minutes flush against
+        // something already on his calendar, so a booking can't open a hole.
+        const merged: { start: number; end: number }[] = [];
+        for (const iv of [...busy].sort((a, b) => a.start - b.start || a.end - b.end)) {
+          const last = merged[merged.length - 1];
+          if (last && iv.start <= last.end) last.end = Math.max(last.end, iv.end);
+          else merged.push({ start: iv.start, end: iv.end });
+        }
+        const winStart = new Date(day); winStart.setHours(8, 0, 0, 0);
+        const winEnd = new Date(day); winEnd.setHours(19, 0, 0, 0);
+        const chosen = new Set<number>();
+        const consider = (start: number) => {
+          const end = start + sessionMs;
+          if (start < now + MIN_LEAD_MS) return;
+          if (start < winStart.getTime() || end > winEnd.getTime()) return;
+          if (merged.some((b) => b.start < end && b.end > start)) return;
+          let prevEnd: number | null = null;
+          let nextStart: number | null = null;
+          for (const b of merged) {
+            if (b.end <= start) prevEnd = b.end;
+            if (b.start >= end && nextStart == null) nextStart = b.start;
           }
-          slots.push(s);
+          // A gap between two bookings must be a whole number of sessions,
+          // otherwise the leftover minutes can never be filled.
+          if (prevEnd != null && nextStart != null && (nextStart - prevEnd) % sessionMs !== 0) return;
+          chosen.add(start);
+        };
+        if (!merged.length) consider(winStart.getTime());
+        else {
+          for (const b of merged) {
+            consider(b.end);
+            consider(b.start - sessionMs);
+          }
+        }
+        for (const start of [...chosen].sort((a, b) => a - b)) slots.push(new Date(start));
+      } else {
+        for (const [winStart, winEnd] of WINDOWS) {
+          for (let m = winStart; m + sessionMin <= winEnd; m += sessionMin) {
+            const s = new Date(day); s.setHours(Math.floor(m / 60), m % 60, 0, 0);
+            const e = s.getTime() + sessionMs;
+            if (s.getTime() < now + MIN_LEAD_MS) continue;
+            const hits = busy.filter(
+              (b: { start: number; end: number }) => b.start < e && b.end > s.getTime(),
+            );
+            if (payload.serviceKey === "physiotherapy") {
+              // Each physiotherapist is their own column. A block or a visit
+              // only takes that person; the slot stays open while anyone is free.
+              const taken = new Set(hits.map((b: { therapistId: string }) => b.therapistId));
+              if (physioIds.every((id) => taken.has(id))) continue;
+            } else {
+              if (hits.some((b: { block: boolean }) => b.block)) continue;
+              if (hits.length >= capacity) continue;
+            }
+            slots.push(s);
+          }
         }
       }
 
